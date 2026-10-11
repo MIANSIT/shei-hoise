@@ -173,6 +173,108 @@ export async function getCodSettlementsList(
 }
 
 /**
+ * Cash from COD orders marked Paid directly (no courier settlement), on the
+ * day they were marked paid (orders.paid_at). Settled orders are excluded —
+ * their cash is counted once, via the settlement.
+ */
+export async function getCodMarkedPaidCashForDate(
+  storeId: string,
+  dateStr: string, // YYYY-MM-DD, Asia/Dhaka
+  branchId?: string | null,
+): Promise<number> {
+  if (!storeId) return 0;
+
+  // Dhaka day as an instant range (the register's dates are Asia/Dhaka).
+  let query = supabase
+    .from("orders")
+    .select("id, total_amount, customer_id")
+    .eq("store_id", storeId)
+    .eq("payment_method", PaymentMethod.COD)
+    .eq("payment_status", PaymentStatus.PAID)
+    .is("cod_settlement_id", null)
+    .neq("status", OrderStatus.CANCELLED)
+    .neq("status", OrderStatus.RETURNED)
+    .gte("paid_at", `${dateStr}T00:00:00+06:00`)
+    .lte("paid_at", `${dateStr}T23:59:59.999+06:00`);
+  if (branchId) query = query.eq("branch_id", branchId);
+  const { data: orders, error } = await query;
+
+  // Also fails harmlessly before the paid_at migration has been applied.
+  if (error) {
+    console.error("Failed to load COD orders marked paid:", error.message);
+    return 0;
+  }
+  if (!orders || orders.length === 0) return 0;
+
+  // Whatever the customer already paid towards these orders is counted on its
+  // own date — only the remainder is new cash. That includes payments not
+  // pinned to an invoice, so use the same per-customer waterfall as every
+  // other due balance (customerDueMath.ts) rather than pinned payments alone.
+  const customerIds = [...new Set(orders.map((o) => o.customer_id).filter((id): id is string => !!id))];
+  const allocatedByOrderId = new Map<string, number>();
+
+  if (customerIds.length > 0) {
+    const [customerOrdersRes, paymentsRes] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id, customer_id, total_amount, branch_id")
+        .eq("store_id", storeId)
+        .in("customer_id", customerIds)
+        .neq("status", OrderStatus.CANCELLED)
+        .neq("status", OrderStatus.RETURNED)
+        .order("created_at", { ascending: true }),
+      supabase.from("customer_payments").select("*").eq("store_id", storeId).in("customer_id", customerIds),
+    ]);
+
+    type Row = { id: string; customer_id: string; total_amount: number; branch_id: string | null };
+    type Pay = { customer_id: string; order_id: string | null; amount: number; branch_id: string | null };
+    const ordersByCustomer = new Map<string, Row[]>();
+    for (const o of (customerOrdersRes.data ?? []) as Row[]) {
+      ordersByCustomer.set(o.customer_id, [...(ordersByCustomer.get(o.customer_id) ?? []), o]);
+    }
+    const paymentsByCustomer = new Map<string, Pay[]>();
+    for (const p of (paymentsRes.data ?? []) as Pay[]) {
+      paymentsByCustomer.set(p.customer_id, [...(paymentsByCustomer.get(p.customer_id) ?? []), p]);
+    }
+    for (const customerId of customerIds) {
+      const balances = computeBranchOrderBalances(
+        (ordersByCustomer.get(customerId) ?? []).map((o) => ({
+          id: o.id,
+          total_amount: Number(o.total_amount),
+          branch_id: o.branch_id ?? null,
+        })),
+        (paymentsByCustomer.get(customerId) ?? []).map((p) => ({
+          order_id: p.order_id,
+          amount: Number(p.amount),
+          branch_id: p.branch_id ?? null,
+        })),
+      );
+      for (const b of balances) allocatedByOrderId.set(b.order_id, b.paid_allocated);
+    }
+  }
+
+  // Orders with no customer can only have pinned payments.
+  const guestOrderIds = orders.filter((o) => !o.customer_id).map((o) => o.id);
+  if (guestOrderIds.length > 0) {
+    const { data: guestPayments } = await supabase
+      .from("customer_payments")
+      .select("order_id, amount")
+      .eq("store_id", storeId)
+      .in("order_id", guestOrderIds);
+    for (const p of guestPayments ?? []) {
+      if (p.order_id) {
+        allocatedByOrderId.set(p.order_id, (allocatedByOrderId.get(p.order_id) ?? 0) + (Number(p.amount) || 0));
+      }
+    }
+  }
+
+  return orders.reduce(
+    (sum, o) => sum + Math.max(0, (Number(o.total_amount) || 0) - (allocatedByOrderId.get(o.id) ?? 0)),
+    0,
+  );
+}
+
+/**
  * Every settlement's total_amount landed on its own settlement_date — this
  * is what getQuickSaleDailySummary folds into "expected cash" for a given
  * day, since that's the day the money actually arrived, not the day any of

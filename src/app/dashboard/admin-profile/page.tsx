@@ -16,6 +16,7 @@ import { EditProfileForm } from "../../components/user-profile/adminProfile/Edit
 import { AdminUserWithProfile } from "@/lib/queries/user/getAdminUser";
 import { ProfileFormData } from "@/lib/types/adminProfile";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { refreshCurrentUser } from "@/lib/hook/useCurrentUser";
 
 export default function StoreOwnerProfilePage() {
   const { user, loading, error, isAuthenticated } = useUserProfile();
@@ -79,6 +80,7 @@ export default function StoreOwnerProfilePage() {
         profile: updatedProfile,
       });
 
+      refreshCurrentUser();
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);

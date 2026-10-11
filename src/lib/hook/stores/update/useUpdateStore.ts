@@ -9,6 +9,7 @@ import {
 import { updateStoreSettings } from "@/lib/queries/stores/update/updateStoreSettings";
 import { invalidateStoreSettingsCache } from "@/lib/queries/stores/getStoreSettings";
 import { updateStoreSocialMedia } from "@/lib/queries/stores/update/updateStoreSocialMedia";
+import { refreshCurrentUser } from "@/lib/hook/useCurrentUser";
 import type {
   UpdatedStoreData,
   StoreData,
@@ -83,6 +84,8 @@ export function useUpdateStore(storeId: string) {
         Object.keys(storePayload).length > 0
           ? await updateStore(storeId, storePayload)
           : null;
+
+      if (updatedStore) refreshCurrentUser();
 
       // Update settings
       const updatedSettings = settingsData

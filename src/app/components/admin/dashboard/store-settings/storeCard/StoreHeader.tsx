@@ -23,6 +23,7 @@ import {
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { refreshCurrentUser } from "@/lib/hook/useCurrentUser";
 
 interface Props {
   store: StoreData;
@@ -129,6 +130,7 @@ export function StoreHeader({ store, onUpdate, updateStore }: Props) {
       setStoreName(updatedStore.store_name);
       setStoreSlug(updatedStore.store_slug);
       onUpdate(updatedStore);
+      refreshCurrentUser();
       setLogoFile(null);
       setBannerFile(null);
       setLogoRemoved(false);

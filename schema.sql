@@ -343,6 +343,7 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "cash_received" numeric(10,2),
     "order_date" date DEFAULT CURRENT_DATE NOT NULL,
     "cod_settlement_id" uuid,
+    "paid_at" timestamp with time zone,
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
     CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text", ('returned'::character varying)::"text"]))),
     CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
@@ -1387,6 +1388,25 @@ CREATE INDEX "store_cod_settlements_store_date_idx" ON "public"."store_cod_settl
 
 
 CREATE INDEX "orders_cod_settlement_id_idx" ON "public"."orders" USING "btree" ("cod_settlement_id");
+
+CREATE INDEX "orders_cod_paid_at_idx" ON "public"."orders" USING "btree" ("store_id", "paid_at") WHERE (("payment_method")::"text" = 'cod' AND "cod_settlement_id" IS NULL);
+
+CREATE OR REPLACE FUNCTION "public"."set_orders_paid_at"() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.payment_status = 'paid' THEN
+    IF TG_OP = 'INSERT' OR OLD.payment_status IS DISTINCT FROM 'paid' THEN
+      NEW.paid_at := now();
+    END IF;
+  ELSE
+    NEW.paid_at := NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER "orders_set_paid_at" BEFORE INSERT OR UPDATE OF "payment_status" ON "public"."orders" FOR EACH ROW EXECUTE FUNCTION "public"."set_orders_paid_at"();
 
 
 

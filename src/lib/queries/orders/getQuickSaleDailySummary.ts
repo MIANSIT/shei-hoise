@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
-import { getCodCashSettledForDate } from "@/lib/queries/orders/codSettlements";
+import { getCodCashSettledForDate, getCodMarkedPaidCashForDate } from "@/lib/queries/orders/codSettlements";
 
 export interface QuickSaleDailyOrderRow {
   id: string;
@@ -99,7 +99,7 @@ export async function getQuickSaleDailySummary(
   // wrongly add it to) the day it actually belongs to for cash reconciliation.
   // Still sorted by created_at for a sensible within-day sequence, since
   // order_date alone has no time-of-day to order by.
-  const [ordersRes, paymentsRes, codCashSettled] = await Promise.all([
+  const [ordersRes, paymentsRes, settledCash, markedPaidCash] = await Promise.all([
     ordersQuery.order("created_at", { ascending: true }),
     paymentsQuery,
     // A settlement can land on a day with no Quick Sale/order activity of
@@ -107,7 +107,11 @@ export async function getQuickSaleDailySummary(
     // is fetched unconditionally rather than folded into the early-return
     // guard below.
     getCodCashSettledForDate(storeId, dateStr, branchId),
+    // A COD order marked Paid directly (no settlement) has its cash arrive
+    // the day it was marked, so it lands in the same COD figure.
+    getCodMarkedPaidCashForDate(storeId, dateStr, branchId),
   ]);
+  const codCashSettled = settledCash + markedPaidCash;
 
   const orders = ordersRes.data ?? [];
   const payments = paymentsRes.data ?? [];
