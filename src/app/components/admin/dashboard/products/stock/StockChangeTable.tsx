@@ -328,7 +328,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       // Products WITHOUT variants (simple): allow direct selection.
       // Variant rows (nested): never appear here, but disable just in case.
       return {
-        disabled: hasVariants || !isTopLevelProduct,
+        disabled: readOnly || hasVariants || !isTopLevelProduct,
       };
     },
   };
@@ -355,19 +355,23 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               loading={bulkActive}
             />
           )}
-          {/* A disabled fieldset disables every input and button inside it. */}
+          {/* A disabled fieldset disables every input and button inside it —
+              fine for the mobile cards, but on the desktop table it would also
+              kill the row-expand arrow, the sort header and the history
+              popover, so that table disables only its editing controls. */}
           <fieldset disabled={readOnly} className="contents">
-          <div className="block md:hidden">
-            <StockTableMobile
-              products={products}
-              editedStocks={editedStocks}
-              onStockChange={handleStockChange}
-              onSingleUpdate={handleSingleUpdate}
-              selectedRowKeys={selectedRowKeys}
-              onSelectChange={setSelectedRowKeys}
-              bulkActive={bulkActive}
-            />
-          </div>
+            <div className="block md:hidden">
+              <StockTableMobile
+                products={products}
+                editedStocks={editedStocks}
+                onStockChange={handleStockChange}
+                onSingleUpdate={handleSingleUpdate}
+                selectedRowKeys={selectedRowKeys}
+                onSelectChange={setSelectedRowKeys}
+                bulkActive={bulkActive}
+              />
+            </div>
+          </fieldset>
           <div className="hidden md:block">
             <StockTable
               products={products}
@@ -377,11 +381,11 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               rowSelection={rowSelection}
               loading={loading}
               bulkActive={bulkActive}
+              readOnly={readOnly}
               stockSort={stockSort}
               onSortChange={onSortChange}
             />
           </div>
-          </fieldset>
         </>
       )}
     </div>

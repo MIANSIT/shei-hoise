@@ -36,6 +36,8 @@ interface StockTableProps {
   rowSelection?: TableRowSelection<ProductRow | VariantRow>;
   loading?: boolean;
   bulkActive?: boolean;
+  /** "All branches" view: stock can be looked at but not edited. */
+  readOnly?: boolean;
   stockSort?: StockSort;
   onSortChange?: (sort: StockSort) => void;
 }
@@ -80,6 +82,7 @@ const StockTable: React.FC<StockTableProps> = ({
   rowSelection,
   loading,
   bulkActive = false,
+  readOnly = false,
   stockSort = null,
   onSortChange,
 }) => {
@@ -348,6 +351,7 @@ const StockTable: React.FC<StockTableProps> = ({
             <div className="flex items-center gap-2">
             <InputNumber
               min={0}
+              disabled={readOnly}
               value={editedValue}
               controls={false}
               onChange={(value) =>
@@ -466,7 +470,9 @@ const StockTable: React.FC<StockTableProps> = ({
             },
             getCheckboxProps: (variant) => ({
               disabled:
-                !("isActive" in variant) || !(variant as VariantRow).isActive,
+                readOnly ||
+                !("isActive" in variant) ||
+                !(variant as VariantRow).isActive,
             }),
             columnTitle: (
               <Tooltip
@@ -478,6 +484,7 @@ const StockTable: React.FC<StockTableProps> = ({
               >
                 <input
                   type="checkbox"
+                  disabled={readOnly}
                   checked={allSelected}
                   ref={(el) => {
                     if (el) el.indeterminate = someSelected && !allSelected;
