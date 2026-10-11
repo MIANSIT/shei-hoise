@@ -30,6 +30,8 @@ interface CustomerQuickPaymentModalProps {
     paymentMethod: PaymentMethod;
     notes?: string;
     orderId?: string | null;
+    /** Every order picked in "Apply To Order"; empty means auto (oldest first). */
+    orderIds: string[];
   }) => void;
   onCancel: () => void;
 }
@@ -47,7 +49,7 @@ function CustomerQuickPaymentModal({
   const [amount, setAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [notes, setNotes] = useState("");
-  const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderIds, setOrderIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -55,9 +57,21 @@ function CustomerQuickPaymentModal({
       setAmount(0);
       setPaymentMethod(PaymentMethod.CASH);
       setNotes("");
-      setOrderId(null);
+      setOrderIds([]);
     }
   }, [open]);
+
+  // The most that can be taken: the picked orders' dues, else the whole due.
+  const maxAmount = orderIds.length
+    ? orderOptions.filter((o) => orderIds.includes(o.order_id)).reduce((sum, o) => sum + o.due_remaining, 0)
+    : totalDue;
+
+  const handleOrdersChange = (ids: string[]) => {
+    setOrderIds(ids);
+    // Picking orders means paying them off: prefill their combined due.
+    const picked = orderOptions.filter((o) => ids.includes(o.order_id));
+    setAmount(picked.length ? Number(picked.reduce((sum, o) => sum + o.due_remaining, 0).toFixed(2)) : 0);
+  };
 
   const handleOk = () => {
     onSubmit({
@@ -65,7 +79,8 @@ function CustomerQuickPaymentModal({
       amount,
       paymentMethod,
       notes: notes || undefined,
-      orderId,
+      orderId: orderIds.length === 1 ? orderIds[0] : null,
+      orderIds,
     });
   };
 
@@ -124,7 +139,7 @@ function CustomerQuickPaymentModal({
           <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">Amount Received</label>
           <InputNumber
             min={0}
-            max={totalDue}
+            max={maxAmount}
             autoFocus
             value={amount}
             onChange={(v) => setAmount(v ?? 0)}
@@ -146,10 +161,12 @@ function CustomerQuickPaymentModal({
               Apply To Order (Optional)
             </label>
             <Select
+              mode="multiple"
               allowClear
+              maxTagCount="responsive"
               placeholder="Auto — oldest unpaid order first"
-              value={orderId ?? undefined}
-              onChange={(v) => setOrderId(v ?? null)}
+              value={orderIds}
+              onChange={handleOrdersChange}
               options={orderOptions.map((o) => ({
                 value: o.order_id,
                 label: `#${o.order_number} — Due: ${o.due_remaining.toFixed(2)}`,

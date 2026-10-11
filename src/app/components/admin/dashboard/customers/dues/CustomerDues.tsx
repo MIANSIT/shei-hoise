@@ -82,22 +82,39 @@ export default function CustomerDues() {
     paymentMethod: PaymentMethod;
     notes?: string;
     orderId?: string | null;
+    orderIds: string[];
   }) => {
     if (!user?.store_id || !selectedCustomer) return;
     setSubmitting(true);
     try {
-      const result = await recordCustomerPayment({
-        storeId: user.store_id,
-        customerId: selectedCustomer.customer_id,
-        amount: payload.amount,
-        paymentMethod: payload.paymentMethod,
-        paymentDate: payload.paymentDate,
-        notes: payload.notes,
-        orderId: payload.orderId,
-        createdBy: user.id,
-        // The money is collected for this row's branch.
-        branchId: selectedCustomer.branch_id,
-      });
+      // One payment per picked order (oldest first), each capped at that
+      // order's due; none picked = a single unpinned payment (auto waterfall).
+      const picked = orderOptions.filter((o) => payload.orderIds.includes(o.order_id));
+      let remaining = payload.amount;
+      const parts: { orderId: string | null; amount: number }[] = picked.length
+        ? picked.flatMap((o, i) => {
+            const amount = i === picked.length - 1 ? remaining : Math.min(remaining, o.due_remaining);
+            remaining = Number((remaining - amount).toFixed(2));
+            return amount > 0 ? [{ orderId: o.order_id, amount }] : [];
+          })
+        : [{ orderId: null, amount: payload.amount }];
+
+      let result: { success: boolean; error?: string } = { success: true };
+      for (const part of parts) {
+        result = await recordCustomerPayment({
+          storeId: user.store_id,
+          customerId: selectedCustomer.customer_id,
+          amount: part.amount,
+          paymentMethod: payload.paymentMethod,
+          paymentDate: payload.paymentDate,
+          notes: payload.notes,
+          orderId: part.orderId,
+          createdBy: user.id,
+          // The money is collected for this row's branch.
+          branchId: selectedCustomer.branch_id,
+        });
+        if (!result.success) break;
+      }
       if (result.success) {
         notify.success("Payment recorded");
         setModalOpen(false);
