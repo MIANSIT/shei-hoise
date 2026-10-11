@@ -122,19 +122,38 @@ export function enableBengaliText(pdf: jsPDF, fonts: BengaliPdfFont | null): voi
     return total;
   };
 
-  const drawGlyph = (glyph: Glyph, originX: number, baselineY: number, scale: number) => {
-    const commands = outlineOf(glyph).path.commands;
-    if (commands.length === 0) return;
-    const X = (fx: number) => originX + fx * scale;
-    const Y = (fy: number) => baselineY - fy * scale;
+  // Each distinct Bangla glyph is drawn into the PDF once, as a reusable
+  // form object, and every later use is a one-line "place it here, at this
+  // size". Drawing the outline again for every letter of every invoice made a
+  // bulk PDF with Bangla addresses tens of MB (and ran the server out of
+  // memory); now the file grows by a few KB per glyph, once.
+  //
+  // A glyph form is drawn at 1 unit per em, with its origin at (FORM_ORIGIN_X,
+  // FORM_ORIGIN_Y) inside a FORM_SIZE x FORM_SIZE box that leaves room for
+  // marks above and below the line.
+  const FORM_SIZE = 4;
+  const FORM_ORIGIN_X = 1;
+  const FORM_ORIGIN_Y = 2.5;
+  const glyphForms = new Set<number>();
+
+  const defineGlyphForm = (glyphId: number, commands: ReturnType<typeof outlineOf>["path"]["commands"]) => {
+    const key = `bn-glyph-${glyphId}`;
+    if (glyphForms.has(glyphId)) return key;
+    glyphForms.add(glyphId);
+
+    const emScale = 1 / unitsPerEm;
+    const X = (fx: number) => FORM_ORIGIN_X + fx * emScale;
+    const Y = (fy: number) => FORM_ORIGIN_Y - fy * emScale;
+    // The box is in points (jsPDF's form-object size), while the drawing
+    // inside it is in user units — hence the scale factor here only.
+    const box = FORM_SIZE * scaleFactor();
+    pdf.beginFormObject(0, 0, box, box, pdf.unitMatrix);
     let cx = 0;
     let cy = 0;
-    let open = false;
     for (const { command, args } of commands) {
       if (command === "moveTo") {
         pdf.moveTo(X(args[0]), Y(args[1]));
         [cx, cy] = [args[0], args[1]];
-        open = true;
       } else if (command === "lineTo") {
         pdf.lineTo(X(args[0]), Y(args[1]));
         [cx, cy] = [args[0], args[1]];
@@ -155,7 +174,23 @@ export function enableBengaliText(pdf: jsPDF, fonts: BengaliPdfFont | null): voi
         pdf.close();
       }
     }
-    if (open) pdf.fill();
+    pdf.fill();
+    pdf.endFormObject(key);
+    return key;
+  };
+
+  const drawGlyph = (glyph: Glyph, originX: number, baselineY: number, scale: number) => {
+    const commands = outlineOf(glyph).path.commands;
+    if (commands.length === 0) return;
+    const key = defineGlyphForm(glyph.id, commands);
+
+    // scale = user units per font unit; the form is 1 unit per em.
+    const size = scale * unitsPerEm; // the em, in user units
+    const k = scaleFactor();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const e = (originX - size * FORM_ORIGIN_X) * k;
+    const f = (pageHeight - baselineY - size * (FORM_SIZE - FORM_ORIGIN_Y)) * k;
+    pdf.doFormObject(key, pdf.Matrix(size, 0, 0, size, e, f));
   };
 
   const drawShaped = (text: string, x: number, baselineY: number): number => {

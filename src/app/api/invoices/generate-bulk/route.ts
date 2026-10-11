@@ -16,6 +16,19 @@ interface BulkInvoiceRequest {
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT = 297;
 const MAX_INVOICES = 500;
+// Bangla text is drawn glyph by glyph and is far heavier than English, so a
+// download is also capped by how many of its invoices contain any. The app
+// splits big downloads below this (BANGLA_BATCH_SIZE), so it's a safety net:
+// an oversized request gets a clear message instead of exhausting the server.
+const MAX_BANGLA_INVOICES = 100;
+const BANGLA = /[ঀ-৿]/;
+
+const hasBanglaText = (inv: InvoicePdfData): boolean =>
+  BANGLA.test(
+    [inv.customer?.name, inv.customer?.address, inv.notes, ...(inv.products ?? []).map((p) => p.name)]
+      .filter(Boolean)
+      .join(" "),
+  );
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,6 +45,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: `Too many orders selected (max ${MAX_INVOICES} per download)` },
         { status: 400 },
+      );
+    }
+
+    const banglaInvoices = invoices.filter(hasBanglaText).length;
+    if (banglaInvoices > MAX_BANGLA_INVOICES) {
+      return NextResponse.json(
+        {
+          error: `Too many invoices with Bangla text in one download (max ${MAX_BANGLA_INVOICES}). Please download in smaller batches.`,
+        },
+        { status: 413 },
       );
     }
 

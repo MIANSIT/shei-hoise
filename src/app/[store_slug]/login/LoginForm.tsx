@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { signUpCustomer } from "@/lib/queries/customerAuth/signUpCustomer";
 import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
@@ -290,17 +291,12 @@ export function LoginForm() {
         
       } else {
         // No auth account - sign up
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: email.toLowerCase(),
-          password: password,
-          options: {
-            data: {
-              phone: phoneNumber || customerData?.phone,
-              role: "customer",
-            },
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
+        // Created already confirmed — customers get no confirmation email.
+        const { data: authData, error: authError } = await signUpCustomer(
+          email,
+          password,
+          { phone: phoneNumber || customerData?.phone },
+        );
 
         if (authError) {
           if (authError.message.includes("already registered")) {

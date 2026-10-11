@@ -38,6 +38,16 @@ const passwordValidation = z
   .optional()
   .or(z.literal(''));
 
+/** Shortest address that's still usable for a delivery ("Flat 4B, Mirpur 10" is 18). */
+export const ADDRESS_MIN_LENGTH = 10;
+/** Schema message for a too-short address; the form swaps it for the translated text. */
+export const ADDRESS_TOO_SHORT_MESSAGE = "ADDRESS_TOO_SHORT";
+
+const shippingAddressValidation = z
+  .string()
+  .min(1, "Shipping address is required")
+  .min(ADDRESS_MIN_LENGTH, ADDRESS_TOO_SHORT_MESSAGE);
+
 // ✅ UPDATED: For logged-in users, make password truly optional
 const loggedInPasswordValidation = z.string().optional().or(z.literal(''));
 
@@ -50,7 +60,7 @@ export const customerCheckoutSchema = z.object({
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   postCode: z.string().optional(), // ✅ Made optional for simplicity
-  shippingAddress: z.string().min(1, "Shipping address is required"),
+  shippingAddress: shippingAddressValidation,
 });
 
 // ✅ UPDATED: Schema for logged-in users
@@ -62,7 +72,7 @@ export const customerCheckoutSchemaForLoggedIn = z.object({
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   postCode: z.string().optional(), // ✅ Made optional
-  shippingAddress: z.string().min(1, "Shipping address is required"),
+  shippingAddress: shippingAddressValidation,
 });
 
 // ✅ UPDATED: Create simplified schema for display purposes
@@ -72,7 +82,7 @@ export const simplifiedCheckoutSchema = z.object({
   country: z.string().min(1, "Country is required"),
   city: z.string().min(1, "City is required"),
   postCode: z.string().optional(),
-  shippingAddress: z.string().min(1, "Shipping address is required"),
+  shippingAddress: shippingAddressValidation,
 });
 
 export const addToCartSchema = z.object({

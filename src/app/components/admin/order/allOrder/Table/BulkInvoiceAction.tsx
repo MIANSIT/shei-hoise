@@ -15,6 +15,10 @@ import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 
 type BulkLayout = "1up" | "3up" | "10up";
 
+// Invoices per request when any of them has Bangla text (the server accepts up to 100).
+const BANGLA_BATCH_SIZE = 50;
+const BANGLA = /[ঀ-৿]/;
+
 interface Props {
   selectedOrders: StoreOrder[];
   storeId?: string;
@@ -113,30 +117,44 @@ const BulkInvoiceAction: React.FC<Props> = ({
         return branch ? { ...data, store: invoiceStoreFor(storeData, branch) } : data;
       });
 
-      const res = await fetch("/api/invoices/generate-bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/pdf" },
-        body: JSON.stringify({
-          store: {
-            name: storeData.store_name,
-            address: storeData.business_address,
-            phone: storeData.contact_phone,
-            email: storeData.contact_email,
-          },
-          layout,
-          invoices,
-        }),
-      });
+      // Big downloads are built in parts so no single request can exhaust the
+      // server: Bangla text is far heavier to draw than English.
+      const batchSize = invoices.some((inv) => BANGLA.test(JSON.stringify(inv)))
+        ? BANGLA_BATCH_SIZE
+        : invoices.length;
+      for (let from = 0; from < invoices.length; from += batchSize) {
+        const part = invoices.slice(from, from + batchSize);
+        const res = await fetch("/api/invoices/generate-bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/pdf" },
+          body: JSON.stringify({
+            store: {
+              name: storeData.store_name,
+              address: storeData.business_address,
+              phone: storeData.contact_phone,
+              email: storeData.contact_email,
+            },
+            layout,
+            invoices: part,
+          }),
+        });
 
-      if (!res.ok) throw new Error("Failed to generate bulk invoice PDF");
+        if (!res.ok) {
+          const detail = await res.json().catch(() => null);
+          throw new Error(detail?.error ?? "Failed to generate bulk invoice PDF");
+        }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `invoices_${selectedOrders.length}_${layout}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download =
+          batchSize >= invoices.length
+            ? `invoices_${selectedOrders.length}_${layout}.pdf`
+            : `invoices_${from + 1}-${from + part.length}_of_${invoices.length}_${layout}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
 
       notification.success({
         title: "Invoices downloaded",
@@ -153,7 +171,10 @@ const BulkInvoiceAction: React.FC<Props> = ({
       console.error("Bulk invoice download error:", error);
       notification.error({
         title: "Download failed",
-        description: "Could not generate the invoice PDF. Please try again.",
+        description:
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not generate the invoice PDF. Please try again.",
       });
     } finally {
       setDownloading(false);

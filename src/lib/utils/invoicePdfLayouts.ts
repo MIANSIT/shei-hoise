@@ -7,6 +7,8 @@ import {
   applyBengaliFont,
   formatStatus,
   hasBengali,
+  clampText,
+  MAX_ADDRESS_CHARS,
 } from "@/lib/utils/invoicePdfHelpers";
 
 import { formatDate } from "@/lib/utils/formatDate";
@@ -49,7 +51,7 @@ export function drawFullInvoice(
   pdf.setTextColor(0, 0, 0);
 
   const contactInfo: string[] = [];
-  if (store.address) contactInfo.push(`Address:  ${store.address}`);
+  if (store.address) contactInfo.push(`Address:  ${clampText(store.address, MAX_ADDRESS_CHARS)}`);
   if (store.phone) contactInfo.push(`Phone:  ${store.phone}`);
   if (store.email) contactInfo.push(`Email: ${store.email}`);
 
@@ -101,9 +103,14 @@ export function drawFullInvoice(
   y += 5;
   pdf.setFontSize(10);
 
+  // The address wraps to at most 3 lines (and is cut beyond MAX_ADDRESS_CHARS).
+  pdf.setFont("helvetica", "normal");
+  const addressLines = data.customer.address
+    ? (pdf.splitTextToSize(clampText(data.customer.address, MAX_ADDRESS_CHARS), pageWidth - 2 * margin) as string[]).slice(0, 3)
+    : [];
   const customerInfo = [
-    data.customer.name,
-    data.customer.address,
+    clampText(data.customer.name, 120),
+    ...addressLines,
     data.customer.contact ? `Phone: ${data.customer.contact}` : null,
     data.customer.email ? `Email: ${data.customer.email}` : null,
   ].filter(Boolean) as string[];
@@ -339,9 +346,10 @@ export function drawCompactInvoice(
   if (data.customer.address) {
     pdf.setFontSize(8.5);
     pdf.setTextColor(90, 90, 90);
-    applyBengaliFont(pdf, data.customer.address, bengaliLoaded);
-    const addressLines = pdf.splitTextToSize(data.customer.address, contentWidth) as string[];
-    pdf.text(addressLines[0], margin, y);
+    const address = clampText(data.customer.address, 120);
+    applyBengaliFont(pdf, address, bengaliLoaded);
+    const addressLines = pdf.splitTextToSize(address, contentWidth) as string[];
+    pdf.text(addressLines[0] ?? "", margin, y);
     y += 4.5;
   }
 
@@ -356,7 +364,7 @@ export function drawCompactInvoice(
   data.products.slice(0, maxItemLines).forEach((p) => {
     const lineTotal = (p.qty * p.price).toFixed(2);
     applyBengaliFont(pdf, p.name, bengaliLoaded);
-    const nameMax = pdf.splitTextToSize(p.name, contentWidth - 55)[0] as string;
+    const nameMax = (pdf.splitTextToSize(clampText(p.name, 100), contentWidth - 55)[0] as string | undefined) ?? "";
     pdf.text(nameMax, margin, y);
     pdf.setFont("helvetica", "normal");
     pdf.text(`x${p.qty}`, pageWidth - margin - 25, y, { align: "right" });
@@ -435,7 +443,7 @@ export function drawMiniSlip(
   pdf.setFontSize(9);
   pdf.setTextColor(29, 78, 216);
   applyBengaliFont(pdf, store.name, bengaliLoaded);
-  const storeNameLine = pdf.splitTextToSize(store.name, contentWidth)[0] as string;
+  const storeNameLine = (pdf.splitTextToSize(clampText(store.name, 80), contentWidth)[0] as string | undefined) ?? "";
   pdf.text(storeNameLine, cellX + pad, y);
   pdf.setFont("helvetica", "normal");
   y += 4.5;
@@ -454,7 +462,7 @@ export function drawMiniSlip(
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(8.5);
   applyBengaliFont(pdf, data.customer.name, bengaliLoaded);
-  const nameLine = pdf.splitTextToSize(data.customer.name, contentWidth)[0] as string;
+  const nameLine = (pdf.splitTextToSize(clampText(data.customer.name, 80), contentWidth)[0] as string | undefined) ?? "";
   pdf.text(nameLine, cellX + pad, y);
   pdf.setFont("helvetica", "normal");
   y += 4;
@@ -470,8 +478,9 @@ export function drawMiniSlip(
   if (data.customer.address) {
     pdf.setFontSize(7);
     pdf.setTextColor(90, 90, 90);
-    applyBengaliFont(pdf, data.customer.address, bengaliLoaded);
-    const addressLine = pdf.splitTextToSize(data.customer.address, contentWidth)[0] as string;
+    const address = clampText(data.customer.address, 80);
+    applyBengaliFont(pdf, address, bengaliLoaded);
+    const addressLine = (pdf.splitTextToSize(address, contentWidth)[0] as string | undefined) ?? "";
     pdf.text(addressLine, cellX + pad, y);
     pdf.setTextColor(0, 0, 0);
     y += 3.8;
@@ -486,7 +495,7 @@ export function drawMiniSlip(
   pdf.setTextColor(0, 0, 0);
   data.products.slice(0, maxItemLines).forEach((p) => {
     applyBengaliFont(pdf, p.name, bengaliLoaded);
-    const nameMax = pdf.splitTextToSize(p.name, contentWidth - 20)[0] as string;
+    const nameMax = (pdf.splitTextToSize(clampText(p.name, 80), contentWidth - 20)[0] as string | undefined) ?? "";
     pdf.text(nameMax, cellX + pad, y);
     pdf.setFont("helvetica", "normal");
     const qtyText = `x${p.qty}`;

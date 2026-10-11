@@ -126,3 +126,16 @@ export function formatStatus(status: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 }
+
+/** Longest address a customer invoice will print; anything beyond is cut with "...". */
+export const MAX_ADDRESS_CHARS = 240;
+
+/**
+ * Collapses runs of whitespace/newlines and cuts text to `max` characters. A
+ * PDF can't use more than a few lines of text per field anyway, and measuring
+ * or drawing an enormous Bangla string is what ran the server out of memory.
+ */
+export function clampText(text: string, max: number): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > max ? `${flat.slice(0, max - 3).trimEnd()}...` : flat;
+}

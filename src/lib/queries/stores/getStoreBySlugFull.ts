@@ -61,7 +61,12 @@ export async function getStoreBySlugFull(store_slug: string): Promise<StoreFull 
     .single();
 
   if (storeError || !store) {
-    cache.set(store_slug, { data: null, ts: Date.now() });
+    // Only a genuine "no such store" (no row) is remembered. A failed request
+    // (API restarting, network blip) must not be cached: it would show the
+    // store as "Page Not Found" for the full cache time after the API is back.
+    if (!storeError || storeError.code === "PGRST116") {
+      cache.set(store_slug, { data: null, ts: Date.now() });
+    }
     return null;
   }
 

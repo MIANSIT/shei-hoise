@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { signUpCustomer } from "./signUpCustomer";
 import { createSignupCustomer, linkSignupCustomerToStore } from "./customerSignupServer";
 
 export const signupQueries = {
@@ -18,11 +19,8 @@ export const signupQueries = {
   },
 
   createAuthUser: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
-      password: password,
-      options: { data: { email: email.toLowerCase(), role: "customer" } },
-    });
+    // Created already confirmed — no confirmation email for customers.
+    const { data, error } = await signUpCustomer(email, password, { email: email.toLowerCase() });
 
     if (error) {
       // Auth user already exists — sign in instead of failing

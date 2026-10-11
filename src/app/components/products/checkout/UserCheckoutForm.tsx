@@ -8,12 +8,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { SheiLoader } from "../../ui/SheiLoader/loader";
 import {
   customerCheckoutSchema,
   customerCheckoutSchemaForLoggedIn,
   CustomerCheckoutFormValues,
+  ADDRESS_TOO_SHORT_MESSAGE,
 } from "@/lib/schema/checkoutSchema";
 import { CountryFlag } from "../../common/CountryFlag";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
@@ -351,15 +353,24 @@ const CheckoutForm = ({
       {/* Shipping Address */}
       <div className="grid gap-2">
         <Label htmlFor="shippingAddress">{t.checkout.shippingAddress}</Label>
-        <Input
-          {...form.register("shippingAddress")}
+        {/* Several lines are easier to type and check than one long line; the
+            value is stored on one line (", " for each new line) so couriers,
+            receipts and invoices keep reading it as before. */}
+        <Textarea
+          {...form.register("shippingAddress", {
+            setValueAs: (value: string) => value.replace(/\s*\n\s*/g, ", ").trim(),
+          })}
           placeholder={t.checkout.shippingAddressPlaceholder}
           disabled={isSubmitting}
-          className="h-12"
+          rows={3}
+          maxLength={300}
+          className="min-h-24 resize-none"
         />
         {form.formState.errors.shippingAddress && (
           <p className="text-sm text-red-500 mt-1">
-            {form.formState.errors.shippingAddress.message}
+            {form.formState.errors.shippingAddress.message === ADDRESS_TOO_SHORT_MESSAGE
+              ? t.checkout.shippingAddressTooShort
+              : form.formState.errors.shippingAddress.message}
           </p>
         )}
         <p className="text-xs text-muted-foreground">

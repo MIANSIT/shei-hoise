@@ -23,6 +23,7 @@ import { useParams } from "next/navigation";
 import { PasswordStrength } from "../../components/common/PasswordStrength";
 import { PasswordField } from "../../components/common/PasswordField";
 import { useCheckoutStore } from "@/lib/store/userInformationStore";
+import { signUpCustomer } from "@/lib/queries/customerAuth/signUpCustomer";
 import { linkAuthToCustomer } from "@/lib/queries/customers/getCustomerByEmail";
 
 export default function CompleteAccountPage() {
@@ -101,15 +102,12 @@ export default function CompleteAccountPage() {
       let loginSuccess = false;
 
       // 1. Try to sign up the user with Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      // Created already confirmed — customers get no confirmation email.
+      const { data: authData, error: signUpError } = await signUpCustomer(
         email,
-        password: formData.password,
-        options: {
-          data: {
-            store_slug: storeSlug,
-          }
-        },
-      });
+        formData.password,
+        { store_slug: storeSlug },
+      );
 
       if (signUpError) {
         // If user already exists, try signing in
