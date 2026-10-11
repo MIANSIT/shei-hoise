@@ -28,6 +28,8 @@ export interface QuickSaleDailySummary {
   dueCollectedToday: number;
   /** COD cash a courier actually handed over today, from settlements recorded against this date — see codSettlements.ts. Independent of when the covered orders were originally sold. */
   codCashSettled: number;
+  /** What the items sold today cost (cost price at sale, else variant/product TP). Null when it couldn't be loaded, so profit isn't shown as if cost were 0. */
+  costOfGoods: number | null;
   orders: QuickSaleDailyOrderRow[];
 }
 
@@ -38,6 +40,7 @@ const EMPTY: QuickSaleDailySummary = {
   dueOutstanding: 0,
   dueCollectedToday: 0,
   codCashSettled: 0,
+  costOfGoods: 0,
   orders: [],
 };
 
@@ -154,6 +157,8 @@ export async function getQuickSaleDailySummary(
     }
   }
 
+  const costOfGoods = await getCostOfGoods(orders.map((o) => o.id));
+
   let dueCollectedToday = 0;
   for (const payment of payments) {
     const amount = Number(payment.amount) || 0;
@@ -198,6 +203,43 @@ export async function getQuickSaleDailySummary(
     dueOutstanding,
     dueCollectedToday,
     codCashSettled,
+    costOfGoods,
     orders: rows,
   };
+}
+
+/**
+ * Cost of the items on these orders — the same cost the Profit & Loss report
+ * uses: the cost saved on the order line, else the variant's, else the
+ * product's trade price.
+ */
+async function getCostOfGoods(orderIds: string[]): Promise<number | null> {
+  if (orderIds.length === 0) return 0;
+
+  type CostRow = {
+    quantity: number | null;
+    cost_price: number | null;
+    product_variants: { tp_price: number | null } | { tp_price: number | null }[] | null;
+    products: { tp_price: number | null } | { tp_price: number | null }[] | null;
+  };
+  const tp = (rel: CostRow["products"]) =>
+    Number((Array.isArray(rel) ? rel[0]?.tp_price : rel?.tp_price) ?? 0) || 0;
+
+  let total = 0;
+  const chunk = 200;
+  for (let i = 0; i < orderIds.length; i += chunk) {
+    const { data, error } = await supabase
+      .from("order_items")
+      .select("quantity, cost_price, product_variants(tp_price), products(tp_price)")
+      .in("order_id", orderIds.slice(i, i + chunk));
+    if (error) {
+      console.error("Failed to load cost of goods:", error.message);
+      return null;
+    }
+    for (const row of (data ?? []) as unknown as CostRow[]) {
+      const unitCost = row.cost_price != null ? Number(row.cost_price) || 0 : tp(row.product_variants) || tp(row.products);
+      total += unitCost * (Number(row.quantity) || 0);
+    }
+  }
+  return total;
 }

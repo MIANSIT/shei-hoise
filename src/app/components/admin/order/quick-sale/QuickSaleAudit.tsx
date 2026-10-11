@@ -33,6 +33,7 @@ const EMPTY_SUMMARY: QuickSaleDailySummary = {
   dueOutstanding: 0,
   dueCollectedToday: 0,
   codCashSettled: 0,
+  costOfGoods: 0,
   orders: [],
 };
 
@@ -152,6 +153,10 @@ export default function QuickSaleAudit() {
   // Sale/online transactions.
   const cashExpected =
     (openingCash ?? 0) + (summary.collectedByMethod["cash"] ?? 0) + summary.codCashSettled;
+  // Profit on what was sold today (not what was collected): sales less the
+  // cost of the items. Shipping/tax are outside gross sales, so outside here too.
+  const profit = summary.costOfGoods == null ? null : summary.grossSales - summary.costOfGoods;
+  const margin = profit != null && summary.grossSales > 0 ? (profit / summary.grossSales) * 100 : null;
   const variance = countedCash != null ? countedCash - cashExpected : null;
 
   const columns: ColumnsType<QuickSaleDailyOrderRow> = [
@@ -267,6 +272,27 @@ export default function QuickSaleAudit() {
               hint={summary.codCashSettled > 0 ? "Includes COD settlements" : undefined}
             />
           </div>
+
+          {summary.transactionCount > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard
+                label="Profit (today's sales)"
+                value={profit == null ? "—" : money(profit)}
+                hint={
+                  summary.dueOutstanding > 0.01
+                    ? `Gross sales − cost of items sold. Includes ${money(summary.dueOutstanding)} not yet collected`
+                    : "Gross sales − cost of items sold"
+                }
+                tone={profit == null ? "default" : profit < 0 ? "warning" : "success"}
+              />
+              <StatCard
+                label="Profit margin"
+                value={margin == null ? "—" : `${margin.toFixed(1)}%`}
+                hint="Profit ÷ gross sales"
+                tone={margin == null ? "default" : margin < 0 ? "warning" : "success"}
+              />
+            </div>
+          )}
 
           <div className="rounded-2xl border border-border/60 bg-card/50 p-4 space-y-3">
             <Text strong className="text-sm">
