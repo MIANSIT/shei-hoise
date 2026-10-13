@@ -145,7 +145,24 @@ export async function getProductWithStock(
 
   if (searchText) {
     const pattern = `%${searchText}%`;
-    query = query.or(`name.ilike.${pattern},sku.ilike.${pattern}`);
+    // Also match a variant's own SKU, which isn't on the parent product row.
+    const { data: variantRows } = await supabaseAdmin
+      .from("product_variants")
+      .select("product_id, products!inner(stores!inner(store_slug))")
+      .eq("products.stores.store_slug", storeSlug)
+      .ilike("sku", pattern);
+    const variantProductIds = [
+      ...new Set(
+        ((variantRows ?? []) as { product_id: string }[]).map(
+          (r) => r.product_id,
+        ),
+      ),
+    ];
+    const filters = [`name.ilike.${pattern}`, `sku.ilike.${pattern}`];
+    if (variantProductIds.length > 0) {
+      filters.push(`id.in.(${variantProductIds.join(",")})`);
+    }
+    query = query.or(filters.join(","));
   }
 
   const { data, error } = await query;

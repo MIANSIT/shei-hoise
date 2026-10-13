@@ -93,6 +93,18 @@ async function findSubstringMatchIds(
   // unquoted , ( ) or " as filter syntax, so a full name like
   // "Salmon, Turkey & Rice (1kg)" used to break the whole search.
   const quote = (value: string) => `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  // A variant's own SKU (e.g. "TSHIRT-RED-M") isn't on the parent row, so
+  // resolve which products own a matching variant and match those by id too.
+  const { data: variantRows } = await supabase
+    .from("product_variants")
+    .select("product_id, products!inner(store_id)")
+    .eq("products.store_id", storeId)
+    .or(words.map((word) => `sku.ilike.${quote(`%${word}%`)}`).join(","))
+    .limit(MAX_SUBSTRING_MATCHES);
+  const variantProductIds = new Set(
+    ((variantRows ?? []) as { product_id: string }[]).map((r) => r.product_id),
+  );
+
   const orFilter = words
     .flatMap((word) => {
       const term = quote(`%${word}%`);
@@ -103,6 +115,11 @@ async function findSubstringMatchIds(
         `description.ilike.${term}`,
       ];
     })
+    .concat(
+      variantProductIds.size > 0
+        ? [`id.in.(${[...variantProductIds].join(",")})`]
+        : [],
+    )
     .join(",");
 
   const query = applyStructuralFilters(
@@ -115,7 +132,17 @@ async function findSubstringMatchIds(
   if (error || !data) return [];
 
   const ranked = (data as SearchCandidateRow[])
-    .map((row) => ({ id: row.id, ...relevanceScore(words, row) }))
+    .map((row) => {
+      const score = relevanceScore(words, row);
+      // A variant-SKU hit counts as a name/sku-strength match.
+      return variantProductIds.has(row.id)
+        ? {
+            id: row.id,
+            matchedCount: Math.max(score.matchedCount, 1),
+            bestWeight: 0,
+          }
+        : { id: row.id, ...score };
+    })
     .sort((a, b) =>
       b.matchedCount !== a.matchedCount
         ? b.matchedCount - a.matchedCount
