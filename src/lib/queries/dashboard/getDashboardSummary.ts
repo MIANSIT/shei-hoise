@@ -3,6 +3,7 @@ import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorSto
 import { getVendorPaymentStatsForPeriod } from "@/lib/queries/vendor/getVendorPaymentStatsForPeriod";
 import { getVendorSalesForPeriod } from "@/lib/queries/vendor/getVendorSalesForPeriod";
 import { getSalesSummary, type SalesSummary } from "./getSalesSummary";
+import { getPendingBalance } from "./getPendingBalance";
 
 export interface DashboardSummaryPayload {
   revenue: number;
@@ -80,7 +81,7 @@ export async function getDashboardSummary(
   /** Stores with branches: one branch's dashboard. Omitted/null = the whole store. */
   branchId?: string | null,
 ): Promise<DashboardSummaryPayload> {
-  const [{ data, error }, vendorProfit, vendorPayments, salesSummary, vendorSales] = await Promise.all([
+  const [{ data, error }, vendorProfit, vendorPayments, salesSummary, vendorSales, pendingBalance] = await Promise.all([
     supabase.rpc("get_dashboard_summary", {
       p_store_id: storeId,
       p_period_start: periodStart,
@@ -108,11 +109,17 @@ export async function getDashboardSummary(
     ),
     getSalesSummary(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId),
     getVendorSalesForPeriod(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId ?? null),
+    getPendingBalance(storeId, branchId),
   ]);
 
   if (error) throw new Error(error.message);
+  const payload = data as DashboardSummaryPayload;
   return {
-    ...(data as DashboardSummaryPayload),
+    ...payload,
+    // Pending Amount is a live balance (after partial payments, with COD), not
+    // the sum of each pending order's total on its order date.
+    payment_amounts:
+      pendingBalance === null ? payload.payment_amounts : { ...payload.payment_amounts, pending: pendingBalance },
     vendor_profit: vendorProfit.vendor_profit,
     prev_vendor_profit: vendorProfit.prev_vendor_profit,
     vendor_payments: vendorPayments,

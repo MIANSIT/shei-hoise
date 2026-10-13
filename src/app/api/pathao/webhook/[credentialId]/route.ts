@@ -74,7 +74,10 @@ export async function POST(
     // Delivery lifecycle events (order.created, order.updated, delivered,
     // etc.) carry order_status_slug — mirrors what the manual "Refresh
     // Status" button already writes via getOrderInfo.
-    const orderStatusSlug = body?.order_status_slug;
+    // Some events carry only the event name (e.g. "order.delivered") and no
+    // order_status_slug, so a delivery would otherwise never reach the order.
+    const orderStatusSlug: unknown =
+      body?.order_status_slug ?? (body?.event === "order.delivered" ? "Delivered" : undefined);
     if (typeof orderStatusSlug === "string") {
       const { data: trackingRow, error: statusError } = await supabaseAdmin
         .from("courier_tracking")
@@ -122,5 +125,11 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ received: true }, { status: 200 });
+  // Pathao's checks want the integration secret echoed on every reply, not
+  // only the handshake. Added only here, after the signature matched, so a bad
+  // request never gets the secret back.
+  return NextResponse.json(
+    { received: true },
+    { status: 200, headers: { [VERIFICATION_HEADER]: secret } },
+  );
 }

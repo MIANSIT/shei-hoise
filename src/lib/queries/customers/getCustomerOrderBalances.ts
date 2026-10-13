@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
-import { computeBranchOrderBalances } from "./customerDueMath";
+import { computeBranchOrderBalances, isLedgerSettledOrder } from "./customerDueMath";
 
 export interface CustomerOrderBalance {
   order_id: string;
@@ -26,10 +26,13 @@ export async function getCustomerOrderBalances(
 
   let ordersQuery = supabase
     .from("orders")
-    .select(withBranches ? "id, order_number, created_at, total_amount, branch_id" : "id, order_number, created_at, total_amount")
+    .select(
+      withBranches
+        ? "id, order_number, created_at, updated_at, total_amount, branch_id, payment_status, paid_at"
+        : "id, order_number, created_at, updated_at, total_amount, payment_status, paid_at",
+    )
     .eq("store_id", storeId)
     .eq("customer_id", customerId)
-    .neq("payment_status", PaymentStatus.PAID)
     .neq("payment_status", PaymentStatus.REFUNDED)
     .neq("status", OrderStatus.CANCELLED)
     .neq("status", OrderStatus.RETURNED);
@@ -38,28 +41,42 @@ export async function getCustomerOrderBalances(
   }
 
   const [ordersRes, paymentsRes] = await Promise.all([
-    // Excludes already-`paid` orders — an order marked paid outside the due
-    // system (e.g. a normal order, or the classic manual "mark as paid"
-    // dropdown) has no customer_payments rows at all, so the ledger alone
-    // would otherwise make it look 100% unpaid instead of not due.
+    // Paid orders are kept only when the ledger settled them later (see
+    // isLedgerSettledOrder) — an order paid at the sale or outside the due
+    // system has no customer_payments rows at all, so the ledger alone would
+    // otherwise make it look 100% unpaid instead of not due.
     ordersQuery.order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")
-      .select(withBranches ? "amount, order_id, branch_id" : "amount, order_id")
+      .select(withBranches ? "amount, order_id, branch_id, created_at" : "amount, order_id, created_at")
       .eq("store_id", storeId)
       .eq("customer_id", customerId),
   ]);
 
-  type OrderRow = { id: string; order_number: string; created_at: string; total_amount: number; branch_id?: string | null };
-  type PaymentRow = { amount: number; order_id: string | null; branch_id?: string | null };
-  const allOrders = (ordersRes.data ?? []) as unknown as OrderRow[];
+  type OrderRow = {
+    id: string;
+    order_number: string;
+    created_at: string;
+    updated_at?: string | null;
+    total_amount: number;
+    branch_id?: string | null;
+    payment_status: string;
+    paid_at?: string | null;
+  };
+  type PaymentRow = { amount: number; order_id: string | null; branch_id?: string | null; created_at: string };
   const payments = (paymentsRes.data ?? []) as unknown as PaymentRow[];
+  const paymentTimes = payments.map((p) => p.created_at);
+  const allOrders = ((ordersRes.data ?? []) as unknown as OrderRow[]).filter(
+    (o) => o.payment_status !== PaymentStatus.PAID || isLedgerSettledOrder(o, paymentTimes),
+  );
 
   const balances = computeBranchOrderBalances(
     allOrders.map((o) => ({ id: o.id, total_amount: Number(o.total_amount), branch_id: o.branch_id ?? null })),
     payments,
   );
-  const orders = branchId ? allOrders.filter((o) => o.branch_id === branchId) : allOrders;
+  const orders = allOrders
+    .filter((o) => o.payment_status !== PaymentStatus.PAID)
+    .filter((o) => !branchId || o.branch_id === branchId);
   const balanceByOrderId = new Map(balances.map((b) => [b.order_id, b]));
 
   // Computed oldest-first (the waterfall applies in that order); display newest-first.

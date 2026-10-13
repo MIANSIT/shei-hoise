@@ -59,6 +59,43 @@ export function computeOrderBalances(
   });
 }
 
+const SETTLED_AFTER_MS = 60_000;
+/** How soon after a customer payment an order can be updated and still count as settled by it. */
+const PAYMENT_TOUCH_WINDOW_MS = 120_000;
+
+/**
+ * A paid order that was settled out of the customer's ledger payments rather
+ * than at the sale. Such orders must stay in the waterfall, or the payment
+ * that settled them gets applied again to the orders that are still unpaid and
+ * hides that due. Orders paid at the counter never used the ledger.
+ * - With paid_at: marked paid well after it was created.
+ * - Without paid_at (paid before that column existed): updated within a couple
+ *   of minutes after one of this customer's payments, which is when recording a
+ *   payment marks an order paid.
+ * Same rule as is_ledger_settled_order in the database.
+ * @param paymentCreatedAt created_at of this customer's payments
+ */
+export function isLedgerSettledOrder(
+  order: {
+    payment_status: string;
+    paid_at?: string | null;
+    created_at: string;
+    updated_at?: string | null;
+  },
+  paymentCreatedAt: readonly string[] = [],
+): boolean {
+  if (order.payment_status !== "paid") return false;
+  const created = new Date(order.created_at).getTime();
+  if (order.paid_at) return new Date(order.paid_at).getTime() - created > SETTLED_AFTER_MS;
+  if (!order.updated_at) return false;
+  const updated = new Date(order.updated_at).getTime();
+  if (updated - created <= SETTLED_AFTER_MS) return false;
+  return paymentCreatedAt.some((p) => {
+    const gap = updated - new Date(p).getTime();
+    return gap >= -1000 && gap <= PAYMENT_TOUCH_WINDOW_MS;
+  });
+}
+
 export interface BranchDueOrder extends DueOrder {
   branch_id?: string | null;
 }

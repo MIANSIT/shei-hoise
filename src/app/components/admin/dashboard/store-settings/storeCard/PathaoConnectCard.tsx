@@ -35,6 +35,7 @@ import { createPathaoStore } from "@/lib/queries/pathao/createPathaoStore";
 import { getPathaoExistingStores } from "@/lib/queries/pathao/getPathaoExistingStores";
 import { checkPathaoStoreApproval } from "@/lib/queries/pathao/checkPathaoStoreApproval";
 import { getPathaoWebhookConfig } from "@/lib/queries/pathao/getPathaoWebhookConfig";
+import { savePathaoWebhookSecret } from "@/lib/queries/pathao/savePathaoWebhookSecret";
 import {
   getPathaoCities,
   getPathaoZones,
@@ -69,6 +70,9 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const [webhookModalOpen, setWebhookModalOpen] = useState(false);
   const [loadingWebhook, setLoadingWebhook] = useState(false);
   const [webhookConfig, setWebhookConfig] = useState<{ callbackUrl: string; secret: string } | null>(null);
+  const [webhookCredentialId, setWebhookCredentialId] = useState<string | null>(null);
+  const [pathaoSecretDraft, setPathaoSecretDraft] = useState("");
+  const [savingSecret, setSavingSecret] = useState(false);
 
   // Step 1 — label + credentials
   const [label, setLabel] = useState("");
@@ -308,6 +312,8 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
   const handleShowWebhook = async (id: string) => {
     setWebhookModalOpen(true);
     setWebhookConfig(null);
+    setWebhookCredentialId(id);
+    setPathaoSecretDraft("");
     setLoadingWebhook(true);
     try {
       const result = await getPathaoWebhookConfig(id);
@@ -318,6 +324,23 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
       setWebhookConfig({ callbackUrl: result.callbackUrl, secret: result.secret });
     } finally {
       setLoadingWebhook(false);
+    }
+  };
+
+  const handleSavePathaoSecret = async () => {
+    if (!webhookCredentialId || !pathaoSecretDraft.trim()) return;
+    setSavingSecret(true);
+    try {
+      const result = await savePathaoWebhookSecret(webhookCredentialId, pathaoSecretDraft);
+      if (!result.success) {
+        notify.error(result.error ?? t.admin.pathaoWebhookLoadFailed);
+        return;
+      }
+      setWebhookConfig((current) => (current ? { ...current, secret: pathaoSecretDraft.trim() } : current));
+      setPathaoSecretDraft("");
+      notify.success(t.admin.pathaoWebhookSaveOk);
+    } finally {
+      setSavingSecret(false);
     }
   };
 
@@ -701,6 +724,27 @@ export function PathaoConnectCard({ storeId }: PathaoConnectCardProps) {
                     onClick={() => copyToClipboard(webhookConfig.secret)}
                   >
                     {t.admin.pathaoWebhookCopyBtn}
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {t.admin.pathaoWebhookSecretFromPathao}
+                </p>
+                <div className="flex gap-1.5">
+                  <Input
+                    value={pathaoSecretDraft}
+                    onChange={(e) => setPathaoSecretDraft(e.target.value)}
+                    className="font-mono text-xs"
+                    autoComplete="off"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={savingSecret || !pathaoSecretDraft.trim()}
+                    onClick={handleSavePathaoSecret}
+                  >
+                    {t.admin.pathaoWebhookSaveBtn}
                   </Button>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
-import { computeBranchOrderBalances } from "./customerDueMath";
+import { computeBranchOrderBalances, isLedgerSettledOrder } from "./customerDueMath";
 
 export interface CustomerWithDue {
   /** Unique per row: one row per customer, or per customer and branch for stores with branches. */
@@ -28,16 +28,19 @@ export async function getCustomersWithDue(
   if (!storeId) return [];
 
   const [ordersRes, paymentsRes] = await Promise.all([
-    // Excludes already-`paid` orders — an order marked paid outside the due
-    // system (e.g. a normal order, or the classic manual "mark as paid"
-    // dropdown) has no customer_payments rows at all, so the ledger alone
-    // would otherwise make it look 100% unpaid instead of not due.
+    // Paid orders come back too, but only ones the ledger settled later stay
+    // in the waterfall (see isLedgerSettledOrder). An order paid at the sale
+    // or outside the due system has no customer_payments rows, so the ledger
+    // alone would otherwise make it look 100% unpaid instead of not due.
     supabase
       .from("orders")
-      .select(withBranches ? "id, customer_id, total_amount, created_at, branch_id" : "id, customer_id, total_amount, created_at")
+      .select(
+        withBranches
+          ? "id, customer_id, total_amount, created_at, updated_at, branch_id, payment_status, paid_at"
+          : "id, customer_id, total_amount, created_at, updated_at, payment_status, paid_at",
+      )
       .eq("store_id", storeId)
       .not("customer_id", "is", null)
-      .neq("payment_status", PaymentStatus.PAID)
       // A returned order that was auto-refunded shouldn't reappear as an
       // outstanding due once its refund row pushes due_remaining back up.
       .neq("payment_status", PaymentStatus.REFUNDED)
@@ -54,14 +57,44 @@ export async function getCustomersWithDue(
       .order("created_at", { ascending: true }),
     supabase
       .from("customer_payments")
-      .select(withBranches ? "amount, order_id, customer_id, branch_id" : "amount, order_id, customer_id")
+      .select(
+        withBranches
+          ? "amount, order_id, customer_id, branch_id, created_at"
+          : "amount, order_id, customer_id, created_at",
+      )
       .eq("store_id", storeId),
   ]);
 
-  type OrderRow = { id: string; customer_id: string | null; total_amount: number; created_at: string; branch_id?: string | null };
-  type PaymentRow = { amount: number; order_id: string | null; customer_id: string | null; branch_id?: string | null };
-  const orders = (ordersRes.data ?? []) as unknown as OrderRow[];
+  type OrderRow = {
+    id: string;
+    customer_id: string | null;
+    total_amount: number;
+    created_at: string;
+    updated_at?: string | null;
+    branch_id?: string | null;
+    payment_status: string;
+    paid_at?: string | null;
+  };
+  type PaymentRow = {
+    amount: number;
+    order_id: string | null;
+    customer_id: string | null;
+    branch_id?: string | null;
+    created_at: string;
+  };
   const payments = (paymentsRes.data ?? []) as unknown as PaymentRow[];
+  const paymentTimesByCustomer = new Map<string, string[]>();
+  for (const payment of payments) {
+    if (!payment.customer_id) continue;
+    const times = paymentTimesByCustomer.get(payment.customer_id) ?? [];
+    times.push(payment.created_at);
+    paymentTimesByCustomer.set(payment.customer_id, times);
+  }
+  const orders = ((ordersRes.data ?? []) as unknown as OrderRow[]).filter(
+    (o) =>
+      o.payment_status !== PaymentStatus.PAID ||
+      isLedgerSettledOrder(o, o.customer_id ? paymentTimesByCustomer.get(o.customer_id) : undefined),
+  );
 
   const ordersByCustomer = new Map<string, typeof orders>();
   for (const order of orders) {
@@ -93,6 +126,7 @@ export async function getCustomersWithDue(
     for (const order of customerOrders) {
       const orderBranch = order.branch_id ?? null;
       if (branchId && orderBranch !== branchId) continue;
+      if (order.payment_status === PaymentStatus.PAID) continue;
       const due = balanceByOrderId.get(order.id)?.due_remaining ?? 0;
       if (due <= 0.01) continue;
       const key = orderBranch ?? "";
