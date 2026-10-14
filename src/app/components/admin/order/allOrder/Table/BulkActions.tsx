@@ -4,8 +4,9 @@
 import React, { useState } from "react";
 import { Button, Select, Modal, App, Space, Tag, Alert } from "antd";
 import { StoreOrder } from "@/lib/types/order";
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
 import dataService from "@/lib/queries/dataService";
+import { isCourierStatusCancelled } from "@/lib/utils/courierStatus";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 
@@ -36,7 +37,7 @@ const BulkActions: React.FC<Props> = ({
   const [updates, setUpdates] = useState<UpdatesState>({
     status: undefined,
     payment_status: undefined,
-    payment_method: "cod",
+    payment_method: undefined,
   });
 
   const STATUS_OPTIONS = [
@@ -55,9 +56,26 @@ const BulkActions: React.FC<Props> = ({
     { value: "refunded", label: t.admin.bulkRefunded },
   ];
 
+  // Same options, in the same order, as Create / Edit Order's payment method.
   const PAYMENT_METHODS = [
-    { value: "cod", label: t.admin.bulkCod },
+    { value: PaymentMethod.CASH, label: t.admin.orderPayCash },
+    { value: PaymentMethod.COD, label: t.admin.bulkCod },
+    { value: PaymentMethod.CARD, label: t.admin.orderPayCard },
+    { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
   ];
+
+  // A live courier shipment expects to collect cash on delivery — moving it
+  // off COD drops the order out of COD Settlements once delivered (same
+  // warning Create / Edit Order shows for a single order).
+  const courierOrdersLeavingCod =
+    updates.payment_method && updates.payment_method !== PaymentMethod.COD
+      ? selectedOrders.filter(
+          (order) =>
+            !!order.courier_consignment_id &&
+            !isCourierStatusCancelled(order.courier_order_status) &&
+            order.payment_method === PaymentMethod.COD,
+        ).length
+      : 0;
 
   const handleUpdate = async () => {
     if (Object.values(updates).every((val) => val === undefined)) {
@@ -82,7 +100,7 @@ const BulkActions: React.FC<Props> = ({
         setUpdates({
           status: undefined,
           payment_status: undefined,
-          payment_method: "cod",
+          payment_method: undefined,
         });
         onSuccess();
         onClearSelection();
@@ -194,7 +212,7 @@ const BulkActions: React.FC<Props> = ({
           setUpdates({
             status: undefined,
             payment_status: undefined,
-            payment_method: "cod",
+            payment_method: undefined,
           });
         }}
         footer={null}
@@ -260,7 +278,6 @@ const BulkActions: React.FC<Props> = ({
               <Select
                 placeholder={t.admin.bulkKeepCurrentMethod}
                 value={updates.payment_method}
-                defaultValue="cod"
                 onChange={(value: string) =>
                   handleChange("payment_method", value)
                 }
@@ -269,6 +286,17 @@ const BulkActions: React.FC<Props> = ({
                 size="middle"
                 allowClear
               />
+              {courierOrdersLeavingCod > 0 && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  className="mt-2 text-xs sm:text-sm"
+                  title={t.admin.bulkPaymentMethodCourierWarning.replace(
+                    "{count}",
+                    n(courierOrdersLeavingCod),
+                  )}
+                />
+              )}
             </div>
           </div>
 
