@@ -14,6 +14,7 @@ import { ReviewsSection } from "@/app/components/products/reviews/ReviewsSection
 import { StoreReviewsSection } from "@/app/components/store/reviews/StoreReviewsSection";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
+import { FlameIcon } from "@/app/components/products/singleProduct/FlameIcon";
 import AddToCartButton from "@/app/components/products/singleProduct/AddToCartButton";
 import BuyNowButton from "@/app/components/products/singleProduct/BuyNowButton";
 import { m, AnimatePresence } from "framer-motion";
@@ -33,7 +34,6 @@ import {
   RefreshCw,
   ShieldCheck,
   ChevronDown,
-  Flame,
   Star,
 } from "lucide-react";
 
@@ -974,8 +974,8 @@ export default function ProductPage() {
               )}
             </AnimatePresence>
 
-            {/* Stock status */}
-            <div className="mb-4">
+            {/* Stock status (left) + sold count (right) */}
+            <div className="mb-4 flex items-center justify-between gap-3">
               {stockStatus === "out" && (
                 <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-rose-600 dark:text-rose-400">
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
@@ -998,6 +998,18 @@ export default function ProductPage() {
                 <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   {t.product.inStock}
+                </span>
+              )}
+              {/* Sold pill uses the store owner's brand colour (and its auto-contrasted text colour) so it matches every theme; the flame sits on a white chip so its fire colours always read. */}
+              {soldCount > 0 && (
+                <span className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-primary py-1 pl-1 pr-3.5 text-[13px] font-medium text-primary-foreground shadow-sm">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white">
+                    <FlameIcon className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="text-[14px] font-bold">{n(soldCount)}</span>{" "}
+                    {t.product.sold}
+                  </span>
                 </span>
               )}
             </div>
@@ -1031,26 +1043,6 @@ export default function ProductPage() {
                 className="sm:flex-1"
               />
             </div>
-
-            {/* Sold count */}
-            {soldCount > 0 && (
-              <m.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.15 }}
-                className="mt-4 flex items-center justify-center gap-2.5 rounded-2xl border border-orange-100 dark:border-orange-500/20 bg-linear-to-r from-orange-50 via-amber-50 to-orange-50 dark:from-orange-500/10 dark:via-amber-500/10 dark:to-orange-500/10 px-4 py-3"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-orange-400 to-rose-500 text-white shadow-sm">
-                  <Flame className="h-4 w-4" />
-                </span>
-                <p className="text-[13px] text-gray-600 dark:text-gray-300">
-                  <span className="text-[17px] font-extrabold tracking-tight text-orange-600 dark:text-orange-400">
-                    {n(soldCount)}
-                  </span>{" "}
-                  <span className="font-semibold">{t.product.sold}</span>
-                </p>
-              </m.div>
-            )}
 
             {/* Trust badges */}
             <div

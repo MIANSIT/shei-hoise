@@ -31,7 +31,8 @@ const BuyNowButton: React.FC<BuyNowButtonProps> = ({
     "w-full h-14 rounded-2xl flex items-center justify-center gap-2.5 text-[14px] font-bold tracking-wide transition-all duration-300",
     disabled
       ? "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed"
-      : "bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white shadow-lg shadow-orange-200 dark:shadow-orange-900/40 cursor-pointer",
+      : // The store's Buy Now color (Storefront Design); orange when none is set.
+        "bg-[var(--accent-buy,#f97316)] hover:bg-[var(--accent-buy-hover,#ea580c)] active:bg-[var(--accent-buy-hover,#ea580c)] text-[var(--accent-buy-foreground,#ffffff)] shadow-lg shadow-black/10 dark:shadow-black/30 cursor-pointer",
     className,
   ]
     .filter(Boolean)

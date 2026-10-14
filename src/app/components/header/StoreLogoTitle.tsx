@@ -37,7 +37,7 @@ export default function StoreLogoTitle({
         </div>
       )}
       {showTitle && storeName && (
-        <span className="text-xl font-bold text-foreground truncate">{storeName}</span>
+        <span className="text-xl font-bold text-header-foreground truncate">{storeName}</span>
       )}
     </Link>
   );

@@ -7,7 +7,12 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getStoreBrandingForAdmin } from "@/lib/queries/storefront/branding/getStoreBrandingForAdmin";
 import { saveStoreBranding } from "@/lib/queries/storefront/branding/saveStoreBranding";
-import { BRAND_PRESETS, type BrandPalette } from "@/lib/utils/storeTheme";
+import {
+  BRAND_PRESETS,
+  buttonTextContrast,
+  deriveStoreThemeVars,
+  type BrandPalette,
+} from "@/lib/utils/storeTheme";
 
 // Two separate gates layered on this one card:
 // - "storefront_design" (checked one level up, by the page) decides whether a
@@ -22,14 +27,121 @@ import { BRAND_PRESETS, type BrandPalette } from "@/lib/utils/storeTheme";
 //   still works fully without it.
 const CUSTOM_COLOR_FEATURE_KEY = "custom_store_design";
 
-const COLOR_FIELDS: { key: keyof BrandPalette; label: string }[] = [
-  { key: "primary", label: "Buttons & links" },
-  { key: "hover", label: "Button hover" },
-  { key: "background", label: "Page background" },
-  { key: "header", label: "Header" },
-  { key: "footer", label: "Footer" },
-  { key: "card", label: "Cards" },
+const COLOR_FIELDS: { key: keyof BrandPalette; label: string; hint: string }[] = [
+  { key: "primary", label: "Buttons & links", hint: "Add to Cart, links, sold badge" },
+  { key: "hover", label: "Button hover", hint: "Add to Cart when hovered" },
+  { key: "accent", label: "Buy Now button", hint: "The Buy Now button" },
+  { key: "background", label: "Page background", hint: "Behind everything" },
+  { key: "header", label: "Header", hint: "Top bar with your logo" },
+  { key: "footer", label: "Footer", hint: "Bottom of every page" },
+  { key: "card", label: "Cards", hint: "Product cards and panels" },
 ];
+
+// Fields whose label text is picked automatically — flagged when that text
+// would be hard to read on the color the owner chose.
+const BUTTON_KEYS: (keyof BrandPalette)[] = ["primary", "accent"];
+
+// These two may be left empty: hover then darkens the main button color
+// itself, and Buy Now keeps the storefront's original orange.
+const OPTIONAL_KEYS: (keyof BrandPalette)[] = ["hover", "accent"];
+
+const isFullHex = (value: string | undefined): boolean => !!value && /^#[0-9A-Fa-f]{6}$/.test(value);
+
+/** "f55547", "F55547 " or "#f55" typed or pasted become "#F55547" / "#F55" as you go. */
+function normalizeHexInput(raw: string, optional: boolean): string {
+  if (optional && raw.trim() === "") return "";
+  return "#" + raw.replace(/[^0-9a-fA-F]/g, "").slice(0, 6).toUpperCase();
+}
+
+/** Drops empty optional colors so they're saved as "not set", not as an invalid "". */
+function cleanPalette(palette: BrandPalette): BrandPalette {
+  const cleaned = { ...palette };
+  if (!cleaned.hover || cleaned.hover === "#") delete cleaned.hover;
+  if (!cleaned.accent || cleaned.accent === "#") delete cleaned.accent;
+  return cleaned;
+}
+
+/** A small storefront mock-up wearing the palette, so owners see the result before saving. */
+function PalettePreview({ palette }: { palette: BrandPalette }) {
+  // Dark mode is derived from the same palette (same hue, remapped lightness),
+  // exactly what shoppers see when their device or the store toggle is dark.
+  const [mode, setMode] = useState<"light" | "dark">("light");
+  const vars = deriveStoreThemeVars(palette)[mode] as React.CSSProperties;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground">Preview</p>
+        <div className="inline-flex rounded-lg border border-border p-0.5 text-xs font-medium">
+          {(["light", "dark"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setMode(option)}
+              className={`rounded-md px-2.5 py-1 capitalize transition-colors ${
+                mode === option
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={vars} className="overflow-hidden rounded-xl border border-border text-[11px]">
+        <div
+          className="flex items-center justify-between px-3 py-2 font-bold"
+          style={{ background: "var(--header)", color: "var(--header-foreground)" }}
+        >
+          <span>Your Store</span>
+          <span>Cart</span>
+        </div>
+        <div className="p-3" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+          <div
+            className="space-y-2 rounded-lg border border-black/5 p-3"
+            style={{ background: "var(--card)", color: "var(--card-foreground)" }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-semibold">Sample product</p>
+                <p className="font-bold">৳350.00</p>
+              </div>
+              <span
+                className="rounded-full px-2.5 py-1 font-medium"
+                style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              >
+                4 sold
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <span
+                className="flex-1 rounded-lg py-2 text-center font-semibold"
+                style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+              >
+                Add to Cart
+              </span>
+              <span
+                className="flex-1 rounded-lg py-2 text-center font-semibold"
+                style={{
+                  background: "var(--accent-buy, #f97316)",
+                  color: "var(--accent-buy-foreground, #ffffff)",
+                }}
+              >
+                Buy Now
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          className="px-3 py-2"
+          style={{ background: "var(--footer)", color: "var(--footer-foreground)" }}
+        >
+          Footer
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Free-pick custom colors are intentionally not offered anymore — an
 // arbitrary hex a store owner picks can look fine in light mode and then
@@ -42,6 +154,7 @@ const COLOR_FIELDS: { key: keyof BrandPalette; label: string }[] = [
 const DEFAULT_CUSTOM: BrandPalette = {
   primary: "#171717",
   hover: "#000000",
+  accent: "#F97316",
   background: "#FAFAFA",
   header: "#FFFFFF",
   footer: "#171717",
@@ -86,10 +199,26 @@ export function BrandPaletteCard() {
   const activePalette: BrandPalette | null = useDefault
     ? null
     : isCustom
-      ? customPalette
+      ? cleanPalette(customPalette)
       : (BRAND_PRESETS.find((p) => p.id === selectedPresetId)?.palette ?? null);
 
+  // Custom colors that aren't a full #RRGGBB yet (optional ones may be empty).
+  const invalidFields =
+    isCustom && !useDefault
+      ? COLOR_FIELDS.filter(({ key }) => {
+          const value = customPalette[key];
+          if (OPTIONAL_KEYS.includes(key) && (!value || value === "#")) return false;
+          return !isFullHex(value);
+        })
+      : [];
+
   const handleSave = async () => {
+    if (invalidFields.length > 0) {
+      notify.error(
+        `Enter a full color like #F55547 for: ${invalidFields.map((f) => f.label).join(", ")}`,
+      );
+      return;
+    }
     setSaving(true);
     try {
       const result = await saveStoreBranding({
@@ -197,29 +326,53 @@ export function BrandPaletteCard() {
             </p>
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {COLOR_FIELDS.map(({ key, label }) =>
+            {COLOR_FIELDS.map(({ key, label, hint }) =>
               customColorsEnabled ? (
                 <div key={key} className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                  <label className="block text-xs font-medium text-foreground">
+                    {label}
+                    <span className="block text-[11px] font-normal text-muted-foreground">{hint}</span>
+                  </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
-                      value={customPalette[key]}
-                      onChange={(e) => setCustomPalette((prev) => ({ ...prev, [key]: e.target.value }))}
+                      value={isFullHex(customPalette[key]) ? (customPalette[key] as string) : "#000000"}
+                      onChange={(e) => setCustomPalette((prev) => ({ ...prev, [key]: e.target.value.toUpperCase() }))}
                       className="w-9 h-9 rounded-lg border border-border shrink-0 cursor-pointer bg-transparent p-0"
                     />
                     <input
                       type="text"
                       value={customPalette[key]}
-                      onChange={(e) => setCustomPalette((prev) => ({ ...prev, [key]: e.target.value }))}
-                      maxLength={7}
-                      className="w-24 px-2 py-1.5 rounded-lg border border-border bg-background text-xs font-mono uppercase text-foreground outline-none focus:border-primary"
+                      onChange={(e) =>
+                        setCustomPalette((prev) => ({
+                          ...prev,
+                          [key]: normalizeHexInput(e.target.value, OPTIONAL_KEYS.includes(key)),
+                        }))
+                      }
+                      maxLength={9}
+                      placeholder={OPTIONAL_KEYS.includes(key) ? "Auto" : "#RRGGBB"}
+                      className={`w-24 px-2 py-1.5 rounded-lg border bg-background text-xs font-mono uppercase text-foreground outline-none focus:border-primary ${
+                        invalidFields.some((f) => f.key === key) ? "border-red-500" : "border-border"
+                      }`}
                     />
                   </div>
+                  {invalidFields.some((f) => f.key === key) && (
+                    <p className="text-[11px] text-red-500">Use 6 digits, like #F55547</p>
+                  )}
+                  {BUTTON_KEYS.includes(key) &&
+                    /^#[0-9a-fA-F]{6}$/.test(customPalette[key] ?? "") &&
+                    buttonTextContrast(customPalette[key] as string) < 3 && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                        Button text may be hard to read on this color.
+                      </p>
+                    )}
                 </div>
               ) : (
                 <div key={key} className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">{label}</label>
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    {label}
+                    <span className="block text-[11px] font-normal">{hint}</span>
+                  </label>
                   <div className="flex items-center gap-2">
                     <span
                       className="w-9 h-9 rounded-lg border border-border shrink-0"
@@ -233,6 +386,8 @@ export function BrandPaletteCard() {
           </div>
         </div>
       )}
+
+      {activePalette && invalidFields.length === 0 && <PalettePreview palette={activePalette} />}
 
       <button
         type="button"

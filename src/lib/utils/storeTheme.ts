@@ -18,6 +18,12 @@ export interface BrandPalette {
    * the CSS in globals.css falls back to an auto-darkened primary.
    */
   hover?: string;
+  /**
+   * The "Buy Now" button color. Optional for the same reason as `hover`: a
+   * palette saved before this field existed stays valid, and when it's absent
+   * the button keeps the storefront's original orange (see BuyNowButton.tsx).
+   */
+  accent?: string;
   background: string;
   header: string;
   footer: string;
@@ -44,8 +50,10 @@ export function isBrandPalette(value: unknown): value is BrandPalette {
   if (!PALETTE_KEYS.every((key) => typeof record[key] === "string" && HEX_COLOR.test(record[key] as string))) {
     return false;
   }
-  // hover is optional (added after this validator shipped) — only checked when present.
-  return record.hover === undefined || (typeof record.hover === "string" && HEX_COLOR.test(record.hover));
+  // hover and accent are optional (added after this validator shipped) — only checked when present.
+  const optionalHexOk = (value: unknown) =>
+    value === undefined || (typeof value === "string" && HEX_COLOR.test(value));
+  return optionalHexOk(record.hover) && optionalHexOk(record.accent);
 }
 
 export const BRAND_PRESETS: BrandPreset[] = [
@@ -180,6 +188,23 @@ function pickForeground(bgHex: string): string {
   return relativeLuminance(bgHex) > 0.42 ? "#171717" : "#fafafa";
 }
 
+/**
+ * WCAG contrast ratio (1–21) between a button color and the text color the
+ * theme will automatically put on it. Below ~3 the label is hard to read, so
+ * the Storefront Design page warns the owner about that color.
+ */
+export function buttonTextContrast(bgHex: string): number {
+  const a = relativeLuminance(bgHex);
+  const b = relativeLuminance(pickForeground(bgHex));
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+/** The same color a few lightness points darker — used as an auto hover shade. */
+function darken(hex: string, points: number): string {
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  return rgbToHex(...hslToRgb(h, s, Math.max(0, l - points)));
+}
+
 /** A page/header/footer/card background pushed to a dark, slightly desaturated surface. */
 function toDarkSurface(hex: string): string {
   const [h, s] = rgbToHsl(...hexToRgb(hex));
@@ -204,6 +229,13 @@ export function deriveStoreThemeVars(palette: BrandPalette | null): StoreThemeVa
     "--primary": palette.primary,
     "--primary-foreground": pickForeground(palette.primary),
     ...(palette.hover ? { "--primary-hover": palette.hover } : {}),
+    ...(palette.accent
+      ? {
+          "--accent-buy": palette.accent,
+          "--accent-buy-foreground": pickForeground(palette.accent),
+          "--accent-buy-hover": darken(palette.accent, 8),
+        }
+      : {}),
     "--background": palette.background,
     "--foreground": pickForeground(palette.background),
     "--card": palette.card,
@@ -216,6 +248,7 @@ export function deriveStoreThemeVars(palette: BrandPalette | null): StoreThemeVa
 
   const darkPrimary = toDarkPrimary(palette.primary);
   const darkHover = palette.hover ? toDarkPrimary(palette.hover) : null;
+  const darkAccent = palette.accent ? toDarkPrimary(palette.accent) : null;
   const darkBackground = toDarkSurface(palette.background);
   const darkCard = toDarkSurface(palette.card);
   const darkHeader = toDarkSurface(palette.header);
@@ -225,6 +258,13 @@ export function deriveStoreThemeVars(palette: BrandPalette | null): StoreThemeVa
     "--primary": darkPrimary,
     "--primary-foreground": pickForeground(darkPrimary),
     ...(darkHover ? { "--primary-hover": darkHover } : {}),
+    ...(darkAccent
+      ? {
+          "--accent-buy": darkAccent,
+          "--accent-buy-foreground": pickForeground(darkAccent),
+          "--accent-buy-hover": darken(darkAccent, 8),
+        }
+      : {}),
     "--background": darkBackground,
     "--foreground": pickForeground(darkBackground),
     "--card": darkCard,
@@ -255,8 +295,11 @@ export function buildStoreThemeCss(storeId: string, vars: StoreThemeVars): strin
   // The desktop nav is bg-transparent by default (floats over the hero
   // image) and stays that way for every store that hasn't set a palette —
   // this rule only exists at all when a palette is present, so it's the
-  // only thing that ever tints it away from fully transparent.
-  const headerTint = `background-color: color-mix(in srgb, var(--header) 72%, transparent);`;
+  // only thing that ever tints it away from fully transparent. Kept close to
+  // opaque (92%) so the header looks like the color the owner picked — the
+  // header text color is chosen for that color, and a see-through header
+  // blended with the page behind it can wash out that contrast.
+  const headerTint = `background-color: color-mix(in srgb, var(--header) 92%, transparent);`;
   return (
     `${scope} { ${toDecl(vars.light)} } ` +
     `.dark ${scope} { ${toDecl(vars.dark)} } ` +

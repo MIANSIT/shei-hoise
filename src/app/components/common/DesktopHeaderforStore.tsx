@@ -94,7 +94,7 @@ export default function DesktopHeader({
   return (
     <>
       <header
-        className={`store-desktop-header hidden md:flex fixed left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md ${
+        className={`store-desktop-header hidden md:flex fixed left-0 w-full h-16 items-center justify-between px-8 z-50 bg-transparent backdrop-blur-md text-header-foreground ${
           hasAnnouncement ? "top-9" : "top-0"
         }`}
       >
@@ -133,7 +133,7 @@ export default function DesktopHeader({
                     className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                       isActive
                         ? "bg-accent text-accent-foreground"
-                        : "text-foreground hover:bg-accent"
+                        : "text-header-foreground hover:bg-header-foreground/10"
                     }`}
                   >
                     {link.name}
@@ -148,7 +148,7 @@ export default function DesktopHeader({
                   className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                     pathname === `/${storeSlug}/order-status`
                       ? "bg-accent text-accent-foreground"
-                      : "text-foreground hover:bg-accent"
+                      : "text-header-foreground hover:bg-header-foreground/10"
                   }`}
                 >
                   {t.nav.myOrders}
@@ -172,7 +172,7 @@ export default function DesktopHeader({
           ) : (
             <>
               <HeaderSearch storeSlug={storeSlug} />
-              <LanguageSwitcher />
+              <LanguageSwitcher tone="header" />
               <ThemeToggle />
               <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
 
