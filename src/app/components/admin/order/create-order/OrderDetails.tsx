@@ -26,7 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, ShoppingCart, Minus } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Minus, Search, X } from "lucide-react";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { ProductImage } from "@/app/components/products/ProductImage";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
@@ -42,7 +43,9 @@ export default function OrderDetails({
   orderProducts,
   setOrderProducts,
 }: OrderDetailsProps) {
+  const t = useTranslation();
   const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [productSearch, setProductSearch] = useState("");
   const [selectedVariantId, setSelectedVariantId] =
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
@@ -290,6 +293,26 @@ export default function OrderDetails({
     return baseStockAvailable || variantsAvailable;
   });
 
+  // Search by name, product SKU or any variant SKU — every typed word must
+  // match somewhere (so "cat litter lav" narrows as you type). The product
+  // already chosen stays in the list so the dropdown never shows blank.
+  const searchWords = productSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const filteredProducts =
+    searchWords.length === 0
+      ? availableProducts
+      : availableProducts.filter((product) => {
+          if (product.id === selectedProductId) return true;
+          const haystack = [
+            product.name,
+            product.sku,
+            ...(product.product_variants ?? []).flatMap((v) => [v.sku, v.variant_name]),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return searchWords.every((word) => haystack.includes(word));
+        });
+
   const isAddButtonDisabled = !canAddProduct();
 
   const subtotal = orderProducts.reduce(
@@ -324,6 +347,26 @@ export default function OrderDetails({
               <label className="text-sm font-medium text-card-foreground">
                 Product *
               </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder={t.admin.stockSearchPlaceholder}
+                  className="h-11 pl-9 pr-9"
+                  aria-label={t.admin.stockSearchPlaceholder}
+                />
+                {productSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setProductSearch("")}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <Select
                 value={selectedProductId}
                 onValueChange={(value) => {
@@ -336,12 +379,14 @@ export default function OrderDetails({
                   <SelectValue placeholder="Select a product" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover text-popover-foreground border-border max-h-60">
-                  {availableProducts.length === 0 ? (
+                  {filteredProducts.length === 0 ? (
                     <div className="py-4 text-center text-sm text-muted-foreground">
-                      No products with available stock
+                      {availableProducts.length === 0
+                        ? "No products with available stock"
+                        : t.admin.genOrderSearchNoMatch.replace("{query}", productSearch.trim())}
                     </div>
                   ) : (
-                    availableProducts.map((product) => {
+                    filteredProducts.map((product) => {
                       const primaryImage = getPrimaryImage(product);
                       const activeVariantsCount = product.product_variants?.filter(v => v.is_active).length || 0;
                       const hasVariants = activeVariantsCount > 0;

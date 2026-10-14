@@ -1910,6 +1910,7 @@ export const translations = {
       imgMaxSize: "3MB each",
       // Generate order link page
       genOrderTitle: "Quick Order Link",
+      genOrderSearchNoMatch: "No products match \"{query}\"",
       genOrderDesc: "Generate a unique order link for your customers instantly.",
       genOrderGenBtn: "Generate & Copy Order Link",
       genOrderCopy: "Copy",
@@ -4845,6 +4846,7 @@ export const translations = {
       imgMaxSize: "প্রতিটি ৩MB",
       // Generate order link page
       genOrderTitle: "দ্রুত অর্ডার লিংক",
+      genOrderSearchNoMatch: "\"{query}\" এর সাথে কোনো পণ্য মেলেনি",
       genOrderDesc: "আপনার কাস্টমারদের জন্য তৎক্ষণাৎ একটি অনন্য অর্ডার লিংক তৈরি করুন।",
       genOrderGenBtn: "অর্ডার লিংক তৈরি ও কপি করুন",
       genOrderCopy: "কপি",
