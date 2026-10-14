@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/queries/customers/getCustomerByPhone.ts - FIXED VERSION
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 interface CustomerProfile {
   id: string;
@@ -43,8 +44,9 @@ export async function getCustomerByPhone(phone: string, store_slug?: string): Pr
       return null;
     }
 
-    // Clean phone number (remove spaces, dashes, etc.)
-    const cleanedPhone = phone.replace(/\D/g, '');
+    // Same shape the database stores (01712345678 for 8801712345678 etc.)
+    const cleanedPhone = normalizePhone(phone);
+    if (!cleanedPhone) return null;
 
     // Step 1: First get the customer basic info
     const { data: customer, error: customerError } = await supabaseAdmin

@@ -1,5 +1,6 @@
 "use server";
 
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getAuthenticatedCustomerId } from "@/lib/utils/getAuthenticatedCustomerId";
 import { reviewSchema, ReviewFormType } from "@/lib/schema/reviewSchema";
@@ -35,7 +36,7 @@ async function createReviewInternal(data: ReviewFormType): Promise<void> {
         .eq("id", customer_id)
         .maybeSingle();
       const orderPhone = (order as { phone: string | null }).phone;
-      ownsOrder = !!customer?.phone && !!orderPhone && customer.phone === orderPhone;
+      ownsOrder = !!customer?.phone && !!orderPhone && customer.phone === normalizePhone(orderPhone);
     }
 
     if (ownsOrder && order.status === "delivered") {

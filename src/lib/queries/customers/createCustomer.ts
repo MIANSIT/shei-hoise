@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { staffPermissionError } from "@/lib/permissions/server";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export interface CreateCustomerData {
   store_id: string;
@@ -47,11 +48,30 @@ export async function createCustomer(customerData: CreateCustomerData) {
       }
     }
 
+    // Phone is unique across customers, stored as 01XXXXXXXXX whatever shape
+    // it was typed in.
+    const phone = normalizePhone(customerData.phone);
+    if (phone) {
+      const { data: samePhone, error: phoneCheckError } = await supabaseAdmin
+        .from("store_customers")
+        .select("id")
+        .eq("phone", phone)
+        .limit(1);
+
+      if (phoneCheckError) {
+        console.error("Error checking existing phone:", phoneCheckError);
+        throw new Error("Failed to verify existing customer");
+      }
+      if (samePhone && samePhone.length > 0) {
+        throw new Error(`A customer with phone ${phone} already exists`);
+      }
+    }
+
     // Insert customer
     const customerInsertData = {
       name: customerData.first_name,
       email: customerData.email || null, // Allow null email
-      phone: customerData.phone || null,
+      phone,
       auth_user_id: customerData.auth_user_id || null,
     };
 
@@ -64,6 +84,10 @@ export async function createCustomer(customerData: CreateCustomerData) {
 
     if (customerError) {
       console.error("Error creating customer:", customerError);
+      // 23505 = a concurrent request created this phone a moment ago.
+      if (customerError.code === "23505" && phone) {
+        throw new Error(`A customer with phone ${phone} already exists`);
+      }
       throw new Error(customerError.message);
     }
 

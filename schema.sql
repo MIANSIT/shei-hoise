@@ -2103,3 +2103,35 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
+
+
+-- One customer per phone number (see migration 20261022000000).
+CREATE OR REPLACE FUNCTION "public"."normalize_phone"("p" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  SELECT CASE
+    WHEN d = '' THEN NULL
+    WHEN d ~ '^8801[0-9]{9}$' THEN '0' || substr(d, 4)
+    WHEN d ~ '^1[0-9]{9}$' THEN '0' || d
+    ELSE d
+  END
+  FROM (SELECT regexp_replace(coalesce("p", ''), '\D', '', 'g') AS d) s;
+$$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "store_customers_phone_key"
+  ON "public"."store_customers" ("phone")
+  WHERE "phone" IS NOT NULL;
+
+CREATE OR REPLACE FUNCTION "public"."store_customers_normalize_phone"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  NEW.phone := public.normalize_phone(NEW.phone);
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS "store_customers_normalize_phone" ON "public"."store_customers";
+CREATE TRIGGER "store_customers_normalize_phone"
+  BEFORE INSERT OR UPDATE OF "phone" ON "public"."store_customers"
+  FOR EACH ROW EXECUTE FUNCTION "public"."store_customers_normalize_phone"();

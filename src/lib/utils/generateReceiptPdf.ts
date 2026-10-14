@@ -54,6 +54,8 @@ export interface ReceiptPdfData {
   /** The customer identified for a due sale (collected so the balance can be traced back to them later) — omitted/blank for a fully-paid sale, so only printed alongside the DUE line below. */
   customerName?: string | null;
   customerPhone?: string | null;
+  /** What the customer already owed before this sale — printed with the total due, only when > 0. */
+  previousDue?: number | null;
   currencyIcon: string;
   /** URL to encode in the "shop with us online" QR (see getStorePublicUrl), or null to omit it — drawn as vector rectangles, not a raster image (see pdfQr.ts). */
   shopQrUrl: string | null;
@@ -231,6 +233,19 @@ function drawReceiptCopy(
     if (data.customerPhone) {
       y = totalRow(doc, y, "Phone", data.customerPhone, false, 7.5, bengaliLoaded);
     }
+  }
+
+  if ((data.previousDue ?? 0) > 0.01) {
+    y = totalRow(doc, y, "Previous due", amountText(data.currencyIcon, data.previousDue ?? 0), false, 7.5, bengaliLoaded);
+    y = totalRow(
+      doc,
+      y,
+      "TOTAL DUE",
+      amountText(data.currencyIcon, (data.previousDue ?? 0) + (data.due ?? 0)),
+      true,
+      7.5,
+      bengaliLoaded,
+    );
   }
 
   y += 3;

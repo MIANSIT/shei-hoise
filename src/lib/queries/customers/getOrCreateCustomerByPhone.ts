@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeForStoreAny } from "@/lib/permissions/server";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export interface GetOrCreateCustomerResult {
   customerId: string | null;
@@ -22,7 +23,7 @@ export async function getOrCreateCustomerByPhone(
   name: string,
   phone: string,
 ): Promise<GetOrCreateCustomerResult> {
-  const cleanedPhone = phone.replace(/\D/g, "");
+  const cleanedPhone = normalizePhone(phone);
   if (!cleanedPhone) {
     return { customerId: null, error: "Phone number is required" };
   }
@@ -79,13 +80,26 @@ export async function getOrCreateCustomerByPhone(
       .select("id")
       .single();
 
-    if (createError || !created) {
+    if (createError?.code === "23505") {
+      // Another request created this phone between our lookup and insert.
+      const { data: raced } = await supabaseAdmin
+        .from("store_customers")
+        .select("id")
+        .eq("phone", cleanedPhone)
+        .limit(1);
+      customerId = raced?.[0]?.id as string | undefined;
+    } else if (createError || !created) {
       return {
         customerId: null,
         error: createError?.message || "Failed to create customer",
       };
+    } else {
+      customerId = created.id;
     }
-    customerId = created.id;
+
+    if (!customerId) {
+      return { customerId: null, error: "Failed to create customer" };
+    }
   }
 
   const { error: linkError } = await supabaseAdmin

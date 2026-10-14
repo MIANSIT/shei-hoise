@@ -24,10 +24,12 @@ export async function getCustomersWithDue(
   branchId?: string | null,
   /** Read branch columns (stores with branches). */
   withBranches = false,
+  /** Only this customer (Quick Sale's "previous due"); the same calculation as the list. */
+  customerId?: string | null,
 ): Promise<CustomerWithDue[]> {
   if (!storeId) return [];
 
-  const [ordersRes, paymentsRes] = await Promise.all([
+  let ordersQuery =
     // Paid orders come back too, but only ones the ledger settled later stay
     // in the waterfall (see isLedgerSettledOrder). An order paid at the sale
     // or outside the due system has no customer_payments rows, so the ledger
@@ -54,16 +56,22 @@ export async function getCustomersWithDue(
       // over in a COD settlement (counted under COD pending), so including it
       // here showed the same money twice.
       .or("payment_method.is.null,payment_method.neq.cod,channel.eq.pos")
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("customer_payments")
-      .select(
-        withBranches
-          ? "amount, order_id, customer_id, branch_id, created_at"
-          : "amount, order_id, customer_id, created_at",
-      )
-      .eq("store_id", storeId),
-  ]);
+      .order("created_at", { ascending: true });
+  let paymentsQuery = supabase
+    .from("customer_payments")
+    .select(
+      withBranches
+        ? "amount, order_id, customer_id, branch_id, created_at"
+        : "amount, order_id, customer_id, created_at",
+    )
+    .eq("store_id", storeId);
+
+  if (customerId) {
+    ordersQuery = ordersQuery.eq("customer_id", customerId);
+    paymentsQuery = paymentsQuery.eq("customer_id", customerId);
+  }
+
+  const [ordersRes, paymentsRes] = await Promise.all([ordersQuery, paymentsQuery]);
 
   type OrderRow = {
     id: string;

@@ -2,6 +2,7 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import { getAuthenticatedCustomerId } from "@/lib/utils/getAuthenticatedCustomerId";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 interface UpdateCustomerData {
   name: string;
@@ -63,7 +64,7 @@ export async function updateCustomerProfile(
       .from("store_customers")
       .update({
         name: customerData.name.trim(),
-        phone: customerData.phone?.trim() || null,
+        phone: normalizePhone(customerData.phone),
         email,
         updated_at: new Date().toISOString(),
       })
@@ -72,6 +73,10 @@ export async function updateCustomerProfile(
       .single();
 
     if (customerError) {
+      const phone = normalizePhone(customerData.phone);
+      if (customerError.code === "23505" && phone) {
+        throw new Error(`A customer with phone ${phone} already exists`);
+      }
       throw new Error(`Failed to update customer: ${customerError.message}`);
     }
 

@@ -21,6 +21,9 @@ import { ProductImage } from "@/app/components/products/ProductImage";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useStore } from "@/lib/hook/stores/useStore";
+import { getCustomersWithDue } from "@/lib/queries/customers/getCustomersWithDue";
+import { lookupCustomerNameByPhone } from "@/lib/queries/customers/lookupCustomerNameByPhone";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import dataService from "@/lib/queries/dataService";
 import {
@@ -135,6 +138,13 @@ export default function QuickSale() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [walkInName, setWalkInName] = useState("");
   const [walkInPhone, setWalkInPhone] = useState("");
+  // Whether the typed phone belongs to a saved customer. Their saved name
+  // fills the name field (nameFromSaved) and isn't renamed by a sale.
+  const [customerMatch, setCustomerMatch] = useState<"existing" | "new" | null>(null);
+  const [nameFromSaved, setNameFromSaved] = useState(false);
+  const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
+  // What this customer already owes at this store (this branch, with branches).
+  const [previousDue, setPreviousDue] = useState(0);
   const [cashReceived, setCashReceived] = useState<number | null>(null);
   const [isDueSale, setIsDueSale] = useState(false);
   const [amountReceivedNow, setAmountReceivedNow] = useState<number | null>(null);
@@ -159,6 +169,74 @@ export default function QuickSale() {
   // "✓ Added" confirmation has a second, harder-to-miss signal than a
   // status line under the camera view.
   const [flashKey, setFlashKey] = useState<string | null>(null);
+
+  // A known phone number fills in that customer's saved name; a new one
+  // leaves the name for the cashier to type.
+  const storeIdForLookup = user?.store_id;
+  useEffect(() => {
+    const digits = normalizePhone(walkInPhone);
+    if (!storeIdForLookup || !digits || digits.length < 10) {
+      setCustomerMatch(null);
+      setMatchedCustomerId(null);
+      if (nameFromSaved) {
+        setWalkInName("");
+        setNameFromSaved(false);
+      }
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await lookupCustomerNameByPhone(storeIdForLookup, walkInPhone);
+        if (cancelled) return;
+        if (result.found) {
+          setCustomerMatch("existing");
+          setMatchedCustomerId(result.id);
+          if (result.name) {
+            setWalkInName(result.name);
+            setNameFromSaved(true);
+          }
+        } else {
+          setCustomerMatch("new");
+          setMatchedCustomerId(null);
+          if (nameFromSaved) {
+            setWalkInName("");
+            setNameFromSaved(false);
+          }
+        }
+      } catch {
+        if (!cancelled) setCustomerMatch(null);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // nameFromSaved is read only to clear an auto-filled name; including it
+    // would re-run the lookup right after filling it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walkInPhone, storeIdForLookup]);
+
+  // Same due the Customer Dues page shows for this customer, for the branch
+  // the sale is made from (the whole store when there are no branches).
+  useEffect(() => {
+    if (!storeIdForLookup || !matchedCustomerId) {
+      setPreviousDue(0);
+      return;
+    }
+    let cancelled = false;
+    getCustomersWithDue(storeIdForLookup, saleBranchId, branchesOn, matchedCustomerId)
+      .then((rows) => {
+        if (cancelled) return;
+        setPreviousDue(rows.reduce((sum, row) => sum + row.total_due, 0));
+      })
+      .catch(() => {
+        if (!cancelled) setPreviousDue(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeIdForLookup, matchedCustomerId, saleBranchId, branchesOn]);
   useEffect(() => {
     if (!flashKey) return;
     const t = setTimeout(() => setFlashKey(null), 900);
@@ -398,6 +476,7 @@ export default function QuickSale() {
     due: number | null;
     customerName: string | null;
     customerPhone: string | null;
+    previousDue: number | null;
     date: Date;
   }) => {
     const storeDisplayName = store?.store_name || "My Shop";
@@ -439,6 +518,7 @@ export default function QuickSale() {
       due: order.due,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
+      previousDue: order.previousDue,
       currencyIcon,
       shopQrUrl,
     });
@@ -588,6 +668,8 @@ export default function QuickSale() {
           due: isDueSale ? dueAmount : null,
           customerName: isDueSale ? walkInName.trim() : null,
           customerPhone: isDueSale ? walkInPhone.trim() : null,
+          previousDue:
+            customerMatch === "existing" && previousDue > 0.01 ? previousDue : null,
           // Prints the sale's own date (back-dated when the cashier changed
           // it), keeping the current clock time since order_date has none.
           date: orderDate.hour(now.getHours()).minute(now.getMinutes()).toDate(),
@@ -902,8 +984,53 @@ export default function QuickSale() {
           </div>
 
           <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <Text type="secondary" className="text-xs">
+                Customer {isDueSale ? "" : "(optional)"}
+              </Text>
+              {customerMatch === "existing" && <Tag color="green">Existing customer</Tag>}
+              {customerMatch === "new" && <Tag color="blue">New customer</Tag>}
+            </div>
+            <Space.Compact block>
+              <Input
+                placeholder={isDueSale ? "Phone *" : "Phone"}
+                status={isDueSale && !walkInPhone.trim() ? "error" : undefined}
+                value={walkInPhone}
+                inputMode="tel"
+                onChange={(e) => setWalkInPhone(e.target.value)}
+              />
+              <Input
+                placeholder={isDueSale ? "Customer name *" : "Customer name"}
+                status={isDueSale && !walkInName.trim() ? "error" : undefined}
+                value={walkInName}
+                disabled={nameFromSaved}
+                onChange={(e) => setWalkInName(e.target.value)}
+              />
+            </Space.Compact>
+            {nameFromSaved && (
+              <Text type="secondary" className="text-[11px] block">
+                Name comes from the saved customer — the sale is added to their record.
+              </Text>
+            )}
+            {customerMatch === "existing" && previousDue > 0.01 && (
+              <div className="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm">
+                <Text type="danger">Previous due{branchesOn ? " (this branch)" : ""}</Text>
+                <Text strong type="danger">
+                  {currencyIcon}
+                  {previousDue.toFixed(2)}
+                </Text>
+              </div>
+            )}
+            {isDueSale && (!walkInName.trim() || !walkInPhone.trim()) && (
+              <Text type="danger" className="text-xs">
+                Name and phone are required for a due sale, so this balance can be collected later.
+              </Text>
+            )}
+          </div>
+
+          <div className="space-y-2 pt-1">
             <Text type="secondary" className="text-xs">
-              Payment method
+              {isDueSale ? "Payment method (for the amount received now)" : "Payment method"}
             </Text>
             <Segmented
               block
@@ -968,34 +1095,48 @@ export default function QuickSale() {
                   style={{ width: 140 }}
                 />
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <Text type="secondary">Due</Text>
-                <Text strong type={dueAmount > 0 ? "danger" : undefined}>
-                  {currencyIcon}
-                  {dueAmount.toFixed(2)}
-                </Text>
+              <div className="space-y-1.5 rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <Text type="secondary">This sale</Text>
+                  <Text>
+                    {currencyIcon}
+                    {total.toFixed(2)}
+                  </Text>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Text type="secondary">Paid now</Text>
+                  <Text>
+                    {currencyIcon}
+                    {receivedNow.toFixed(2)}
+                  </Text>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Text type="secondary">Added to due</Text>
+                  <Text>
+                    {currencyIcon}
+                    {dueAmount.toFixed(2)}
+                  </Text>
+                </div>
+                {customerMatch === "existing" && previousDue > 0.01 && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <Text type="secondary">Previous due</Text>
+                      <Text>
+                        {currencyIcon}
+                        {previousDue.toFixed(2)}
+                      </Text>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-dashed border-border pt-1.5">
+                      <Text strong>Total due</Text>
+                      <Text strong type="danger">
+                        {currencyIcon}
+                        {(previousDue + dueAmount).toFixed(2)}
+                      </Text>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-          )}
-
-          <Space.Compact block>
-            <Input
-              placeholder={isDueSale ? "Customer name *" : "Customer name (optional)"}
-              status={isDueSale && !walkInName.trim() ? "error" : undefined}
-              value={walkInName}
-              onChange={(e) => setWalkInName(e.target.value)}
-            />
-            <Input
-              placeholder={isDueSale ? "Phone *" : "Phone (optional)"}
-              status={isDueSale && !walkInPhone.trim() ? "error" : undefined}
-              value={walkInPhone}
-              onChange={(e) => setWalkInPhone(e.target.value)}
-            />
-          </Space.Compact>
-          {isDueSale && (!walkInName.trim() || !walkInPhone.trim()) && (
-            <Text type="danger" className="text-xs">
-              Name and phone are required for a due sale, so this balance can be collected later.
-            </Text>
           )}
 
           <Button
