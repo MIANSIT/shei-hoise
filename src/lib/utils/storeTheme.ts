@@ -242,6 +242,10 @@ export function deriveStoreThemeVars(palette: BrandPalette | null): StoreThemeVa
     "--card-foreground": pickForeground(palette.card),
     "--header": palette.header,
     "--header-foreground": pickForeground(palette.header),
+    // The announcement bar above the header: the header color a touch darker
+    // so the two don't merge into one block.
+    "--announcement": darken(palette.header, 5),
+    "--announcement-foreground": pickForeground(darken(palette.header, 5)),
     "--footer": palette.footer,
     "--footer-foreground": pickForeground(palette.footer),
   };
@@ -271,6 +275,8 @@ export function deriveStoreThemeVars(palette: BrandPalette | null): StoreThemeVa
     "--card-foreground": pickForeground(darkCard),
     "--header": darkHeader,
     "--header-foreground": pickForeground(darkHeader),
+    "--announcement": darken(darkHeader, 4),
+    "--announcement-foreground": pickForeground(darken(darkHeader, 4)),
     "--footer": darkFooter,
     "--footer-foreground": pickForeground(darkFooter),
   };

@@ -448,6 +448,16 @@ export default function ProductPage() {
           getStoreIdBySlug(store_slug),
         ]);
 
+        // Starts the moment the product id is known and runs alongside the
+        // store-settings fetch below, so the sold count lands with everything
+        // else instead of popping in after the page has painted.
+        const soldCountPromise: Promise<number> = productData
+          ? getProductSoldCount(productData.id).catch(() => 0)
+          : Promise.resolve(0);
+        const ratingPromise: Promise<{ average: number; total: number }> = productData
+          ? getProductRatingSummary(productData.id).catch(() => ({ average: 0, total: 0 }))
+          : Promise.resolve({ average: 0, total: 0 });
+
         let localSettings = null;
         if (storeId) {
           setStoreId(storeId);
@@ -460,6 +470,10 @@ export default function ProductPage() {
           setProduct(null);
           return;
         }
+
+        const [soldTotal, ratingTotals] = await Promise.all([soldCountPromise, ratingPromise]);
+        setSoldCount(soldTotal);
+        setRatingSummary(ratingTotals);
 
         const fixed = {
           ...productData,
@@ -504,14 +518,6 @@ export default function ProductPage() {
     }
     if (product_slug) fetchData();
   }, [product_slug, store_slug]);
-
-  useEffect(() => {
-    if (!product?.id) return;
-    getProductRatingSummary(product.id).then(setRatingSummary);
-    getProductSoldCount(product.id)
-      .then(setSoldCount)
-      .catch(() => setSoldCount(0));
-  }, [product?.id]);
 
   // Cap the open-by-default description at a fixed height with a
   // "Read more" toggle — only for descriptions that actually overflow it,

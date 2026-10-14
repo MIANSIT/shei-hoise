@@ -129,7 +129,7 @@ export function AnnouncementBar({ announcements, freeShippingThreshold }: Announ
 
   return (
     <>
-      <div className="fixed top-0 left-0 w-full z-60 bg-header text-header-foreground text-xs sm:text-[13px] font-semibold tracking-wide">
+      <div className="fixed top-0 left-0 w-full z-60 bg-(--announcement,var(--header)) text-(--announcement-foreground,var(--header-foreground)) text-xs sm:text-[13px] font-semibold tracking-wide">
         <div className="max-w-7xl mx-auto px-4 h-9 flex items-center gap-2 sm:gap-2.5">
           <span className="flex h-5 w-5 sm:h-5.5 sm:w-5.5 items-center justify-center rounded-full bg-primary/15 text-primary shrink-0">
             <Megaphone className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
