@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { OrderProduct } from "@/lib/types/order";
 import {
   ProductWithVariants,
@@ -46,6 +46,24 @@ export default function OrderDetails({
   const t = useTranslation();
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [productSearch, setProductSearch] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Close the results list when tapping outside the picker
+  useEffect(() => {
+    const handleOutside = (event: MouseEvent | TouchEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
+        setPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, []);
   const [selectedVariantId, setSelectedVariantId] =
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
@@ -347,102 +365,135 @@ export default function OrderDetails({
               <label className="text-sm font-medium text-card-foreground">
                 Product *
               </label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder={t.admin.stockSearchPlaceholder}
-                  className="h-11 pl-9 pr-9"
-                  aria-label={t.admin.stockSearchPlaceholder}
-                />
-                {productSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setProductSearch("")}
-                    aria-label="Clear search"
-                    className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+              <div className="relative" ref={pickerRef}>
+                {selectedProduct && !pickerOpen ? (
+                  <div className="flex items-center gap-3 rounded-md border border-border bg-background p-2 pr-3">
+                    <div className="shrink-0 w-10 h-10 relative overflow-hidden rounded-md">
+                      <ProductImage
+                        src={getPrimaryImage(selectedProduct)?.image_url}
+                        alt={selectedProduct.name}
+                        className="rounded-md object-cover"
+                        iconClassName="h-4 w-4 text-stone-400 dark:text-gray-500"
+                      />
+                    </div>
+                    <p className="flex-1 min-w-0 font-medium text-sm truncate">
+                      {selectedProduct.name}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedProductId("");
+                        setSelectedVariantId("no-variant");
+                        setQuantity(1);
+                        setProductSearch("");
+                        setPickerOpen(true);
+                        setTimeout(() => searchInputRef.current?.focus(), 0);
+                      }}
+                      className="shrink-0 text-xs font-semibold text-primary hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Search className="pointer-events-none absolute left-3 top-5.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      ref={searchInputRef}
+                      value={productSearch}
+                      onChange={(e) => {
+                        setProductSearch(e.target.value);
+                        setPickerOpen(true);
+                      }}
+                      onFocus={() => setPickerOpen(true)}
+                      placeholder={t.admin.stockSearchPlaceholder}
+                      className="h-11 pl-9 pr-9"
+                      aria-label={t.admin.stockSearchPlaceholder}
+                      autoComplete="off"
+                    />
+                    {productSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setProductSearch("")}
+                        aria-label="Clear search"
+                        className="absolute right-2 top-5.5 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                    {pickerOpen && (
+                      <div className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover text-popover-foreground shadow-lg">
+                        {filteredProducts.length === 0 ? (
+                          <div className="py-4 text-center text-sm text-muted-foreground">
+                            {availableProducts.length === 0
+                              ? "No products with available stock"
+                              : t.admin.genOrderSearchNoMatch.replace("{query}", productSearch.trim())}
+                          </div>
+                        ) : (
+                          filteredProducts.map((product) => {
+                            const primaryImage = getPrimaryImage(product);
+                            const activeVariantsCount = product.product_variants?.filter(v => v.is_active).length || 0;
+                            const hasVariants = activeVariantsCount > 0;
+
+                            return (
+                              <button
+                                type="button"
+                                key={product.id}
+                                onClick={() => {
+                                  setSelectedProductId(product.id);
+                                  setSelectedVariantId("no-variant");
+                                  setQuantity(1);
+                                  setProductSearch("");
+                                  setPickerOpen(false);
+                                }}
+                                className="flex w-full items-center gap-3 border-b border-border/50 px-3 py-2 text-left last:border-b-0 hover:bg-accent"
+                              >
+                                <div className="shrink-0 w-9 h-9 relative overflow-hidden rounded-md">
+                                  <ProductImage
+                                    src={primaryImage?.image_url}
+                                    alt={product.name}
+                                    className="rounded-md object-cover"
+                                    iconClassName="h-4 w-4 text-stone-400 dark:text-gray-500"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-sm truncate">{product.name}</p>
+                                    {product.status === ProductStatus.INACTIVE && (
+                                      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">
+                                        Inactive
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    {!hasVariants &&
+                                      (product.discounted_price ? (
+                                        <>
+                                          <span className="text-foreground font-semibold">
+                                            {displayCurrencyIconSafe}{product.discounted_price}
+                                          </span>
+                                          <span className="line-through">
+                                            {displayCurrencyIconSafe}{product.base_price}
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <span>{displayCurrencyIconSafe}{product.base_price || 0}</span>
+                                      ))}
+                                    {hasVariants && (
+                                      <span className="text-blue-600">
+                                        {activeVariantsCount} variants available
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
-              <Select
-                value={selectedProductId}
-                onValueChange={(value) => {
-                  setSelectedProductId(value);
-                  setSelectedVariantId("no-variant");
-                  setQuantity(1);
-                }}
-              >
-                <SelectTrigger className="w-full h-11">
-                  <SelectValue placeholder="Select a product" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover text-popover-foreground border-border max-h-60">
-                  {filteredProducts.length === 0 ? (
-                    <div className="py-4 text-center text-sm text-muted-foreground">
-                      {availableProducts.length === 0
-                        ? "No products with available stock"
-                        : t.admin.genOrderSearchNoMatch.replace("{query}", productSearch.trim())}
-                    </div>
-                  ) : (
-                    filteredProducts.map((product) => {
-                      const primaryImage = getPrimaryImage(product);
-                      const activeVariantsCount = product.product_variants?.filter(v => v.is_active).length || 0;
-                      const hasVariants = activeVariantsCount > 0;
-                      
-                      return (
-                        <SelectItem key={product.id} value={product.id} className="py-2">
-                          <div className="flex items-center gap-3">
-                            <div className="shrink-0 w-8 h-8 relative overflow-hidden rounded-md">
-                              <ProductImage
-                                src={primaryImage?.image_url}
-                                alt={product.name}
-                                className="rounded-md object-cover"
-                                iconClassName="h-4 w-4 text-stone-400 dark:text-gray-500"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium text-sm truncate">{product.name}</p>
-                                {product.status === ProductStatus.INACTIVE && (
-                                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 border border-amber-200 rounded px-1">
-                                    Inactive
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                {/* Show price only if product has no variants */}
-                                {!hasVariants && (
-                                  <>
-                                    {product.discounted_price ? (
-                                      <>
-                                        <span className="text-foreground font-semibold">
-                                          {displayCurrencyIconSafe}{product.discounted_price}
-                                        </span>
-                                        <span className="line-through">
-                                          {displayCurrencyIconSafe}{product.base_price}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span>{displayCurrencyIconSafe}{product.base_price || 0}</span>
-                                    )}
-                                  </>
-                                )}
-                                {hasVariants && (
-                                  <span className="text-blue-600">
-                                    {activeVariantsCount} variants available
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      );
-                    })
-                  )}
-                </SelectContent>
-              </Select>
               {availableProducts.length === 0 && (
                 <p className="text-xs text-amber-600">
                   No products with available stock found. Please add inventory.

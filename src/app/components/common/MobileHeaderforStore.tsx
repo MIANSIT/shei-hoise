@@ -158,7 +158,7 @@ export default function MobileHeader({
                   <ThemeToggle />
                   <ShoppingCartIcon onClick={() => setIsCartOpen(true)} />
                   <button
-                    className="text-foreground hover:bg-accent p-2 rounded-md"
+                    className="text-header-foreground hover:bg-header-foreground/10 p-2 rounded-md"
                     onClick={() => setMenuOpen((prev) => !prev)}
                     aria-label={menuOpen ? "Close menu" : "Open menu"}
                   >
@@ -176,7 +176,7 @@ export default function MobileHeader({
 
         <div className="relative">
           <nav
-            className={`transition-all duration-300 ease-in-out bg-background ${
+            className={`transition-all duration-300 ease-in-out bg-background text-foreground ${
               menuOpen
                 ? "max-h-125 opacity-100 mt-2 overflow-visible"
                 : "max-h-0 opacity-0 overflow-hidden"
