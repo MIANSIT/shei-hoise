@@ -85,7 +85,7 @@ function OptionRow({
       aria-checked={checked}
       onClick={onToggle}
       className={cn(
-        "group flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left text-sm transition-colors",
+        "group flex w-full items-center gap-3 rounded-lg py-2 text-left text-sm transition-colors",
         checked
           ? "font-semibold text-gray-900 dark:text-gray-50"
           : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100",
@@ -121,7 +121,7 @@ function ShowMoreButton({
     <button
       type="button"
       onClick={onClick}
-      className="mt-1 flex items-center gap-1 px-1 py-1.5 text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+      className="mt-1 flex items-center gap-1 py-1.5 text-xs font-semibold text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
     >
       {expanded ? t.filter.showLess : `${t.filter.showMore} (${n(hiddenCount)})`}
       <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />

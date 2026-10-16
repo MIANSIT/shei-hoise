@@ -3,17 +3,20 @@
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { trackPageView } from "@/lib/utils/fbPixel";
 
 interface FacebookPixelScriptProps {
   pixelId: string;
   storeSlug: string;
 }
 
-// Fires PageView on every client-side navigation automatically
+// Fires PageView on every page load and client-side navigation. The inline
+// snippet below only loads and initialises the pixel — PageView itself goes
+// through trackPageView so the browser and server copies share one event id.
 export function FacebookPixelScript({ pixelId, storeSlug }: FacebookPixelScriptProps) {
   const pathname = usePathname();
 
-  const isFirstMount = useRef(true);
+  const lastTrackedPath = useRef<string | null>(null);
 
   useEffect(() => {
     const urlSearch = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
@@ -37,18 +40,11 @@ export function FacebookPixelScript({ pixelId, storeSlug }: FacebookPixelScriptP
       }
     }
 
-    // Only fire PageView to Facebook on client-side navigations (not initial load)
-    // because the inline script already fires fbq('track','PageView') on first load
-    if (!isFirstMount.current && typeof window !== "undefined" && window.fbq) {
-      window.fbq("track", "PageView");
-    }
-    isFirstMount.current = false;
+    // Same path twice in a row (React strict-mode re-run) is one page view.
+    if (lastTrackedPath.current === pathname) return;
+    lastTrackedPath.current = pathname;
 
-    fetch("/api/pixel-event", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event: "PageView", params: { path: pathname, ...utm }, store_slug: storeSlug }),
-    }).catch(() => {});
+    trackPageView(storeSlug, { path: pathname, ...utm });
   }, [pathname, storeSlug]);
 
   // Pixel IDs are numeric — strip anything non-numeric as a safety measure
@@ -70,7 +66,6 @@ export function FacebookPixelScript({ pixelId, storeSlug }: FacebookPixelScriptP
           s.parentNode.insertBefore(t,s)}(window,document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init','${safePixelId}');
-          fbq('track','PageView');
         `,
       }}
     />

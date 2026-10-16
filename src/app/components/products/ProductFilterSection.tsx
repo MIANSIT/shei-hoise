@@ -77,8 +77,9 @@ export function ShopFilterSidebar({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
-        <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-50">
+      {/* Same height and padding as the toolbar row beside it, so both divider lines sit level. */}
+      <div className="mb-4 flex h-[54px] items-start justify-between border-b border-gray-100 dark:border-gray-800">
+        <h2 className="flex h-[38px] items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-50">
           <SlidersHorizontal className="h-4 w-4" />
           {t.filter.filter}
           {count > 0 && (
@@ -91,7 +92,7 @@ export function ShopFilterSidebar({
           <button
             type="button"
             onClick={() => onFiltersChange(EMPTY_SHOP_FILTERS)}
-            className="text-xs font-semibold text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
+            className="flex h-[38px] items-center text-xs font-semibold text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
           >
             {t.filter.clearAll}
           </button>

@@ -28,6 +28,8 @@ import {
   Check,
 } from "lucide-react";
 import Link from "next/link";
+import { FacebookAdsSection } from "./FacebookAdsSection";
+import { MetaInsightsSections } from "./MetaInsightsSections";
 import {
   getPixelAnalytics,
   PixelAnalyticsData,
@@ -680,6 +682,9 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
         t={t}
       />
 
+      {/* ── Facebook Ads (Marketing API: spend, reach, ROAS from the owner's own ad account) ── */}
+      <FacebookAdsSection storeId={storeId} period={period} trackedRevenue={data?.totalRevenue ?? 0} />
+
       {/* ── Meta Pixel section divider ── */}
       <div className="flex items-center gap-2 pt-2">
         <div className="w-1 h-5 rounded-full bg-linear-to-b from-blue-400 to-blue-600" />
@@ -938,6 +943,9 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
           </div>
         )
       )}
+
+      {/* ── Customer-data coverage, drop-off, search / category / brand interest, every event ── */}
+      <MetaInsightsSections data={data} loading={loading} funnel={EVENT_META} />
     </div>
   );
 }

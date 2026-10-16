@@ -855,6 +855,8 @@ CREATE TABLE IF NOT EXISTS "public"."store_settings" (
     "facebook_pixel_id" character varying,
     "facebook_capi_access_token" "text",
     "facebook_test_event_code" character varying,
+    "facebook_ad_account_id" character varying,
+    "facebook_ads_access_token" "text",
     "delivery_couriers" "jsonb" DEFAULT '[{"id":"pathao","name":"Pathao","type":"pathao","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"},{"id":"steadfast","name":"Steadfast","type":"steadfast","deletable":false,"created_at":"2026-01-01T00:00:00.000Z"},{"id":"paperfly","name":"Paperfly","type":"paperfly","deletable":false,"created_at":"2026-10-08T00:00:00.000Z"},{"id":"shop","name":"Shop / From Shop","type":"shop","deletable":false,"created_at":"2026-09-01T00:00:00.000Z"}]'::"jsonb"
 );
 

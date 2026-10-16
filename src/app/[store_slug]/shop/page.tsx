@@ -303,6 +303,16 @@ export default function ShopPage({ params }: ShopPageProps) {
     setSortOption((prev) => (prev === urlSort ? prev : urlSort));
   }, [urlCategory, urlSearch, urlSort, urlBrand, urlMin, urlMax]);
 
+  // One ViewCategory per distinct category selection (not per re-render), so
+  // the dashboard can show which categories shoppers actually browse.
+  const categoryKey = activeCategories.join(",");
+  const lastTrackedCategory = useRef("");
+  useEffect(() => {
+    if (!categoryKey || categoryKey === lastTrackedCategory.current) return;
+    lastTrackedCategory.current = categoryKey;
+    fbq(FbEvent.VIEW_CATEGORY, { content_category: categoryKey, content_type: "product_group" }, store_slug);
+  }, [categoryKey, store_slug]);
+
   const handleFiltersChange = useCallback((next: ShopFilterValues) => {
     setActiveCategories(next.categories);
     setActiveBrands(next.brands);

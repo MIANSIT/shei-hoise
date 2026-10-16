@@ -19,6 +19,14 @@ interface ProfitTrendChartProps {
   data: { date: string; net_profit: number }[];
 }
 
+/** Axis labels: 12500 → "12.5k", so they fit the axis instead of being clipped. */
+function compactAmount(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${+(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${+(value / 1_000).toFixed(1)}k`;
+  return String(Math.round(value));
+}
+
 const CustomTooltip = ({
   active,
   payload,
@@ -63,7 +71,7 @@ const ProfitTrendChart: React.FC<ProfitTrendChartProps> = ({ data }) => {
   return (
     <div className="h-52 sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+        <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
@@ -89,7 +97,8 @@ const ProfitTrendChart: React.FC<ProfitTrendChartProps> = ({ data }) => {
             className="text-muted-foreground"
             axisLine={false}
             tickLine={false}
-            width={40}
+            width={48}
+            tickFormatter={(v: number) => n(compactAmount(v))}
           />
           <ReferenceLine y={0} stroke="currentColor" className="text-muted-foreground/60" />
           <Tooltip

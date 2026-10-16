@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { hasFeature } from "./planFeatures";
 import { getStoreFeatureSubscription } from "./getStoreFeatureSubscription";
-import { sendConversionApiEvent } from "./fbConversionApi";
+import { sendConversionApiEvent, listMatchKeys, type CapiCustomer } from "./fbConversionApi";
 
 interface FireServerPixelEventParams {
   storeId: string;
@@ -12,22 +12,34 @@ interface FireServerPixelEventParams {
   fbc?: string | null;
   clientIpAddress?: string | null;
   clientUserAgent?: string | null;
-  phone?: string | null;
-  email?: string | null;
+  eventSourceUrl?: string | null;
+  customer?: CapiCustomer;
 }
 
 /**
  * Mirrors an event into pixel_events and forwards it to Meta's Conversions API
  * if the store is entitled and has credentials saved. Never throws — CAPI
  * failures are logged and recorded on the row, not propagated to the caller.
+ *
+ * The row's metadata also carries `_match`: the names (never the values) of the
+ * identifiers sent with the event, which the analytics dashboard uses to show
+ * the store's customer-data coverage.
  */
 export async function fireServerPixelEvent(params: FireServerPixelEventParams): Promise<void> {
+  const matchKeys = listMatchKeys({
+    fbp: params.fbp,
+    fbc: params.fbc,
+    clientIpAddress: params.clientIpAddress,
+    clientUserAgent: params.clientUserAgent,
+    customer: params.customer,
+  });
+
   const { data: inserted } = await supabaseAdmin
     .from("pixel_events")
     .insert({
       store_id: params.storeId,
       event_name: params.eventName,
-      metadata: params.eventParams,
+      metadata: { ...params.eventParams, _match: matchKeys },
     })
     .select("id")
     .single();
@@ -53,9 +65,9 @@ export async function fireServerPixelEvent(params: FireServerPixelEventParams): 
         fbc: params.fbc,
         clientIpAddress: params.clientIpAddress,
         clientUserAgent: params.clientUserAgent,
+        eventSourceUrl: params.eventSourceUrl,
         customData: params.eventParams,
-        phone: params.phone,
-        email: params.email,
+        customer: params.customer,
       });
 
       await supabaseAdmin

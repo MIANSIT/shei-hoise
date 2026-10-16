@@ -70,6 +70,46 @@ export async function getVendorProfitByBranch(
   return byBranch;
 }
 
+/**
+ * Vendor profit for one period, per day (YYYY-MM-DD → profit), counted the
+ * same way as {@link getVendorStoreProfitForPeriod}: each payment times its
+ * vendor's profit share, on the day the payment was made. Days with no
+ * payment are absent. `branchId` limits it to one branch's payments.
+ */
+export async function getVendorProfitByDay(
+  storeId: string,
+  periodStart: string,
+  periodEnd: string,
+  branchId?: string | null,
+): Promise<Map<string, number>> {
+  const byDay = new Map<string, number>();
+  try {
+    const [shareOf, payments] = await Promise.all([
+      loadVendorProfitShares(storeId),
+      fetchAllPaged<VendorPaymentRow & { payment_date: string }>((from, to) => {
+        let query = supabase
+          .from("vendor_payments")
+          .select("vendor_id, amount, payment_date")
+          .eq("store_id", storeId)
+          .gte("payment_date", periodStart)
+          .lte("payment_date", periodEnd);
+        if (branchId) query = query.eq("branch_id", branchId);
+        return query.order("id").range(from, to) as unknown as PromiseLike<{
+          data: (VendorPaymentRow & { payment_date: string })[] | null;
+          error: { message: string } | null;
+        }>;
+      }),
+    ]);
+    for (const p of payments) {
+      const day = String(p.payment_date).slice(0, 10);
+      byDay.set(day, (byDay.get(day) ?? 0) + Number(p.amount) * shareOf(p.vendor_id));
+    }
+  } catch (error) {
+    console.error("Failed to load vendor profit by day:", error);
+  }
+  return byDay;
+}
+
 interface VendorPaymentRow {
   vendor_id: string;
   amount: number;

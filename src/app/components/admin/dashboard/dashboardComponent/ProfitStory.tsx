@@ -30,6 +30,8 @@ export interface ProfitStoryFigures {
    * "Sales received" — profit is only counted on money that came in.
    */
   allSales?: number;
+  /** Days in the period (inclusive). When given, the card adds a per-day average of sales and profit. */
+  dayCount?: number;
 }
 
 /** One branch's profit, shown in the card on "All branches". */
@@ -75,7 +77,12 @@ const BAR: Record<Step["tone"], string> = {
 export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales } = figures;
+  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, dayCount } = figures;
+  // Per-day average of the sales figure the card leads with: every order when
+  // known, else what was received.
+  const showDailyAverage = dayCount !== undefined && dayCount > 0;
+  const avgSales = showDailyAverage ? (allSales ?? sales) / dayCount : 0;
+  const avgProfit = showDailyAverage ? netProfit / dayCount : 0;
   const showCollection = allSales !== undefined;
   const toCollect = showCollection ? Math.max(allSales - sales, 0) : 0;
   const receivedPct = showCollection && allSales > 0 ? Math.min((sales / allSales) * 100, 100) : 100;
@@ -140,6 +147,27 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
             </div>
             <div className="text-xs text-white/85 mt-1">{isLoss ? t.admin.psLossExplain : t.admin.psProfitExplain}</div>
           </div>
+          {showDailyAverage && (
+            <div className="rounded-xl bg-white/15 p-3">
+              <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-white/85">
+                <span>{t.admin.psDailyAverage}</span>
+                <span className="normal-case tracking-normal">{t.admin.psDaysCount.replace("{n}", n(dayCount))}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="min-w-0">
+                  <div className="text-[11px] text-white/80">{t.admin.psSalesPerDay}</div>
+                  <div className="break-words text-base font-black tabular-nums">{formatMoney(avgSales)}</div>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] text-white/80">{t.admin.psProfitPerDay}</div>
+                  <div className="break-words text-base font-black tabular-nums">
+                    {avgProfit < 0 ? "−" : ""}
+                    {formatMoney(Math.abs(avgProfit))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {branchProfits && branchProfits.length > 0 && (
             <div className="rounded-xl bg-white/15 p-3">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-white/85 mb-1.5">

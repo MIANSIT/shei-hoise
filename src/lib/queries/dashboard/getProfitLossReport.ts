@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
+import { getVendorProfitByDay, getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
 import { getSalesSummary } from "./getSalesSummary";
 
 export interface ProfitLossTrendPoint {
@@ -55,7 +55,7 @@ export async function getProfitLossReport(
 ): Promise<ProfitLossReport> {
   if (!storeId) return EMPTY;
 
-  const [{ data, error }, vendorProfitResult, salesSummary] = await Promise.all([
+  const [{ data, error }, vendorProfitResult, salesSummary, vendorProfitByDay] = await Promise.all([
     supabase.rpc("get_profit_loss_report", {
       p_store_id: storeId,
       p_period_start: fromDate,
@@ -66,6 +66,8 @@ export async function getProfitLossReport(
     // vendor_profit (not prev_vendor_profit) is used below.
     getVendorStoreProfitForPeriod(storeId, fromDate, toDate, fromDate, toDate, branchId ?? null),
     getSalesSummary(storeId, fromDate, toDate, null, null, branchId),
+    // The trend needs vendor profit day by day, so its points add up to the headline net profit.
+    getVendorProfitByDay(storeId, fromDate, toDate, branchId ?? null),
   ]);
 
   if (error) {
@@ -89,7 +91,7 @@ export async function getProfitLossReport(
     netProfit: (Number(data.net_profit) || 0) + vendorProfit,
     trend: (data.trend ?? []).map((p: { date: string; net_profit: number }) => ({
       date: p.date,
-      net_profit: Number(p.net_profit) || 0,
+      net_profit: (Number(p.net_profit) || 0) + (vendorProfitByDay.get(String(p.date).slice(0, 10)) ?? 0),
     })),
   };
 }

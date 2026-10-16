@@ -53,7 +53,7 @@ export default function CheckoutPage() {
   const t = useTranslation();
 
   const notify = useSheiNotification();
-  const { clearFormData, clearAccountCreationFlags } = useCheckoutStore();
+  const { formData: checkoutFormData, clearFormData, clearAccountCreationFlags } = useCheckoutStore();
   const { clearStoreCart } = useCartStore();
 
   const {
@@ -146,6 +146,24 @@ export default function CheckoutPage() {
       }, store_slug);
     }
   }, [isMounted, isLoadingOverall, cartItems, calculations.subtotal, storeCurrency, store_slug]);
+
+  // Fire Lead once a real phone number has been typed — a COD shopper who
+  // leaves after this point is still a contact Meta can retarget and learn from.
+  const hasTrackedLead = useRef(false);
+  const leadPhone = checkoutFormData.phone ?? "";
+  const leadName = checkoutFormData.name ?? "";
+  useEffect(() => {
+    if (hasTrackedLead.current || !isMounted || isLoadingOverall || cartItems.length === 0) return;
+    if (!/^(?:880|0)1\d{9}$/.test(leadPhone.replace(/\D/g, ""))) return;
+    hasTrackedLead.current = true;
+    fbq(FbEvent.LEAD, {
+      content_ids: cartItems.map((i) => i.variantId ?? i.productId),
+      content_type: "product",
+      num_items: cartItems.reduce((sum, i) => sum + i.quantity, 0),
+      value: calculations.subtotal,
+      currency: storeCurrency,
+    }, store_slug, { phone: leadPhone, name: leadName || undefined });
+  }, [isMounted, isLoadingOverall, cartItems, leadPhone, leadName, calculations.subtotal, storeCurrency, store_slug]);
 
   // Check minimum order amount - WITHOUT NOTIFICATION
   useEffect(() => {
@@ -483,12 +501,21 @@ export default function CheckoutPage() {
           return notify.error(t.checkout.failedCreateCustomer);
         }
 
+        // Everything Meta can match on, hashed server-side — raises Event Match Quality.
+        const buyerIdentity = {
+          phone: values.phone,
+          name: values.name,
+          city: values.city,
+          postCode: values.postCode,
+          country: values.country,
+        };
+
         fbq(FbEvent.ADD_PAYMENT_INFO, {
           content_ids: cartItems.map((i) => i.variantId ?? i.productId),
           content_type: "product",
           value: calculations.totalPrice + shippingFee + taxAmount,
           currency: storeCurrency,
-        }, store_slug, { phone: values.phone });
+        }, store_slug, buyerIdentity);
 
         const result = await processOrder(
           formDataWithShipping,
@@ -528,7 +555,7 @@ export default function CheckoutPage() {
             value: calculations.totalPrice + shippingFee + taxAmount,
             currency: storeCurrency,
             order_id: result.orderNumber,
-          }, store_slug, { phone: values.phone });
+          }, store_slug, buyerIdentity);
         }
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));

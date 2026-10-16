@@ -36,8 +36,44 @@ export interface ProductStat {
   revenue: number;
 }
 
+/** One row per event name seen in the period — standard and custom events alike. */
+export interface EventSummary {
+  eventName: string;
+  count: number;
+  /** How many of them Meta's Conversions API confirmed receiving. */
+  capiDelivered: number;
+  lastSeen: string;
+}
+
+/**
+ * How well-identified the store's events are. `coverage[key]` is the share
+ * (0–1) of events that carried that identifier (fbp, fbc, ph, em, fn, ln, ct,
+ * zp, country, external_id, ip, ua). Only events recorded after identifiers
+ * started being logged count, so `total` can be less than the event total.
+ */
+export interface MatchQuality {
+  total: number;
+  coverage: Record<string, number>;
+}
+
+export interface CountStat {
+  name: string;
+  count: number;
+}
+
+export interface BrandStat {
+  name: string;
+  views: number;
+  cartAdds: number;
+}
+
 export interface PixelAnalyticsData {
   totals: Record<string, number>;
+  allEvents: EventSummary[];
+  matchQuality: MatchQuality;
+  searchTerms: CountStat[];
+  categories: CountStat[];
+  brands: BrandStat[];
   daily: PixelDailyCount[];
   totalRevenue: number;
   totalOrders: number;
@@ -141,6 +177,11 @@ export async function getPixelAnalytics(
   if (data.length === 0) {
     return {
       totals: {},
+      allEvents: [],
+      matchQuality: { total: 0, coverage: {} },
+      searchTerms: [],
+      categories: [],
+      brands: [],
       daily: [],
       totalRevenue: 0,
       totalOrders: 0,
@@ -187,6 +228,55 @@ export async function getPixelAnalytics(
   // --- Order-level stats ---
   let totalItems = 0;
   let orderCount = 0;
+
+  // --- Every event name, customer-data coverage, searches, categories, brands ---
+  const eventMap: Record<string, EventSummary> = {};
+  const matchCounts: Record<string, number> = {};
+  let matchTotal = 0;
+  const searchMap: Record<string, number> = {};
+  const categoryMap: Record<string, number> = {};
+  const brandMap: Record<string, BrandStat> = {};
+
+  data.forEach((row) => {
+    const meta = row.metadata as Record<string, unknown> | null;
+
+    // All events
+    if (!eventMap[row.event_name]) {
+      eventMap[row.event_name] = { eventName: row.event_name, count: 0, capiDelivered: 0, lastSeen: row.created_at };
+    }
+    const summary = eventMap[row.event_name];
+    summary.count++;
+    if (row.capi_delivered) summary.capiDelivered++;
+    summary.lastSeen = row.created_at; // rows are oldest-first, so the last one wins
+
+    // Customer-data coverage (older rows have no _match and are left out)
+    if (Array.isArray(meta?._match)) {
+      matchTotal++;
+      (meta._match as unknown[]).forEach((key) => {
+        if (typeof key === "string") matchCounts[key] = (matchCounts[key] ?? 0) + 1;
+      });
+    }
+
+    // Search terms
+    if (row.event_name === "Search" && typeof meta?.search_string === "string") {
+      const term = meta.search_string.trim().toLowerCase();
+      if (term) searchMap[term] = (searchMap[term] ?? 0) + 1;
+    }
+
+    // Categories browsed
+    if (row.event_name === "ViewCategory" && typeof meta?.content_category === "string") {
+      const cat = meta.content_category.trim();
+      if (cat) categoryMap[cat] = (categoryMap[cat] ?? 0) + 1;
+    }
+
+    // Brands — carried on product views and add-to-carts
+    const brandName = typeof meta?.brand === "string" ? meta.brand.trim() : "";
+    if (brandName && (row.event_name === "ViewContent" || row.event_name === "AddToCart")) {
+      if (!brandMap[brandName]) brandMap[brandName] = { name: brandName, views: 0, cartAdds: 0 };
+      if (row.event_name === "ViewContent") brandMap[brandName].views++;
+      else brandMap[brandName].cartAdds++;
+    }
+  });
 
   data.forEach((row) => {
     const meta = row.metadata as Record<string, unknown> | null;
@@ -278,8 +368,26 @@ export async function getPixelAnalytics(
     .sort((a, b) => b.revenue - a.revenue || b.purchases - a.purchases || b.views - a.views)
     .slice(0, 10);
 
+  const topCounts = (map: Record<string, number>): CountStat[] =>
+    Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+  const coverage: Record<string, number> = {};
+  Object.entries(matchCounts).forEach(([key, count]) => {
+    coverage[key] = matchTotal > 0 ? count / matchTotal : 0;
+  });
+
   return {
     totals,
+    allEvents: Object.values(eventMap).sort((a, b) => b.count - a.count),
+    matchQuality: { total: matchTotal, coverage },
+    searchTerms: topCounts(searchMap),
+    categories: topCounts(categoryMap),
+    brands: Object.values(brandMap)
+      .sort((a, b) => b.cartAdds - a.cartAdds || b.views - a.views)
+      .slice(0, 10),
     daily,
     totalRevenue,
     totalOrders: orderCount,

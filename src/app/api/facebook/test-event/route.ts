@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
-import { sendConversionApiEvent } from "@/lib/utils/fbConversionApi";
+import { sendConversionApiEvent, pickClientIp } from "@/lib/utils/fbConversionApi";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       testEventCode: settings.facebook_test_event_code,
       eventName: "TestEvent",
       eventId: `test-${Date.now()}`,
-      clientIpAddress: req.headers.get("x-forwarded-for"),
+      clientIpAddress: pickClientIp(req.headers.get("x-forwarded-for")),
       clientUserAgent: req.headers.get("user-agent"),
       customData: { test: true },
     });

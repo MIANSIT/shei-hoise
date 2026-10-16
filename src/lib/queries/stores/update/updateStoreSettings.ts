@@ -56,6 +56,9 @@ export async function updateStoreSettings(
   // never needs it, and it should never round-trip into client state.
   if (data) {
     data.facebook_capi_access_token = null;
+    // The Facebook ads token (see facebookAds queries) lives in the same row
+    // and `select("*")` returns it — strip it for the same reason.
+    delete (data as Record<string, unknown>).facebook_ads_access_token;
   }
 
   return data;

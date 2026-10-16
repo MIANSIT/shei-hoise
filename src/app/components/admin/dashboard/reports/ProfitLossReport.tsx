@@ -203,6 +203,7 @@ export default function ProfitLossReport() {
                 netChangePct: null,
                 deliveryCost: report.deliveryNetCost,
                 allSales: report.salesAll,
+                dayCount: range[1].startOf("day").diff(range[0].startOf("day"), "day") + 1,
               }}
             />
 

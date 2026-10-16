@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 import {
   FaFacebookF,
   FaInstagram,
@@ -79,6 +80,10 @@ export default function StoreFooter({
   //   newsletterCTA,
 }: StoreFooterProps) {
   const t = useTranslation();
+
+  // A tap on the phone or email link is a shopper reaching out — tell Meta.
+  const trackContact = (method: "phone" | "email") =>
+    fbq(FbEvent.CONTACT, { contact_method: method }, storeSlug);
 
   // The storefront layout is cached, so the server-rendered links can be stale.
   // Refetch them live in the browser; the cached props are just the first paint.
@@ -267,6 +272,7 @@ export default function StoreFooter({
                   <FiMail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <a
                     href={`mailto:${contactEmail}`}
+                    onClick={() => trackContact("email")}
                     className="text-footer-foreground/70 hover:text-primary transition-colors"
                   >
                     {contactEmail}
@@ -278,6 +284,7 @@ export default function StoreFooter({
                   <FiPhone className="w-5 h-5 text-primary shrink-0" />
                   <a
                     href={`tel:${contactPhone}`}
+                    onClick={() => trackContact("phone")}
                     className="text-footer-foreground/70 hover:text-primary transition-colors"
                   >
                     {contactPhone}
@@ -416,6 +423,7 @@ export default function StoreFooter({
                   <li>
                     <a
                       href={`mailto:${contactEmail}`}
+                      onClick={() => trackContact("email")}
                       className="text-sm text-footer-foreground/70 hover:text-primary transition-colors flex items-center gap-2"
                     >
                       <FiMail className="w-4 h-4" />
@@ -427,6 +435,7 @@ export default function StoreFooter({
                   <li>
                     <a
                       href={`tel:${contactPhone}`}
+                      onClick={() => trackContact("phone")}
                       className="text-sm text-footer-foreground/70 hover:text-primary transition-colors flex items-center gap-2"
                     >
                       <FiPhone className="w-4 h-4" />

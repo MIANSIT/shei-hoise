@@ -244,6 +244,15 @@ export async function handleRiskAndPurchaseEvent(
         order_id: existingOrder.order_number,
         num_items: numItems,
       },
+      // No browser is involved days later, so the customer's saved delivery
+      // details are the only thing Meta has to match this purchase to an ad click.
+      customer: {
+        phone: existingOrder.shipping_address?.phone,
+        email: existingOrder.shipping_address?.email,
+        name: existingOrder.shipping_address?.customer_name,
+        city: existingOrder.shipping_address?.city,
+        country: existingOrder.shipping_address?.country,
+      },
     });
 
     await supabaseAdmin
