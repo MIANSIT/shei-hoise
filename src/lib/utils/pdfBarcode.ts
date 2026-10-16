@@ -8,23 +8,34 @@
 import { JsPDFInstance } from "./pdfText";
 import { encodeCode128B } from "./barcode128";
 
-/** Draws a barcode `widthMm` wide and `heightMm` tall (the human-readable text line is drawn separately by the caller, not included in heightMm). */
+/**
+ * Draws a barcode whose narrowest bar is `moduleWidthMm` wide, left edge at
+ * `xMm`, `heightMm` tall (the human-readable text line is drawn separately by
+ * the caller, not included in heightMm). Callers pick a module width that is a
+ * whole number of printer dots, so every bar prints at the same width.
+ * Returns the total drawn width so the caller can centre it.
+ */
 export function drawBarcodeVector(
   doc: JsPDFInstance,
   value: string,
   xMm: number,
   yMm: number,
-  widthMm: number,
+  moduleWidthMm: number,
   heightMm: number,
-): void {
+): number {
   const pattern = encodeCode128B(value);
-  const moduleWidthMm = widthMm / pattern.modules;
 
-  doc.setFillColor(255, 255, 255);
-  doc.rect(xMm, yMm, widthMm, heightMm, "F");
+  // Adjacent dark modules are merged into one rectangle so no hairline gaps
+  // appear between them and bar edges stay exactly on the module grid.
   doc.setFillColor(0, 0, 0);
-  for (let i = 0; i < pattern.modules; i++) {
-    if (!pattern.isDark(i)) continue;
-    doc.rect(xMm + i * moduleWidthMm, yMm, moduleWidthMm + 0.02, heightMm, "F");
+  let runStart = -1;
+  for (let i = 0; i <= pattern.modules; i++) {
+    const dark = i < pattern.modules && pattern.isDark(i);
+    if (dark && runStart < 0) runStart = i;
+    if (!dark && runStart >= 0) {
+      doc.rect(xMm + runStart * moduleWidthMm, yMm, (i - runStart) * moduleWidthMm, heightMm, "F");
+      runStart = -1;
+    }
   }
+  return pattern.modules * moduleWidthMm;
 }

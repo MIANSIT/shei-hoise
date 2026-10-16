@@ -27,6 +27,9 @@ import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRating
 import { StarRating } from "@/app/components/products/reviews/StarRating";
 import { Product } from "@/lib/types/product";
 import { Category } from "@/lib/types/category";
+import type { StorefrontBrand } from "@/lib/types/brand";
+import { getStorefrontBrands } from "@/lib/queries/brands/getStorefrontBrands";
+import { BrandStrip } from "@/app/components/storefront/BrandStrip";
 import { StoreSettings } from "@/lib/types/store/store";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { StoreHomePageSkeleton } from "../components/skeletons/StoreHomePageSkeleton";
@@ -63,6 +66,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
   const [promoBanners, setPromoBanners] = useState<PromoBanner[]>([]);
   const [storefrontCoupons, setStorefrontCoupons] = useState<Coupon[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<StorefrontBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const initializedRef = useRef(false);
@@ -78,9 +82,10 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         setStoreData(fullStore);
         setStoreExists(true);
 
-        const [categoriesData, featured, storefrontBundles, settings, flashSale, storeRating, activeHeroSlides, liveCoupons, activePromoBanners] =
+        const [categoriesData, brandList, featured, storefrontBundles, settings, flashSale, storeRating, activeHeroSlides, liveCoupons, activePromoBanners] =
           await Promise.all([
             getCategoriesQuery(fullStore.id),
+            getStorefrontBrands(store_slug),
             getFeaturedProducts(store_slug, 5),
             getStorefrontBundles(store_slug, 4),
             getStoreSettings(fullStore.id),
@@ -92,6 +97,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           ]);
 
         if (categoriesData.data) setCategories(categoriesData.data);
+        setBrands(brandList);
         setBundles(storefrontBundles);
         setStoreSettings(settings);
         setFlashSaleProducts(flashSale);
@@ -364,7 +370,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           choice a visitor makes, before any product listing.
       ══════════════════════════════════════════ */}
       {categories.length > 0 && (
-        <section className="pt-8 sm:pt-14 pb-10 sm:pb-14">
+        <section className="pt-6 sm:pt-10 pb-6 sm:pb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeader
               eyebrow={t.home.browseCollection}
@@ -378,6 +384,25 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
         </section>
       )}
 
+      {/* ══════════════════════════════════════════
+          SHOP BY BRAND — logo cards, only for stores whose plan has brands
+          and who have added at least one active brand.
+      ══════════════════════════════════════════ */}
+      {brands.length > 0 && (
+        <section className="pb-6 sm:pb-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <SectionHeader
+              eyebrow={t.home.browseCollection}
+              title={t.home.shopByBrand}
+              href={`/${store_slug}/shop`}
+              ctaLabel={t.home.viewAll}
+            />
+
+            <BrandStrip brands={brands} storeSlug={store_slug} />
+          </div>
+        </section>
+      )}
+
       <PromoBannerSplit banners={promoBanners} />
 
       {/* ══════════════════════════════════════════
@@ -386,7 +411,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           Leads before bundles/featured: urgency sells first.
       ══════════════════════════════════════════ */}
       {flashSaleProducts.length > 0 && (
-        <section className="pt-8 sm:pt-16 pb-16 sm:pb-20">
+        <section className="pt-6 sm:pt-8 pb-8 sm:pb-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <FlashSaleHeader products={flashSaleProducts} />
 
@@ -422,7 +447,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
           than a background color swap.
       ══════════════════════════════════════════ */}
       {bundles.length > 0 && (
-        <section className="pt-8 sm:pt-16 pb-16 sm:pb-20">
+        <section className="pt-6 sm:pt-8 pb-8 sm:pb-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeader
               eyebrow={t.home.bundleEyebrow}
@@ -465,7 +490,7 @@ export default function StoreHomePage({ params }: StoreHomePageProps) {
       {/* ══════════════════════════════════════════
           FEATURED PRODUCTS — bento grid on all screens
       ══════════════════════════════════════════ */}
-      <section className={`${bundles.length > 0 ? "border-t border-stone-100 dark:border-gray-800/60 pt-10 sm:pt-16" : "pt-8 sm:pt-16"} pb-16 sm:pb-20`}>
+      <section className={`${bundles.length > 0 ? "border-t border-stone-100 dark:border-gray-800/60 pt-8 sm:pt-10" : "pt-6 sm:pt-8"} pb-10 sm:pb-12`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <SectionHeader

@@ -9,6 +9,7 @@ import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 import { getVariantListPrice } from "@/lib/utils/variantProductPricing";
+import { resolveProductBrandId } from "@/lib/queries/brands/brandAccess";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
 export type CreateProductResult =
@@ -85,6 +86,9 @@ async function createProductInternal(
     product = { ...product, meta_title: null, meta_description: null };
   }
 
+  // undefined = no brand to write (plan without brands, or none picked in the form).
+  const brandId = await resolveProductBrandId(product.store_id, subscription, product.brand_id);
+
   let productId: string | null = null;
   const insertedVariantIds: string[] = [];
 
@@ -140,6 +144,7 @@ async function createProductInternal(
       .insert({
         store_id: product.store_id,
         category_id: product.category_id,
+        ...(brandId !== undefined ? { brand_id: brandId } : {}),
         name: product.name.trim(),
         slug: product.slug.trim(),
         description: sanitizeHtml(product.description.trim()),

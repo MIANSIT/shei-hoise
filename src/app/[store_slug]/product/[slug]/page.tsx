@@ -2,9 +2,12 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import useCartStore from "@/lib/store/cartStore";
 import { getClientProductBySlug } from "@/lib/queries/products/getClientProductBySlug";
+import { getStorefrontBrands } from "@/lib/queries/brands/getStorefrontBrands";
+import type { StorefrontBrand } from "@/lib/types/brand";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getStoreSettings } from "@/lib/queries/stores/getStoreSettings";
 import { getProductRatingSummary } from "@/lib/queries/reviews/getProductRatingSummary";
@@ -317,6 +320,7 @@ export default function ProductPage() {
   >({});
   const [ratingSummary, setRatingSummary] = useState({ average: 0, total: 0 });
   const [soldCount, setSoldCount] = useState(0);
+  const [brand, setBrand] = useState<StorefrontBrand | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [descExpanded, setDescExpanded] = useState(false);
@@ -471,7 +475,16 @@ export default function ProductPage() {
           return;
         }
 
-        const [soldTotal, ratingTotals] = await Promise.all([soldCountPromise, ratingPromise]);
+        // Empty unless the store's plan has brands, so this shows nothing for
+        // stores without the feature. Never blocks or breaks the product page.
+        const brandPromise: Promise<StorefrontBrand | null> = productData.brand_id
+          ? getStorefrontBrands(store_slug)
+              .then((list) => list.find((b) => b.id === productData.brand_id) ?? null)
+              .catch(() => null)
+          : Promise.resolve(null);
+
+        const [soldTotal, ratingTotals, productBrand] = await Promise.all([soldCountPromise, ratingPromise, brandPromise]);
+        setBrand(productBrand);
         setSoldCount(soldTotal);
         setRatingSummary(ratingTotals);
 
@@ -703,6 +716,21 @@ export default function ProductPage() {
             <h1 className="text-[26px] sm:text-[28px] font-bold text-gray-900 dark:text-gray-50 leading-[1.2] tracking-[-0.02em] mb-3">
               {product.name}
             </h1>
+
+            {/* Brand (plan feature "brands") — links to the shop filtered by it */}
+            {brand && (
+              <Link
+                href={`/${store_slug}/shop?brand=${encodeURIComponent(brand.slug)}`}
+                className="mb-3 inline-flex items-center gap-2 rounded-full border border-gray-200 dark:border-gray-700 px-3 py-1 text-[12px] font-semibold text-gray-600 dark:text-gray-300 hover:border-primary transition-colors"
+              >
+                {brand.logo_url && (
+                  <span className="relative h-5 w-5 shrink-0">
+                    <Image src={brand.logo_url} alt="" fill className="object-contain" sizes="20px" />
+                  </span>
+                )}
+                {brand.name}
+              </Link>
+            )}
 
             {/* Price */}
             <div className="mb-4">

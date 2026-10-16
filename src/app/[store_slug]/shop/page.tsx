@@ -5,9 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../../components/products/ProductGrid";
-import ProductFilterSection, {
-  ALL_CATEGORIES,
-} from "@/app/components/products/ProductFilterSection";
+import ProductFilterSection, { ShopFilterSidebar } from "@/app/components/products/ProductFilterSection";
+import type { ShopFilterValues } from "@/app/components/products/ShopFilterPanel";
 import { StorePageSkeleton } from "../../components/skeletons/StorePageSkeleton";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
@@ -17,6 +16,8 @@ import {
 } from "@/lib/queries/products/clientGetProducts";
 import { Product } from "@/lib/types/product";
 import { Category } from "@/lib/types/category";
+import type { StorefrontBrand } from "@/lib/types/brand";
+import { getStorefrontBrands } from "@/lib/queries/brands/getStorefrontBrands";
 import NotFoundPage from "../../not-found";
 import { AddToCartType } from "@/lib/schema/checkoutSchema";
 import { Loader2 } from "lucide-react";
@@ -37,6 +38,28 @@ const SORT_OPTIONS: ProductSortOption[] = [
   "name_asc",
 ];
 
+/** "a,b,c" from the URL (?category= / ?brand=) to a de-duplicated list of slugs. */
+function parseListParam(value: string | null): string[] {
+  if (!value) return [];
+  return Array.from(new Set(value.split(",").map((v) => v.trim()).filter(Boolean)));
+}
+
+const sameList = (a: string[], b: string[]) => a.join(",") === b.join(",");
+
+/** ?min= / ?max= to a clean whole-taka string ("" when missing or not a number). */
+function parsePriceParam(value: string | null): string {
+  return value && /^\d{1,9}$/.test(value) ? String(Number(value)) : "";
+}
+
+/** The query's price range from the two filter strings; an empty side stays open. */
+function toPriceRange(min: string, max: string): { min?: number; max?: number } | undefined {
+  if (!min && !max) return undefined;
+  return {
+    ...(min ? { min: Number(min) } : {}),
+    ...(max ? { max: Number(max) } : {}),
+  };
+}
+
 /** Guards the ?sort= param — anything unrecognised falls back to the default. */
 function parseSortParam(value: string | null): ProductSortOption {
   return SORT_OPTIONS.find((o) => o === value) ?? "default";
@@ -53,15 +76,24 @@ export default function ShopPage({ params }: ShopPageProps) {
   const [storeExists, setStoreExists] = useState<boolean | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [brands, setBrands] = useState<StorefrontBrand[]>([]);
   const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Held as a category *slug* so a shared ?category= link survives the shop
-  // owner renaming the category.
-  const [activeCategory, setActiveCategory] = useState<string>(
-    searchParams.get("category") || ALL_CATEGORIES,
+  // Held as category *slugs* so a shared ?category= link survives the shop
+  // owner renaming a category. Several can be selected (?category=a,b); an
+  // empty list means no category filter.
+  const [activeCategories, setActiveCategories] = useState<string[]>(
+    parseListParam(searchParams.get("category")),
   );
+  // Brand *slugs* from ?brand= (plan feature "brands"); empty = every brand.
+  const [activeBrands, setActiveBrands] = useState<string[]>(
+    parseListParam(searchParams.get("brand")),
+  );
+  // Price range on the list price, whole taka from ?min= / ?max=; "" = open.
+  const [minPrice, setMinPrice] = useState<string>(parsePriceParam(searchParams.get("min")));
+  const [maxPrice, setMaxPrice] = useState<string>(parsePriceParam(searchParams.get("max")));
   const [searchQuery, setSearchQuery] = useState<string>(
     searchParams.get("search") || "",
   );
@@ -80,12 +112,18 @@ export default function ShopPage({ params }: ShopPageProps) {
   const initializedRef = useRef(false);
 
   const updateURLParams = (
-    category: string,
+    category: string[],
     search: string,
     sort: ProductSortOption,
+    brand: string[],
+    min: string,
+    max: string,
   ) => {
     const p = new URLSearchParams();
-    if (category !== ALL_CATEGORIES) p.set("category", category);
+    if (category.length > 0) p.set("category", category.join(","));
+    if (brand.length > 0) p.set("brand", brand.join(","));
+    if (min) p.set("min", min);
+    if (max) p.set("max", max);
     if (search.trim()) p.set("search", search.trim());
     if (sort !== "default") p.set("sort", sort);
     const qs = p.toString();
@@ -99,10 +137,12 @@ export default function ShopPage({ params }: ShopPageProps) {
   const loadProducts = useCallback(
     async (
       page: number,
-      category: string,
+      category: string[],
       search: string,
       sort: ProductSortOption,
       isInitialLoad: boolean = false,
+      brandIds: string[] = [],
+      priceRange?: { min?: number; max?: number },
     ) => {
       // Only "load more" is dropped while a request is in flight. A new
       // filter/search must always run — dropping it left the grid showing the
@@ -115,8 +155,7 @@ export default function ShopPage({ params }: ShopPageProps) {
         if (isInitialLoad) setLoading(true);
         else setLoadingMore(true);
 
-        const categoryFilter =
-          category === ALL_CATEGORIES ? undefined : category;
+        const categoryFilter = category.length > 0 ? category : undefined;
         const searchFilter = search.trim() || undefined;
 
         const result = await clientGetProducts(
@@ -126,6 +165,8 @@ export default function ShopPage({ params }: ShopPageProps) {
           categoryFilter,
           searchFilter,
           sort,
+          brandIds.length > 0 ? brandIds : undefined,
+          priceRange,
         );
 
         if (requestId !== requestIdRef.current) return;
@@ -165,10 +206,33 @@ export default function ShopPage({ params }: ShopPageProps) {
         storeIdRef.current = storeId;
         setStoreExists(true);
 
-        const [categoriesData] = await Promise.all([
+        // Brands are only fetched here; a ?brand= link needs them resolved
+        // before the first product load so it can filter by their ids.
+        const brandsPromise = getStorefrontBrands(store_slug);
+        const knownBrands = activeBrands.length > 0 ? await brandsPromise : [];
+        const initialBrands = activeBrands.filter((slug) => knownBrands.some((b) => b.slug === slug));
+        const initialBrandIds = initialBrands
+          .map((slug) => knownBrands.find((b) => b.slug === slug)?.id)
+          .filter((id): id is string => !!id);
+
+        const [categoriesData, brandList] = await Promise.all([
           getCategoriesQuery(storeId),
-          loadProducts(1, activeCategory, searchQuery, sortOption, true),
+          brandsPromise,
+          loadProducts(
+            1,
+            activeCategories,
+            searchQuery,
+            sortOption,
+            true,
+            initialBrandIds,
+            toPriceRange(minPrice, maxPrice),
+          ),
         ]);
+
+        setBrands(brandList);
+        // A ?brand= that isn't one of this store's brands (or the plan has no
+        // brands) is dropped rather than left filtering silently.
+        if (!sameList(initialBrands, activeBrands)) setActiveBrands(initialBrands);
 
         if (categoriesData.data) {
           setCategories(categoriesData.data);
@@ -177,14 +241,15 @@ export default function ShopPage({ params }: ShopPageProps) {
           // *name* (e.g. ?category=Men's%20Shirts). Swap it for the matching
           // slug so the pills highlight correctly and the URL self-heals —
           // the query resolved it either way, so nothing was broken meanwhile.
-          if (activeCategory !== ALL_CATEGORIES) {
-            const bySlug = categoriesData.data.find(
-              (c) => c.slug === activeCategory,
-            );
-            const byName = categoriesData.data.find(
-              (c) => c.name.toLowerCase() === activeCategory.toLowerCase(),
-            );
-            if (!bySlug && byName) setActiveCategory(byName.slug);
+          if (activeCategories.length > 0) {
+            const healed = activeCategories.map((value) => {
+              const bySlug = categoriesData.data.find((c) => c.slug === value);
+              const byName = categoriesData.data.find(
+                (c) => c.name.toLowerCase() === value.toLowerCase(),
+              );
+              return !bySlug && byName ? byName.slug : value;
+            });
+            if (!sameList(healed, activeCategories)) setActiveCategories(healed);
           }
         }
       } catch (err) {
@@ -194,9 +259,12 @@ export default function ShopPage({ params }: ShopPageProps) {
     }
 
     init();
-    updateURLParams(activeCategory, searchQuery, sortOption);
+    updateURLParams(activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store_slug]);
+
+  const activeBrandIds = brands.filter((b) => activeBrands.includes(b.slug)).map((b) => b.id);
+  const priceRange = toPriceRange(minPrice, maxPrice);
 
   const isFirstFilterRun = useRef(true);
   useEffect(() => {
@@ -208,27 +276,38 @@ export default function ShopPage({ params }: ShopPageProps) {
 
     setCurrentPage(1);
     setHasMore(true);
-    loadProducts(1, activeCategory, searchQuery, sortOption, true);
-    updateURLParams(activeCategory, searchQuery, sortOption);
+    loadProducts(1, activeCategories, searchQuery, sortOption, true, activeBrandIds, priceRange);
+    updateURLParams(activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, searchQuery, sortOption]);
+  }, [activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice]);
 
   // The header search (and shared links) navigate to /shop?search=… while this
   // page may already be mounted — the initial useState values above only read
   // the URL once, so follow later URL changes here. Our own replaceState calls
   // keep the URL equal to state, which makes this a no-op for them.
-  const urlCategory = searchParams.get("category") || ALL_CATEGORIES;
+  const urlCategory = searchParams.get("category") || "";
   const urlSearch = searchParams.get("search") || "";
   const urlSort = parseSortParam(searchParams.get("sort"));
+  const urlBrand = searchParams.get("brand") || "";
+  const urlMin = parsePriceParam(searchParams.get("min"));
+  const urlMax = parsePriceParam(searchParams.get("max"));
   useEffect(() => {
     if (!initializedRef.current) return;
-    setActiveCategory((prev) => (prev === urlCategory ? prev : urlCategory));
+    const nextBrands = parseListParam(urlBrand);
+    const nextCategories = parseListParam(urlCategory);
+    setMinPrice(urlMin);
+    setMaxPrice(urlMax);
+    setActiveBrands((prev) => (sameList(prev, nextBrands) ? prev : nextBrands));
+    setActiveCategories((prev) => (sameList(prev, nextCategories) ? prev : nextCategories));
     setSearchQuery((prev) => (prev.trim() === urlSearch.trim() ? prev : urlSearch));
     setSortOption((prev) => (prev === urlSort ? prev : urlSort));
-  }, [urlCategory, urlSearch, urlSort]);
+  }, [urlCategory, urlSearch, urlSort, urlBrand, urlMin, urlMax]);
 
-  const handleCategoryChange = useCallback((categorySlug: string) => {
-    setActiveCategory(categorySlug);
+  const handleFiltersChange = useCallback((next: ShopFilterValues) => {
+    setActiveCategories(next.categories);
+    setActiveBrands(next.brands);
+    setMinPrice(next.minPrice);
+    setMaxPrice(next.maxPrice);
     setSearchQuery("");
   }, []);
 
@@ -238,7 +317,7 @@ export default function ShopPage({ params }: ShopPageProps) {
 
   const handleSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    setActiveCategory(ALL_CATEGORIES);
+    setActiveCategories([]);
     if (query.trim()) {
       fbq(FbEvent.SEARCH, { search_string: query.trim() }, store_slug);
     }
@@ -248,14 +327,16 @@ export default function ShopPage({ params }: ShopPageProps) {
     if (!hasMore || loadingMore || isLoadingRef.current) return;
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    await loadProducts(nextPage, activeCategory, searchQuery, sortOption, false);
+    await loadProducts(nextPage, activeCategories, searchQuery, sortOption, false, activeBrandIds, priceRange);
   }, [
     hasMore,
     loadingMore,
     currentPage,
-    activeCategory,
+    activeCategories,
     searchQuery,
     sortOption,
+    activeBrandIds,
+    priceRange,
     loadProducts,
   ]);
 
@@ -302,9 +383,18 @@ export default function ShopPage({ params }: ShopPageProps) {
     }
   };
 
-  // The empty state names the category the shopper sees, not its slug.
-  const activeCategoryName =
-    categories.find((c) => c.slug === activeCategory)?.name ?? activeCategory;
+  const filterValues: ShopFilterValues = {
+    categories: activeCategories,
+    brands: activeBrands,
+    minPrice,
+    maxPrice,
+  };
+
+  // The empty state names the filters the shopper sees, not their slugs.
+  const activeFilterNames = [
+    ...activeCategories.map((slug) => categories.find((c) => c.slug === slug)?.name ?? slug),
+    ...activeBrands.map((slug) => brands.find((b) => b.slug === slug)?.name ?? slug),
+  ].join(", ");
 
   if (loading && products.length === 0) return <StorePageSkeleton />;
   if (storeExists === false) return <NotFoundPage />;
@@ -315,12 +405,24 @@ export default function ShopPage({ params }: ShopPageProps) {
     <m.div
       className="min-h-screen bg-white dark:bg-gray-950" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.28, ease: "easeOut" }}
     >
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Filter Section */}
+      <div className="max-w-screen-2xl mx-auto flex items-start gap-8 px-4 sm:px-6 lg:px-8 py-6">
+        {/* Desktop filter column — beside the grid, so it never covers the header */}
+        <aside className="sticky top-24 hidden max-h-[calc(100vh-7rem)] w-64 shrink-0 overflow-y-auto pr-2 lg:block">
+          <ShopFilterSidebar
+            categories={categories}
+            brands={brands}
+            values={filterValues}
+            onFiltersChange={handleFiltersChange}
+          />
+        </aside>
+
+        <div className="min-w-0 flex-1">
+        {/* Toolbar: count, sort, applied chips, mobile Filter button */}
         <ProductFilterSection
-          activeCategory={activeCategory}
-          onCategoryChange={handleCategoryChange}
           categories={categories}
+          brands={brands}
+          values={filterValues}
+          onFiltersChange={handleFiltersChange}
           totalProducts={totalProducts}
           sortOption={sortOption}
           onSortChange={handleSortChange}
@@ -345,9 +447,9 @@ export default function ShopPage({ params }: ShopPageProps) {
             <p className="text-gray-700 dark:text-gray-200 font-semibold text-base">
               {searchQuery
                 ? `${t.shop.noResultsFor} "${searchQuery}"`
-                : activeCategory === ALL_CATEGORIES
-                  ? t.shop.noProducts
-                  : `${t.shop.nothingIn} "${activeCategoryName}" ${t.shop.yet}`.trim()}
+                : activeFilterNames
+                  ? `${t.shop.nothingIn} "${activeFilterNames}" ${t.shop.yet}`.trim()
+                  : t.shop.noProducts}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
               {t.shop.tryDifferent}
@@ -361,6 +463,7 @@ export default function ShopPage({ params }: ShopPageProps) {
               onAddToCart={handleAddToCart}
               loadingProductId={loadingProductId}
               productIndexOffset={(currentPage - 1) * ITEMS_PER_PAGE}
+              columnsClassName="md:grid-cols-3 xl:grid-cols-4"
             />
 
             {/* Load More */}
@@ -420,6 +523,7 @@ export default function ShopPage({ params }: ShopPageProps) {
             )}
           </>
         )}
+        </div>
       </div>
     </m.div>
   );

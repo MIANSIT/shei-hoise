@@ -28,26 +28,30 @@ const PAGE_HEIGHT_MM = 32;
 const MARGIN_MM = 2;
 const CONTENT_WIDTH_MM = PAGE_WIDTH_MM - MARGIN_MM * 2;
 
-// Below this, printed bars start losing definition on a typical label
-// printer (300dpi ≈ 0.085mm/dot — 0.25mm is still ~3 dots per module). A
-// long SKU is capped to the available width instead, same trade-off every
-// physical barcode sticker makes: keep SKUs short enough to print cleanly.
-const MIN_MODULE_WIDTH_MM = 0.25;
+// Bar widths are snapped to whole multiples of 0.254mm: that is exactly 2
+// dots on a 203dpi label printer and 3 dots on a 300dpi one, so every bar
+// prints the same width. A free-floating width (e.g. 0.317mm = 2.5 dots)
+// makes some bars 2 dots and others 3, which reads as a smeared/broken
+// barcode. Below one step the bars are too thin to print or scan, so a SKU
+// needing more modules than fit at one step is "too long" for this label.
+const MODULE_STEP_MM = 0.254;
 const BARCODE_HEIGHT_MM = 11;
 
+/** Widest whole-dot module width that fits `sku` in the label, or 0 if even one step doesn't fit. */
+function fittingModuleWidthMm(sku: string): number {
+  const steps = Math.floor(CONTENT_WIDTH_MM / (encodeCode128B(sku).modules * MODULE_STEP_MM));
+  return steps * MODULE_STEP_MM;
+}
+
 /**
- * True if `sku` is too long to hold MIN_MODULE_WIDTH_MM at this label's
- * content width — i.e. the printed bars will come out thinner than what a
- * typical label printer can reproduce distinctly, which reads as a
- * "broken"/garbled barcode on paper even though the encoded data underneath
- * is correct. There's a hard physical limit here (233 CODE128 modules for an
- * 18-character SKU need 58mm of bars at 0.25mm/module — more than this
- * entire 50mm-wide label, margins included), so the fix for a `true` here is
- * a shorter SKU, not different drawing code.
+ * True if `sku` needs more modules than fit at the minimum printable bar
+ * width on this label — the printed bars would come out too thin to
+ * reproduce distinctly, which reads as a "broken" barcode on paper even
+ * though the encoded data is correct. Digit runs are already compressed
+ * (CODE128 subset C); beyond that the fix is a shorter SKU.
  */
 export function isSkuTooLongForBarcodeLabel(sku: string): boolean {
-  const requiredWidthMm = encodeCode128B(sku).modules * MIN_MODULE_WIDTH_MM;
-  return requiredWidthMm > CONTENT_WIDTH_MM;
+  return fittingModuleWidthMm(sku) === 0;
 }
 
 function drawLabel(
@@ -77,14 +81,13 @@ function drawLabel(
   doc.text(nameLines[0], PAGE_WIDTH_MM / 2, y + 1.8, { align: "center" });
   y += 3.6;
 
-  // Always drawn at the full content width — there's no room to grow into
-  // on a fixed 50mm label regardless of SKU length. A SKU long enough to
-  // fall under MIN_MODULE_WIDTH_MM at this width (see
-  // isSkuTooLongForBarcodeLabel) still gets its best-effort barcode here
-  // rather than nothing, but the caller should have already warned that
-  // it may not scan reliably — no amount of clever layout fits more bars
-  // into the same physical millimeters.
-  drawBarcodeVector(doc, data.sku, MARGIN_MM, y, CONTENT_WIDTH_MM, BARCODE_HEIGHT_MM);
+  // Widest whole-dot module that fits, centred so the quiet zone is equal on
+  // both sides. A SKU too long even for one step (see
+  // isSkuTooLongForBarcodeLabel) still gets a best-effort barcode here, but
+  // the caller should have already warned that it may not scan reliably.
+  const moduleWidthMm = fittingModuleWidthMm(data.sku) || MODULE_STEP_MM;
+  const barcodeWidthMm = encodeCode128B(data.sku).modules * moduleWidthMm;
+  drawBarcodeVector(doc, data.sku, (PAGE_WIDTH_MM - barcodeWidthMm) / 2, y, moduleWidthMm, BARCODE_HEIGHT_MM);
   y += BARCODE_HEIGHT_MM + 1.5;
 
   doc.setFontSize(7);

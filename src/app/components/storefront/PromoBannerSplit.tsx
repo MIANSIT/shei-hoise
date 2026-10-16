@@ -19,7 +19,7 @@ export function PromoBannerSplit({ banners }: PromoBannerSplitProps) {
   if (shown.length === 0) return null;
 
   return (
-    <section className="pt-8 sm:pt-14 pb-10 sm:pb-14">
+    <section className="pt-6 sm:pt-8 pb-8 sm:pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-5 sm:mb-9">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-stone-400 dark:text-gray-500 mb-1 sm:mb-1.5">

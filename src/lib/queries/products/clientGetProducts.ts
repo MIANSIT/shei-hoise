@@ -48,9 +48,14 @@ export async function clientGetProducts(
   store_slug: string,
   page: number = 1,
   limit: number = 5,
-  categorySlug?: string,
+  /** One category slug, or several (shop multi-select). Names still resolve as a fallback for old links. */
+  categorySlug?: string | string[],
   searchQuery?: string,
-  sortOption: ProductSortOption = "default"
+  sortOption: ProductSortOption = "default",
+  /** Only products of these brands (plan feature "brands"); the caller resolves ids from the store's brand list. */
+  brandIds?: string[],
+  /** Price range on the list price (`base_price`), whole taka; omit a side to leave it open. */
+  priceRange?: { min?: number; max?: number }
 ): Promise<{ products: Product[]; hasMore: boolean; totalCount: number }> {
 
   try {
@@ -105,34 +110,34 @@ export async function clientGetProducts(
       .eq("store_id", storeId)
       .eq("status", ProductStatus.ACTIVE);
 
+    if (brandIds?.length) query = query.in("brand_id", brandIds);
+    if (priceRange?.min !== undefined) query = query.gte("base_price", priceRange.min);
+    if (priceRange?.max !== undefined) query = query.lte("base_price", priceRange.max);
+
     // Apply category filter — resolved by slug, so a renamed category doesn't
     // break links already shared with a ?category= in them. Older links (and
     // any caller still passing a display name) still resolve via the name
-    // fallback below.
-    let categoryId: string | undefined;
-    if (categorySlug && categorySlug !== "all") {
-      const { data: categoryData } = await supabase
+    // fallback below. Several categories are OR-ed together.
+    const requestedCategories = (Array.isArray(categorySlug) ? categorySlug : categorySlug ? [categorySlug] : [])
+      .filter((value) => value && value !== "all");
+    let categoryIds: string[] = [];
+    if (requestedCategories.length > 0) {
+      const { data: storeCategories } = await supabase
         .from("categories")
-        .select("id")
-        .eq("store_id", storeId)
-        .eq("slug", categorySlug)
-        .maybeSingle();
+        .select("id, slug, name")
+        .eq("store_id", storeId);
 
-      const category =
-        categoryData ??
-        (
-          await supabase
-            .from("categories")
-            .select("id")
-            .eq("store_id", storeId)
-            .eq("name", categorySlug)
-            .maybeSingle()
-        ).data;
+      categoryIds = requestedCategories
+        .map((value) => {
+          const list = storeCategories ?? [];
+          return (
+            list.find((c) => c.slug === value) ??
+            list.find((c) => c.name === value)
+          )?.id;
+        })
+        .filter((id): id is string => !!id);
 
-      if (category) {
-        categoryId = category.id;
-        query = query.eq("category_id", category.id);
-      }
+      if (categoryIds.length > 0) query = query.in("category_id", categoryIds);
     }
 
     // A typed search resolves matching ids itself (substring or
@@ -146,7 +151,7 @@ export async function clientGetProducts(
     if (isSearching) {
       relevanceOrder = await searchProductIds(storeId, searchQuery!, {
         statusEq: ProductStatus.ACTIVE,
-        categoryId,
+        categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
       });
       if (relevanceOrder.length === 0) {
         return { products: [], hasMore: false, totalCount: 0 };

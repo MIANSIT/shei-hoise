@@ -113,6 +113,15 @@ export const PERMISSION_AREAS: readonly PermissionArea[] = [
     extras: [],
   },
   {
+    key: "brands",
+    label: "Brands",
+    labelBn: "ব্র্যান্ড",
+    hint: "Product brands and logos (only with brands turned on in your plan)",
+    hintBn: "পণ্যের ব্র্যান্ড ও লোগো (প্ল্যানে ব্র্যান্ড চালু থাকলে)",
+    actions: ["view", "add", "edit", "delete"],
+    extras: [],
+  },
+  {
     key: "stock",
     label: "Stock",
     labelBn: "স্টক",
@@ -227,7 +236,7 @@ export const PERMISSION_SECTIONS: readonly PermissionSection[] = [
     key: "catalog",
     label: "Products & stock",
     labelBn: "পণ্য ও স্টক",
-    areas: ["products", "categories", "stock", "transfers", "reviews"],
+    areas: ["products", "categories", "brands", "stock", "transfers", "reviews"],
   },
   {
     key: "money",

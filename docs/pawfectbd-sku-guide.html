@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pawfect-BD SKU Guide</title>
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --text: #2a211c;
+    --muted: #7a6f66;
+    --line: #e6ddd2;
+    --brand: #5a3a28;
+    --accent: #e8573f;
+    --ok: #1f8a4c;
+    --bad: #c0392b;
+    --chip: #f1e9de;
+    --code-bg: #2a211c;
+    --code-fg: #fff7ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17120f;
+      --card: #221b17;
+      --text: #f3ebe2;
+      --muted: #a89c91;
+      --line: #3a2f28;
+      --brand: #e7c9ae;
+      --accent: #ff7a63;
+      --ok: #4cc27f;
+      --bad: #ff6b5b;
+      --chip: #2e2520;
+      --code-bg: #0f0b09;
+      --code-fg: #fff7ec;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+  header h1 { margin: 0 0 4px; font-size: 28px; color: var(--brand); }
+  header p { margin: 0; color: var(--muted); }
+  h2 { margin: 36px 0 12px; font-size: 20px; color: var(--brand); }
+  h3 { margin: 20px 0 8px; font-size: 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  code, .sku {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  .sku {
+    display: inline-block;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 6px;
+    padding: 1px 8px;
+    letter-spacing: .03em;
+    white-space: nowrap;
+  }
+  .formula {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .part {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 12px;
+    background: var(--chip);
+    text-align: center;
+    min-width: 76px;
+  }
+  .part b { display: block; font-size: 20px; color: var(--accent); }
+  .part span { font-family: system-ui, sans-serif; font-size: 12px; color: var(--muted); }
+  .dash { align-self: center; color: var(--muted); font-size: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  tr:last-child td { border-bottom: 0; }
+  .scroll { overflow-x: auto; }
+  .muted { color: var(--muted); }
+  .note {
+    border-left: 4px solid var(--accent);
+    background: var(--chip);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+  }
+  .pill {
+    display: inline-block; padding: 1px 8px; border-radius: 999px;
+    background: var(--chip); border: 1px solid var(--line); font-size: 12px; color: var(--muted);
+  }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+  input, select {
+    width: 100%; padding: 9px 10px; border-radius: 8px; font: inherit;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+  }
+  button {
+    font: inherit; cursor: pointer; border-radius: 8px; padding: 8px 14px;
+    border: 1px solid var(--line); background: var(--chip); color: var(--text);
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .result { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 14px; }
+  .result .sku { font-size: 22px; padding: 6px 14px; }
+  .status.ok { color: var(--ok); font-weight: 600; }
+  .status.bad { color: var(--bad); font-weight: 600; }
+  .brand-row { display: grid; grid-template-columns: 56px 1fr 36px; gap: 8px; margin-bottom: 6px; align-items: center; }
+  .brand-row .slot { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--accent); font-weight: 700; }
+  @media print {
+    :root { --bg: #fff; --card: #fff; --text: #000; --line: #bbb; --muted: #444; --brand: #000; --chip: #f2f2f2; }
+    .no-print { display: none !important; }
+    .card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Pawfect-BD SKU Guide</h1>
+  <p>One short, readable SKU for every product and variant. Built to print as a barcode on the 50×32&nbsp;mm label.</p>
+  <p class="no-print" style="margin-top:10px"><button onclick="window.print()">Print this guide</button></p>
+</header>
+
+<h2>1. The format</h2>
+<div class="card">
+  <div class="formula" aria-label="SKU format">
+    <div class="part"><b>C</b><span>Pet</span></div>
+    <div class="part"><b>LT</b><span>Category</span></div>
+    <div class="dash">-</div>
+    <div class="part"><b>03</b><span>Brand slot</span></div>
+    <div class="part"><b>01</b><span>Product no.</span></div>
+    <div class="dash">-</div>
+    <div class="part"><b>5L</b><span>Variant (optional)</span></div>
+  </div>
+  <p style="margin:14px 0 4px">Example: <span class="sku">CLT-0301-5L</span> = <b>C</b>at · <b>LT</b> litter · brand <b>03</b> (Captain Mew) · product <b>01</b> · <b>5L</b> pack.</p>
+  <p class="muted" style="margin:0">Product SKU = 8 characters. With a variant = at most 13 characters (variant is 1–4 characters). That is the longest that prints cleanly on the label.</p>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <h3 style="margin-top:0">Pet letter</h3>
+    <table>
+      <tr><td><span class="sku">C</span></td><td>Cat</td></tr>
+      <tr><td><span class="sku">D</span></td><td>Dog</td></tr>
+      <tr><td><span class="sku">B</span></td><td>Bird</td></tr>
+      <tr><td><span class="sku">A</span></td><td>All pets / other (e.g. universal accessories)</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">The 4-digit number = brand + product</h3>
+    <p style="margin:0 0 8px">First 2 digits are the <b>brand slot</b> (same brand = same slot in every category). Last 2 digits are the <b>product number</b> within that brand and category (01–99).</p>
+    <p style="margin:0" class="muted">Cozie is slot 01, so every Cozie litter is <code>CLT-01xx</code> and every Cozie cat food is <code>CFD-01xx</code>.</p>
+  </div>
+</div>
+
+<h2>2. The golden rule: product or variant?</h2>
+<div class="card">
+  <div class="grid g2">
+    <div>
+      <h3 style="margin-top:0">New product (new number)</h3>
+      <p style="margin:0">Anything that changes <b>what it is</b>: flavour, scent, type, formula.</p>
+      <p class="muted" style="margin:6px 0 0">Cozie Lavender and Cozie Lemon are two products: <span class="sku">CLT-0101</span> and <span class="sku">CLT-0102</span>.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Variant (suffix)</h3>
+      <p style="margin:0">Anything that changes <b>how much or what size</b>: weight, volume, pack count, clothing size, colour.</p>
+      <p class="muted" style="margin:6px 0 0">The 5 L and 10 L of Cozie Lavender: <span class="sku">CLT-0101-5L</span>, <span class="sku">CLT-0101-10L</span>.</p>
+    </div>
+  </div>
+  <div class="note">
+    <b>Many brands share the same sizes.</b> That is fine: <span class="sku">CLT-0101-5L</span> (Cozie), <span class="sku">CLT-0201-5L</span> (Clean Step) and <span class="sku">CLT-0301-5L</span> (Captain Mew) are all different SKUs because the brand slot comes before the size. The size suffix is the same for everyone, so it stays standard.
+  </div>
+</div>
+
+<h2>3. Brand slots</h2>
+<div class="card">
+  <p style="margin-top:0">One slot per brand, <b>shared across all pets and categories</b>. Slot <code>00</code> is for your own / unbranded products. Edit the names below, they are saved in this browser and used by the builder. Never reuse or reassign a slot.</p>
+  <div id="brands"></div>
+  <div class="no-print" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+    <button id="addBrand">+ Add next brand</button>
+    <button id="resetBrands">Reset to starter list</button>
+  </div>
+  <p class="muted" style="margin:10px 0 0; font-size:13px">Starter names are suggestions based on brands seen in the store. Replace them with your real list.</p>
+</div>
+
+<h2>4. Categories by pet</h2>
+<div id="categories" class="grid g3"></div>
+
+<h2>5. Standard variant suffixes</h2>
+<div class="card scroll">
+  <table>
+    <thead><tr><th>Kind</th><th>Suffixes</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Weight</td><td><code>85G 100G 200G 500G 1K 1K5 2K 5K 10K 15K 20K</code></td><td>G = grams, K = kg, <code>1K5</code> = 1.5 kg</td></tr>
+      <tr><td>Volume</td><td><code>5L 10L 20L 500M</code></td><td>L = litres, M after a number = millilitres</td></tr>
+      <tr><td>Pack count</td><td><code>6P 12P 24P</code></td><td>P = pieces in the pack (cans, pouches)</td></tr>
+      <tr><td>Clothing / collar size</td><td><code>XS S M L XL 2XL</code></td><td>Dress and accessories</td></tr>
+      <tr><td>Colour</td><td><code>RED BLU PNK BLK WHT GRN YEL</code></td><td>First 3 letters</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin:10px 0 0">Keep every suffix to 4 characters or fewer. Use one suffix per variant (a product with both size and colour: make the colour a separate product, size stays the variant).</p>
+</div>
+
+<h2>6. Worked examples</h2>
+<div class="card scroll">
+  <table>
+    <thead><tr><th>SKU</th><th>Product</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sku">CLT-0101</span></td><td>Cozie litter, Lavender (product)</td></tr>
+      <tr><td><span class="sku">CLT-0101-5L</span></td><td>Cozie litter, Lavender, 5 L</td></tr>
+      <tr><td><span class="sku">CLT-0101-10L</span></td><td>Cozie litter, Lavender, 10 L</td></tr>
+      <tr><td><span class="sku">CLT-0102-5L</span></td><td>Cozie litter, Lemon, 5 L</td></tr>
+      <tr><td><span class="sku">CLT-0201-5L</span></td><td>Clean Step litter, first product, 5 L</td></tr>
+      <tr><td><span class="sku">CLT-0301-5L</span></td><td>Captain Mew litter, first product, 5 L</td></tr>
+      <tr><td><span class="sku">DFD-0401-15K</span></td><td>Dog dry food, brand 04, first product, 15 kg</td></tr>
+      <tr><td><span class="sku">CWF-0501-12P</span></td><td>Cat wet food, brand 05, first product, 12-pack</td></tr>
+      <tr><td><span class="sku">CDR-0001-M</span></td><td>Cat dress (own brand), size M</td></tr>
+      <tr><td><span class="sku">BFD-0201-1K</span></td><td>Bird food, brand 02, first product, 1 kg</td></tr>
+      <tr><td><span class="sku">AAC-0001</span></td><td>Universal accessory, own brand</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>7. SKU builder</h2>
+<div class="card no-print">
+  <div class="grid g3">
+    <div><label for="pet">Pet</label><select id="pet"></select></div>
+    <div><label for="cat">Category</label><select id="cat"></select></div>
+    <div><label for="brand">Brand</label><select id="brand"></select></div>
+    <div><label for="prod">Product number (1–99)</label><input id="prod" type="number" min="1" max="99" value="1"></div>
+    <div><label for="variant">Variant (optional, up to 4 characters)</label><input id="variant" maxlength="4" placeholder="5L" list="variants" autocomplete="off"></div>
+  </div>
+  <datalist id="variants">
+    <option value="85G"><option value="500G"><option value="1K"><option value="2K"><option value="5K"><option value="10K"><option value="15K">
+    <option value="5L"><option value="10L"><option value="500M"><option value="6P"><option value="12P">
+    <option value="S"><option value="M"><option value="L"><option value="XL">
+  </datalist>
+  <div class="result">
+    <span class="sku" id="out">CLT-0101</span>
+    <button class="primary" id="copy">Copy</button>
+    <span id="status" class="status"></span>
+  </div>
+  <p class="muted" id="detail" style="margin:8px 0 0"></p>
+</div>
+
+<h2>8. Rules</h2>
+<div class="card">
+  <ul style="margin:0; padding-left:20px">
+    <li>Uppercase letters, digits and dashes only. No spaces, no Bangla characters.</li>
+    <li>Maximum <b>13 characters</b>. The barcode label cannot print longer SKUs at a width a scanner can read.</li>
+    <li>One SKU = one sellable thing. Never reuse a SKU, even for a discontinued product. Keep counting up.</li>
+    <li>Add a new brand by taking the next free slot, then write it in the brand list above.</li>
+    <li>A brand with more than 99 products in one category: give it a second slot in the register (e.g. “Cozie 2”).</li>
+    <li>Brand and flavour live in the product name too, so staff can find a product by searching either the SKU or the name.</li>
+  </ul>
+</div>
+
+</div>
+
+<script>
+(function () {
+  var PETS = { C: "Cat", D: "Dog", B: "Bird", A: "All pets / other" };
+  var CATS = {
+    C: [
+      ["FD", "Dry food", "kibble, dry"],
+      ["WF", "Wet food", "cans, pouches"],
+      ["TR", "Treats", "snacks, creamy treats"],
+      ["LT", "Litter", "all litter brands"],
+      ["TY", "Toys", "balls, wands, scratchers"],
+      ["GR", "Grooming & hygiene", "brushes, shampoo, wipes"],
+      ["AC", "Accessories", "bowls, beds, carriers, collars"],
+      ["DR", "Dress", "cat clothing"],
+      ["HL", "Health & supplements", "vitamins, flea & tick"],
+      ["BN", "Bundles", "multi-product bundles"]
+    ],
+    D: [
+      ["FD", "Dry food", "kibble, dry"],
+      ["WF", "Wet food", "cans, pouches"],
+      ["TR", "Treats", "biscuits, chews"],
+      ["TY", "Toys", "balls, ropes, chew toys"],
+      ["GR", "Grooming & hygiene", "brushes, shampoo, wipes"],
+      ["AC", "Accessories", "collars, leashes, bowls, beds, pads"],
+      ["DR", "Dress", "dog clothing"],
+      ["HL", "Health & supplements", "vitamins, flea & tick"],
+      ["BN", "Bundles", "multi-product bundles"]
+    ],
+    B: [
+      ["FD", "Food", "seed, pellets"],
+      ["TR", "Treats", "millet, snacks"],
+      ["TY", "Toys", "swings, mirrors, bells"],
+      ["AC", "Accessories", "cages, perches, feeders"],
+      ["HL", "Health & supplements", "vitamins, minerals"],
+      ["BN", "Bundles", "multi-product bundles"]
+    ],
+    A: [
+      ["AC", "Accessories", "universal items"],
+      ["GR", "Grooming & hygiene", "universal items"],
+      ["HL", "Health & supplements", "universal items"],
+      ["BN", "Bundles", "mixed-pet bundles"]
+    ]
+  };
+  var STARTER = ["Pawfect-BD (own / unbranded)", "Cozie", "Clean Step", "Captain Mew", "Drools", "Keyf"];
+  var KEY = "pawfectbd-sku-brands-v1";
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  function loadBrands() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    } catch (e) { /* storage unavailable: fall back to the starter list */ }
+    return STARTER.slice();
+  }
+  function saveBrands() {
+    try { localStorage.setItem(KEY, JSON.stringify(brands)); } catch (e) { /* ignore */ }
+  }
+
+  var brands = loadBrands();
+
+  // --- Categories ---
+  var catBox = document.getElementById("categories");
+  Object.keys(PETS).forEach(function (p) {
+    var card = document.createElement("div");
+    card.className = "card";
+    var rows = CATS[p].map(function (c) {
+      return "<tr><td><span class='sku'>" + p + c[0] + "</span></td><td><b>" + c[1] +
+        "</b><br><span class='muted'>" + c[2] + "</span></td></tr>";
+    }).join("");
+    card.innerHTML = "<h3 style='margin-top:0'>" + PETS[p] + " <span class='pill'>" + p + "</span></h3>" +
+      "<table><tbody>" + rows + "</tbody></table>";
+    catBox.appendChild(card);
+  });
+
+  // --- Brand register ---
+  var brandBox = document.getElementById("brands");
+  function renderBrands() {
+    brandBox.innerHTML = "";
+    brands.forEach(function (name, i) {
+      var row = document.createElement("div");
+      row.className = "brand-row";
+      var slot = document.createElement("div");
+      slot.className = "slot";
+      slot.textContent = pad2(i);
+      var input = document.createElement("input");
+      input.value = name;
+      input.setAttribute("aria-label", "Brand for slot " + pad2(i));
+      input.addEventListener("input", function () {
+        brands[i] = input.value;
+        saveBrands();
+        fillBrandSelect();
+        update();
+      });
+      row.appendChild(slot);
+      row.appendChild(input);
+      brandBox.appendChild(row);
+    });
+  }
+  document.getElementById("addBrand").addEventListener("click", function () {
+    if (brands.length >= 100) return;
+    brands.push("");
+    saveBrands();
+    renderBrands();
+    fillBrandSelect();
+  });
+  document.getElementById("resetBrands").addEventListener("click", function () {
+    brands = STARTER.slice();
+    saveBrands();
+    renderBrands();
+    fillBrandSelect();
+    update();
+  });
+
+  // --- Builder ---
+  var petSel = document.getElementById("pet");
+  var catSel = document.getElementById("cat");
+  var brandSel = document.getElementById("brand");
+  var prodIn = document.getElementById("prod");
+  var varIn = document.getElementById("variant");
+  var out = document.getElementById("out");
+  var status = document.getElementById("status");
+  var detail = document.getElementById("detail");
+
+  Object.keys(PETS).forEach(function (p) {
+    var o = document.createElement("option");
+    o.value = p; o.textContent = p + " - " + PETS[p];
+    petSel.appendChild(o);
+  });
+  petSel.value = "C";
+
+  function fillCats() {
+    var keep = catSel.value;
+    catSel.innerHTML = "";
+    CATS[petSel.value].forEach(function (c) {
+      var o = document.createElement("option");
+      o.value = c[0]; o.textContent = c[0] + " - " + c[1];
+      catSel.appendChild(o);
+    });
+    if (keep) catSel.value = keep;
+    if (!catSel.value) catSel.selectedIndex = 0;
+  }
+  function fillBrandSelect() {
+    var keep = brandSel.value;
+    brandSel.innerHTML = "";
+    brands.forEach(function (name, i) {
+      var o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = pad2(i) + " - " + (name || "(unnamed)");
+      brandSel.appendChild(o);
+    });
+    if (keep && brandSel.querySelector("option[value='" + keep + "']")) brandSel.value = keep;
+  }
+
+  function update() {
+    var prod = Math.min(99, Math.max(1, parseInt(prodIn.value, 10) || 1));
+    var variant = varIn.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+    var sku = petSel.value + catSel.value + "-" + pad2(parseInt(brandSel.value, 10) || 0) + pad2(prod) +
+      (variant ? "-" + variant : "");
+    out.textContent = sku;
+    var fits = sku.length <= 13;
+    status.textContent = fits ? "Fits the barcode label" : "Too long for the barcode label";
+    status.className = "status " + (fits ? "ok" : "bad");
+    var b = brands[parseInt(brandSel.value, 10)] || "";
+    detail.textContent = sku.length + " characters. " + PETS[petSel.value] + ", " +
+      catSel.options[catSel.selectedIndex].textContent.split(" - ")[1] +
+      (b ? ", " + b : "") + ", product " + pad2(prod) + (variant ? ", variant " + variant : "") + ".";
+  }
+
+  petSel.addEventListener("change", function () { fillCats(); update(); });
+  [catSel, brandSel, prodIn, varIn].forEach(function (el) {
+    el.addEventListener("input", update);
+    el.addEventListener("change", update);
+  });
+  document.getElementById("copy").addEventListener("click", function () {
+    var btn = this;
+    function done() { btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1200); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(out.textContent).then(done, function () {});
+    }
+  });
+
+  renderBrands();
+  fillCats();
+  fillBrandSelect();
+  brandSel.value = "1";
+  catSel.value = "LT";
+  update();
+})();
+</script>
+</body>
+</html>

@@ -15,6 +15,9 @@
  */
 
 const START_B = 104;
+const START_C = 105;
+const CODE_B = 100;
+const CODE_C = 99;
 const STOP = 106;
 const MODULO = 103;
 
@@ -63,28 +66,68 @@ export function isBarcode128Encodable(value: string): boolean {
 }
 
 /**
- * Encodes `value` as CODE128 Subset B. Throws if it contains a character
- * outside printable ASCII (32–126) — call {@link isBarcode128Encodable}
- * first wherever a SKU might legitimately fail this and needs a friendly
- * message instead of a thrown error.
+ * Encodes `value` as CODE128, starting in Subset B and switching to Subset C
+ * for runs of digits — C packs two digits into one 11-module symbol, so a
+ * numeric SKU (or the numeric part of one) prints about half as wide. That
+ * matters on a 50mm sticker, where every extra module makes each bar thinner.
+ * Throws if it contains a character outside printable ASCII (32–126) — call
+ * {@link isBarcode128Encodable} first wherever a SKU might legitimately fail
+ * this and needs a friendly message instead of a thrown error.
  */
 export function encodeCode128B(value: string): Barcode128Pattern {
   if (!isBarcode128Encodable(value)) {
     throw new Error("Barcode text must be plain ASCII (letters, digits, common punctuation).");
   }
 
-  const values = value.split("").map((ch) => ch.charCodeAt(0) - 32);
-  let checksum = START_B;
-  values.forEach((v, i) => {
-    checksum += v * (i + 1);
-  });
+  // A digit run is worth switching to Subset C for at 4+ digits at the very
+  // start, or 6+ digits mid-value (the switch symbol itself costs one symbol).
+  const digitRunAt = (from: number): number => {
+    let n = 0;
+    while (from + n < value.length && value[from + n] >= "0" && value[from + n] <= "9") n++;
+    return n;
+  };
+
+  const codes: number[] = [];
+  let inC = false;
+  let i = 0;
+  while (i < value.length) {
+    const run = digitRunAt(i);
+    if (!inC && run >= (i === 0 ? 4 : 6)) {
+      // Odd-length run: leave one digit to Subset B so the rest pairs up evenly.
+      if (run % 2 === 1) {
+        if (i === 0) codes.push(START_B);
+        codes.push(value.charCodeAt(i) - 32);
+        i++;
+        codes.push(CODE_C);
+      } else {
+        codes.push(i === 0 ? START_C : CODE_C);
+      }
+      inC = true;
+    } else if (i === 0) {
+      codes.push(START_B);
+    }
+
+    if (inC) {
+      if (digitRunAt(i) >= 2) {
+        codes.push(Number(value.slice(i, i + 2)));
+        i += 2;
+        continue;
+      }
+      codes.push(CODE_B);
+      inC = false;
+    }
+    codes.push(value.charCodeAt(i) - 32);
+    i++;
+  }
+
+  let checksum = codes[0];
+  for (let k = 1; k < codes.length; k++) checksum += codes[k] * k;
   checksum %= MODULO;
 
-  const codes = [START_B, ...values, checksum, STOP];
-  const bits = codes.map(moduleString).join("");
+  const bits = [...codes, checksum, STOP].map(moduleString).join("");
 
   return {
     modules: bits.length,
-    isDark: (i: number) => bits[i] === "1",
+    isDark: (idx: number) => bits[idx] === "1",
   };
 }

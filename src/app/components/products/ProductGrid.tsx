@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import ProductCard from "./shop/ProductCard";
 import { m, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { Product } from "@/lib/types/product";
 import {
   getProductRatingSummaries,
@@ -15,6 +16,8 @@ interface ProductGridProps {
   onAddToCart: (product: Product) => Promise<void>;
   loadingProductId: string | null;
   productIndexOffset?: number;
+  /** Column breakpoints for md and up (the grid is 2 columns below that); defaults to the full-width layout. */
+  columnsClassName?: string;
 }
 
 export default function ProductGrid({
@@ -23,6 +26,7 @@ export default function ProductGrid({
   loadingProductId,
   store_slug,
   productIndexOffset = 0,
+  columnsClassName,
 }: ProductGridProps) {
   const [ratings, setRatings] = useState<Record<string, RatingSummary>>({});
 
@@ -53,7 +57,10 @@ export default function ProductGrid({
       layout
       // 2 cols on mobile → 3 on md → 4 on lg → 5 on xl
       // gap-3 on mobile, gap-4 on sm+
-      className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 mt-4 sm:mt-6 mb-8 items-stretch"
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:gap-4 mt-4 sm:mt-6 mb-8 items-stretch",
+        columnsClassName ?? "md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+      )}
     >
       <AnimatePresence mode="popLayout">
         {products.map((product, index) => (

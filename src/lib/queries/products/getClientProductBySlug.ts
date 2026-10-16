@@ -46,6 +46,8 @@ interface Product {
   /** Waives the delivery fee for any order containing this product. */
   free_delivery: boolean;
   categories: { id: string; name: string }[];
+  /** Set when the product is tagged with a brand; shown only if the store's plan has brands. */
+  brand_id: string | null;
   product_images: { id: string; image_url: string; is_primary: boolean }[];
   product_inventory: {
     quantity_available: number;
@@ -79,6 +81,7 @@ export async function getClientProductBySlug(
       sale_ends_at,
       free_delivery,
       product_type,
+      brand_id,
       categories(id, name),
       product_images(id, image_url, is_primary),
       product_inventory(quantity_available, quantity_reserved),

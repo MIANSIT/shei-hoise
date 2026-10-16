@@ -188,6 +188,22 @@ CREATE TABLE IF NOT EXISTS "public"."categories" (
 ALTER TABLE "public"."categories" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."brands" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "name" character varying(255) NOT NULL,
+    "slug" character varying(255) NOT NULL,
+    "logo_url" "text",
+    "is_active" boolean DEFAULT true NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."brands" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."contact_us" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "full_name" "text" NOT NULL,
@@ -662,6 +678,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "store_id" "uuid",
     "category_id" "uuid",
+    "brand_id" "uuid",
     "name" character varying(255) NOT NULL,
     "slug" character varying(255) NOT NULL,
     "description" "text",
@@ -1078,6 +1095,11 @@ ALTER TABLE ONLY "public"."carts"
 
 
 
+ALTER TABLE ONLY "public"."brands"
+    ADD CONSTRAINT "brands_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."categories"
     ADD CONSTRAINT "categories_pkey" PRIMARY KEY ("id");
 
@@ -1491,6 +1513,11 @@ ALTER TABLE ONLY "public"."carts"
 
 
 
+ALTER TABLE ONLY "public"."brands"
+    ADD CONSTRAINT "brands_store_id_fkey" FOREIGN KEY ("store_id") REFERENCES "public"."stores"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."categories"
     ADD CONSTRAINT "categories_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "public"."categories"("id");
 
@@ -1618,6 +1645,11 @@ ALTER TABLE ONLY "public"."product_reviews"
 
 ALTER TABLE ONLY "public"."product_variants"
     ADD CONSTRAINT "product_variants_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."products"
+    ADD CONSTRAINT "products_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id") ON DELETE SET NULL;
 
 
 
@@ -1891,6 +1923,29 @@ GRANT ALL ON TABLE "public"."cart_items" TO "service_role";
 GRANT ALL ON TABLE "public"."carts" TO "anon";
 GRANT ALL ON TABLE "public"."carts" TO "authenticated";
 GRANT ALL ON TABLE "public"."carts" TO "service_role";
+
+
+
+CREATE UNIQUE INDEX "brands_store_slug_key" ON "public"."brands" USING "btree" ("store_id", "slug");
+
+
+
+CREATE UNIQUE INDEX "brands_store_name_key" ON "public"."brands" USING "btree" ("store_id", "lower"(("name")::"text"));
+
+
+
+CREATE INDEX "products_brand_id_idx" ON "public"."products" USING "btree" ("brand_id") WHERE ("brand_id" IS NOT NULL);
+
+
+
+ALTER TABLE "public"."brands" ENABLE ROW LEVEL SECURITY;
+
+
+CREATE POLICY "brands_service_write" ON "public"."brands" USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+GRANT ALL ON TABLE "public"."brands" TO "service_role";
 
 
 

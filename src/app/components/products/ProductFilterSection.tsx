@@ -12,67 +12,127 @@ import { useState } from "react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import type { ProductSortOption } from "@/lib/queries/products/clientGetProducts";
+import type { StorefrontBrand } from "@/lib/types/brand";
+import ShopFilterDrawer from "./ShopFilterDrawer";
+import ShopFilterPanel, {
+  EMPTY_SHOP_FILTERS,
+  countShopFilters,
+  type FilterCategory,
+  type ShopFilterValues,
+} from "./ShopFilterPanel";
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
+interface Category extends FilterCategory {
   description?: string;
   parent_id?: string;
   is_active: boolean;
 }
 
-interface ProductFilterSectionProps {
-  /** Category slug, or ALL_CATEGORIES for the unfiltered view. */
-  activeCategory: string;
-  onCategoryChange: (categorySlug: string) => void;
+interface ShopFilterCommonProps {
   categories: Category[];
+  /** Brands of the store (empty when its plan has none). */
+  brands?: StorefrontBrand[];
+  values: ShopFilterValues;
+  onFiltersChange: (values: ShopFilterValues) => void;
+}
+
+interface ProductFilterSectionProps extends ShopFilterCommonProps {
   totalProducts?: number;
   sortOption?: ProductSortOption;
   onSortChange?: (sort: ProductSortOption) => void;
-  viewMode?: "grid" | "list";
-  onViewModeChange?: (mode: "grid" | "list") => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
 }
 
-/** Sentinel slug for "no category filter" — no real category can use it. */
-export const ALL_CATEGORIES = "all";
+function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  const t = useTranslation();
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-100 py-1.5 pl-3 pr-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`${t.filter.clearAll}: ${label}`}
+        className="flex h-4 w-4 items-center justify-center rounded-full transition-colors hover:bg-gray-300 dark:hover:bg-gray-600"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
 
-export default function ProductFilterSection({
-  activeCategory,
-  onCategoryChange,
+/**
+ * Desktop filter column (lg and up): the same controls as the mobile drawer,
+ * applied the moment they change. Sits beside the product grid rather than
+ * over the page, so the header and results stay in view.
+ */
+export function ShopFilterSidebar({
   categories,
+  brands = [],
+  values,
+  onFiltersChange,
+}: ShopFilterCommonProps) {
+  const t = useTranslation();
+  const n = useLocalNum();
+  const count = countShopFilters(values);
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+        <h2 className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-50">
+          <SlidersHorizontal className="h-4 w-4" />
+          {t.filter.filter}
+          {count > 0 && (
+            <span className="rounded-full bg-gray-900 px-2 py-0.5 text-xs font-semibold text-white dark:bg-white dark:text-gray-900">
+              {n(count)}
+            </span>
+          )}
+        </h2>
+        {count > 0 && (
+          <button
+            type="button"
+            onClick={() => onFiltersChange(EMPTY_SHOP_FILTERS)}
+            className="text-xs font-semibold text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            {t.filter.clearAll}
+          </button>
+        )}
+      </div>
+      <ShopFilterPanel
+        categories={categories.filter((c) => c.is_active)}
+        brands={brands}
+        values={values}
+        onChange={onFiltersChange}
+      />
+    </div>
+  );
+}
+
+/**
+ * Toolbar above the product grid: result count, sort, the applied-filter chips,
+ * and (below lg) the Filter button that opens the drawer.
+ */
+export default function ProductFilterSection({
+  categories,
+  brands = [],
+  values,
+  onFiltersChange,
   totalProducts = 0,
   sortOption = "default",
   onSortChange,
-  // viewMode = "grid",
-  // onViewModeChange,
   searchQuery = "",
   onSearchChange,
 }: ProductFilterSectionProps) {
-  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const t = useTranslation();
   const n = useLocalNum();
 
   const activeCategories = categories.filter((c) => c.is_active);
-  const allCategories = [
-    {
-      id: "all",
-      name: "All Products",
-      displayName: t.shop.allProducts,
-      slug: ALL_CATEGORIES,
-      is_active: true,
-    },
-    ...activeCategories.map((c) => ({ ...c, displayName: c.name })),
-  ];
+  const activeFilterCount = countShopFilters(values);
 
-  // What to print for the current slug — falls back to the slug itself while
-  // categories are still loading, so the chip is never blank.
-  const activeCategoryLabel =
-    allCategories.find((c) => c.slug === activeCategory)?.displayName ??
-    activeCategory;
+  // A slug still loading (or from an old link) falls back to itself, so a chip is never blank.
+  const categoryName = (slug: string) => categories.find((c) => c.slug === slug)?.name ?? slug;
+  const brandName = (slug: string) => brands.find((b) => b.slug === slug)?.name ?? slug;
 
   const sortOptions: { value: ProductSortOption; label: string }[] = [
     { value: "default", label: t.filter.sortShopOrder },
@@ -85,22 +145,18 @@ export default function ProductFilterSection({
     sortOptions.find((o) => o.value === sortOption)?.label ??
     t.filter.sortShopOrder;
 
-  const handleClearSearch = () => {
-    onSearchChange?.("");
-  };
-
   const sortMenu = onSortChange ? (
     <DropdownMenu onOpenChange={setIsSortOpen}>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800">
           <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" />
-          <span className="hidden sm:inline text-xs font-medium text-gray-400 dark:text-gray-500">
+          <span className="hidden text-xs font-medium text-gray-400 dark:text-gray-500 sm:inline">
             {t.filter.sort}
           </span>
-          {activeSortLabel}
+          <span className="max-w-32 truncate sm:max-w-none">{activeSortLabel}</span>
           <ChevronDown
             className={cn(
-              "h-3.5 w-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200",
+              "h-3.5 w-3.5 text-gray-400 transition-transform duration-200 dark:text-gray-500",
               isSortOpen && "rotate-180",
             )}
           />
@@ -108,17 +164,17 @@ export default function ProductFilterSection({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-56 rounded-xl shadow-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900"
+        className="w-56 rounded-xl border-gray-100 shadow-xl dark:border-gray-700 dark:bg-gray-900"
       >
         {sortOptions.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => onSortChange(option.value)}
             className={cn(
-              "cursor-pointer text-sm rounded-lg mx-1 my-0.5 px-3 py-2",
+              "mx-1 my-0.5 cursor-pointer rounded-lg px-3 py-2 text-sm",
               sortOption === option.value
-                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-semibold focus:bg-gray-800 dark:focus:bg-gray-200 focus:text-white dark:focus:text-gray-900"
-                : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
+                ? "bg-gray-900 font-semibold text-white focus:bg-gray-800 focus:text-white dark:bg-gray-100 dark:text-gray-900 dark:focus:bg-gray-200 dark:focus:text-gray-900"
+                : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
             )}
           >
             {option.label}
@@ -128,110 +184,92 @@ export default function ProductFilterSection({
     </DropdownMenu>
   ) : null;
 
+  const hasPrice = !!(values.minPrice || values.maxPrice);
+  const priceLabel = `৳${n(Number(values.minPrice || 0))} – ${values.maxPrice ? `৳${n(Number(values.maxPrice))}` : "∞"}`;
+
   return (
-    <section className="w-full mb-2">
-      {/* ── Top bar: count + sort — search now lives in the header (global, reachable from every page) ── */}
-      <div className="flex items-center justify-end gap-3 py-5">
-        <span className="text-sm text-gray-400 dark:text-gray-500 font-medium tabular-nums">
-          {n(totalProducts)}{" "}
-          {totalProducts === 1 ? t.filter.product : t.filter.products}
+    <section className="w-full">
+      {/* ── Count (left) · Filter (below lg) + sort (right). Search lives in the header. ── */}
+      <div className="flex items-center justify-between gap-3 pb-4">
+        <span className="text-sm font-medium tabular-nums text-gray-500 dark:text-gray-400">
+          {n(totalProducts)} {totalProducts === 1 ? t.filter.product : t.filter.products}
         </span>
-        <div className="hidden md:block">{sortMenu}</div>
-      </div>
 
-      {/* ── Category Pills (Desktop) ── */}
-      <div className="hidden md:flex items-center gap-2 flex-wrap pb-4">
-        <span className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mr-1 flex items-center gap-1.5">
-          <SlidersHorizontal className="w-3 h-3" />
-          {t.filter.filter}
-        </span>
-        {allCategories.map((category) => {
-          const isActive = activeCategory === category.slug;
-          return (
-            <button
-              key={category.id}
-              onClick={() => onCategoryChange(category.slug)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 border",
-                isActive
-                  ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100 shadow-sm"
-                  : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-900 dark:hover:text-gray-100",
-              )}
-            >
-              {category.displayName}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Mobile: Category + Sort dropdowns ── */}
-      <div className="flex md:hidden items-center justify-between gap-2 pb-4">
-        <DropdownMenu onOpenChange={setIsCategoryOpen}>
-          <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-              {activeCategoryLabel}
-              <ChevronDown
-                className={cn(
-                  "h-3.5 w-3.5 text-gray-400 dark:text-gray-500 transition-transform duration-200",
-                  isCategoryOpen && "rotate-180",
-                )}
-              />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="w-52 rounded-xl shadow-xl border-gray-100 dark:border-gray-700 dark:bg-gray-900 max-h-64 overflow-y-auto"
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-colors lg:hidden",
+              activeFilterCount > 0
+                ? "border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900"
+                : "border-gray-200 bg-white text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800",
+            )}
           >
-            {allCategories.map((category) => (
-              <DropdownMenuItem
-                key={category.id}
-                onClick={() => onCategoryChange(category.slug)}
-                className={cn(
-                  "cursor-pointer text-sm rounded-lg mx-1 my-0.5 px-3 py-2",
-                  activeCategory === category.slug
-                    ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-semibold focus:bg-gray-800 dark:focus:bg-gray-200 focus:text-white dark:focus:text-gray-900"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800",
-                )}
-              >
-                {category.displayName}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {sortMenu}
+            <SlidersHorizontal className="h-4 w-4" />
+            {t.filter.filter}
+            {activeFilterCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1.5 text-[11px] font-bold text-gray-900 dark:bg-gray-900 dark:text-white">
+                {n(activeFilterCount)}
+              </span>
+            )}
+          </button>
+          {sortMenu}
+        </div>
       </div>
 
-      {/* ── Active filter chip ── */}
-      {(searchQuery || activeCategory !== ALL_CATEGORIES) && (
-        <div className="flex flex-wrap gap-2 pb-3">
-          {activeCategory !== ALL_CATEGORIES && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700">
-              {activeCategoryLabel}
-              <button
-                onClick={() => onCategoryChange(ALL_CATEGORIES)}
-                className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors ml-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
+      {/* ── What is applied right now: one removable chip per filter ── */}
+      {(activeFilterCount > 0 || !!searchQuery) && (
+        <div className="flex flex-wrap items-center gap-2 pb-4">
+          {values.categories.map((slug) => (
+            <FilterChip
+              key={`c-${slug}`}
+              label={categoryName(slug)}
+              onRemove={() =>
+                onFiltersChange({ ...values, categories: values.categories.filter((s) => s !== slug) })
+              }
+            />
+          ))}
+          {values.brands.map((slug) => (
+            <FilterChip
+              key={`b-${slug}`}
+              label={brandName(slug)}
+              onRemove={() =>
+                onFiltersChange({ ...values, brands: values.brands.filter((s) => s !== slug) })
+              }
+            />
+          ))}
+          {hasPrice && (
+            <FilterChip
+              label={priceLabel}
+              onRemove={() => onFiltersChange({ ...values, minPrice: "", maxPrice: "" })}
+            />
           )}
           {searchQuery && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700">
-              &ldquo;{searchQuery}&rdquo;
-              <button
-                onClick={handleClearSearch}
-                className="hover:text-gray-900 dark:hover:text-gray-100 transition-colors ml-0.5"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
+            <FilterChip label={`“${searchQuery}”`} onRemove={() => onSearchChange?.("")} />
+          )}
+          {activeFilterCount > 1 && (
+            <button
+              type="button"
+              onClick={() => onFiltersChange(EMPTY_SHOP_FILTERS)}
+              className="px-1 text-xs font-semibold text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
+            >
+              {t.filter.clearAll}
+            </button>
           )}
         </div>
       )}
 
-      {/* ── Divider ── */}
-      <div className="h-px bg-gray-100 dark:bg-gray-800 w-full" />
+      <div className="h-px w-full bg-gray-100 dark:bg-gray-800" />
+
+      <ShopFilterDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        categories={activeCategories}
+        brands={brands}
+        values={values}
+        onApply={onFiltersChange}
+      />
     </section>
   );
 }

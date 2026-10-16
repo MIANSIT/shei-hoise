@@ -8,6 +8,7 @@ import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 import { getVariantListPrice } from "@/lib/utils/variantProductPricing";
+import { resolveProductBrandId } from "@/lib/queries/brands/brandAccess";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
 /**
@@ -139,10 +140,15 @@ async function updateProductInternal(data: ProductUpdateType, stockBranchId: str
   // the product's own discount (each variant carries its own).
   const hasVariants = !!variants && variants.length > 0;
   const variantListPrice = hasVariants ? getVariantListPrice(variants) : undefined;
+  // brand_id is caller-supplied: resolved against the store and its plan, and
+  // left out of the update entirely (undefined) when there's nothing to write.
+  const { brand_id: requestedBrandId, ...productFields } = productData;
+  const brandId = await resolveProductBrandId(store_id, subscription, requestedBrandId);
   const { error: productError } = await supabaseAdmin
     .from("products")
     .update({
-      ...productData,
+      ...productFields,
+      ...(brandId !== undefined ? { brand_id: brandId } : {}),
       ...(variantListPrice !== undefined ? { base_price: variantListPrice } : {}),
       description:
         productData.description !== undefined

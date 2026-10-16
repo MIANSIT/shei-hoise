@@ -43,6 +43,7 @@ import {
   History,
   ArrowLeftRight,
   Building2,
+  Award,
 } from "lucide-react";
 import React from "react";
 import type { translations } from "@/lib/i18n/translations";
@@ -123,6 +124,13 @@ export const sideMenu: MenuItem[] = [
         requiredFeature: "multi_branch",
       },
       { title: "All Categories", labelKey: "menuAllCategories", href: "/dashboard/products/category", icon: FolderPlus },
+      {
+        title: "Brands",
+        labelKey: "menuBrands",
+        href: "/dashboard/products/brands",
+        icon: Award,
+        requiredFeature: "brands",
+      },
     ],
   },
   {

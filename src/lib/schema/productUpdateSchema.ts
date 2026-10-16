@@ -6,6 +6,7 @@ export const productUpdateSchema = z
     id: z.string().uuid(),
     store_id: z.string().uuid(),
     category_id: z.string().nullable().optional(),
+    brand_id: z.string().nullable().optional(),
     name: z.string().min(1).optional(),
     slug: z.string().min(1).optional(),
     description: z.string().optional(),

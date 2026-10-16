@@ -14,6 +14,8 @@ export interface SearchProductIdsOptions {
   statusEq?: string;
   excludeBundles?: boolean;
   categoryId?: string;
+  /** Several categories at once (the shop's multi-select filter); takes precedence over categoryId. */
+  categoryIds?: string[];
   featured?: boolean;
 }
 
@@ -21,7 +23,8 @@ function applyStructuralFilters(query: any, storeId: string, options: SearchProd
   let q = query.eq("store_id", storeId);
   if (options.statusEq) q = q.eq("status", options.statusEq);
   if (options.excludeBundles) q = q.neq("product_type", "bundle");
-  if (options.categoryId) q = q.eq("category_id", options.categoryId);
+  if (options.categoryIds?.length) q = q.in("category_id", options.categoryIds);
+  else if (options.categoryId) q = q.eq("category_id", options.categoryId);
   if (options.featured !== undefined) q = q.eq("featured", options.featured);
   return q;
 }

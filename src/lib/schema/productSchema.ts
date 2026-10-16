@@ -14,6 +14,8 @@ export const productSchema = z
       .refine((val) => val !== null && val !== "", {
         message: "Category is required",
       }),
+    /** Optional brand (plan feature "brands"); the server ignores it on plans without brands. */
+    brand_id: z.string().nullable().optional(),
     name: z.string().min(1, "Product name is required"),
     slug: z.string().min(1, "Slug is required"),
     description: z.string().min(1, "Description is required"),

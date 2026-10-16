@@ -15,6 +15,8 @@ import ProductImages from "./ProductImages";
 import ProductVariantsInline from "./ProductVariantsInline";
 import { Button } from "@/components/ui/button";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
+import { getBrands } from "@/lib/queries/brands/getBrands";
+import { BRANDS_FEATURE_KEY } from "@/lib/types/brand";
 import { useDiscountCalculation } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductStatus } from "@/lib/types/enums";
@@ -204,6 +206,8 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     } = form;
 
     const { allowed: seoAllowed } = useFeatureGate(storeId, "seo_tools");
+    const { allowed: brandsAllowed } = useFeatureGate(storeId, BRANDS_FEATURE_KEY);
+    const [brands, setBrands] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
 
     const [categories, setCategories] = useState<
       { id: string; name: string; is_active: boolean }[]
@@ -299,6 +303,16 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
         if (data) setCategories(data);
       });
     }, [storeId]);
+
+    // Only stores whose plan has brands load (or show) the brand picker.
+    useEffect(() => {
+      if (!brandsAllowed) return;
+      getBrands()
+        .then((result) => {
+          if (result.success) setBrands(result.brands);
+        })
+        .catch((err) => console.error("Failed to load brands:", err));
+    }, [brandsAllowed]);
 
     // ── Draft persistence (add mode only) ───────────────────────────────────
     // Restore all draft values once Zustand has finished reading from localStorage.
@@ -581,6 +595,34 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   </p>
                 )}
               </div>
+
+              {brandsAllowed && (
+                <div>
+                  <FieldLabel
+                    label={t.admin.addProductBrandLabel}
+                    tooltip={t.admin.addProductBrandTooltip}
+                  />
+                  <FormField
+                    name="brand_id"
+                    as="select"
+                    control={control}
+                    options={[
+                      { value: "", label: t.admin.addProductNoBrand },
+                      // Hidden brands stay pickable for a product that already uses one.
+                      ...brands
+                        .filter((b) => b.is_active || b.id === watch("brand_id"))
+                        .map((b) => ({ value: b.id, label: b.name })),
+                      { value: "create_new_brand", label: t.admin.addProductCreateNewBrand },
+                    ]}
+                    onChange={(value) => {
+                      if (value === "create_new_brand") {
+                        setValue("brand_id", null);
+                        window.location.href = "/dashboard/products/brands";
+                      }
+                    }}
+                  />
+                </div>
+              )}
 
               <div>
                 <FieldLabel
