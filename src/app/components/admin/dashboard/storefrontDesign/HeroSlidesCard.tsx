@@ -183,6 +183,8 @@ export function HeroSlidesCard() {
         subtext: slide.subtext,
         button_text: slide.button_text,
         button_link: slide.button_link,
+        button_position: slide.button_position,
+        button_new_tab: slide.button_new_tab,
         is_active: active,
       },
       null,

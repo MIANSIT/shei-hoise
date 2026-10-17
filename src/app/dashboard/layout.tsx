@@ -104,14 +104,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
     // Store owners and their staff use the dashboard; what staff see inside
     // it is decided by StaffAccessGuard and the sidebar.
+    // Only judge the role once it has finished loading, so a half-loaded or
+    // failed lookup can never bounce a store owner to the home page.
     if (
+      !userLoading &&
       role !== undefined &&
       role !== USERTYPE.STORE_OWNER &&
       role !== USERTYPE.STORE_STAFF
     ) {
       router.push("/");
     }
-  }, [authLoading, session, router, role]);
+  }, [authLoading, session, router, role, userLoading]);
   useEffect(() => {
     if (!storeSlug) return;
 

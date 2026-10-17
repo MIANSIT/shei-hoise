@@ -47,7 +47,19 @@ function getSharedAuthUser(): Promise<User | null> {
   authUserCacheTimestamp = Date.now();
   cachedAuthUserPromise = supabase.auth
     .getUser()
-    .then(({ data }) => data.user)
+    .then(({ data, error }) => {
+      // A network/server failure leaves `user` null too, which would look like
+      // a logout. Only a real auth rejection (4xx) or a missing session means
+      // signed out; anything else is transient, so surface it as an error.
+      if (error && !data.user) {
+        const status = (error as { status?: number }).status;
+        const isAuthRejection =
+          error.name === "AuthSessionMissingError" ||
+          (typeof status === "number" && status >= 400 && status < 500);
+        if (!isAuthRejection) throw error;
+      }
+      return data.user;
+    })
     .catch((err) => {
       cachedAuthUserPromise = null;
       throw err;
@@ -87,8 +99,13 @@ async function loadProfile(authUser: User): Promise<ResolvedProfile> {
     .eq("id", authUser.id)
     .maybeSingle();
 
-  // Customer fallback
-  if (dbErr || !userData) {
+  // A failed lookup (network blip, token mid-refresh) is not "this person is a
+  // customer" — treating it that way bounced store owners to the home page.
+  // Throw so the caller keeps the last good state and retries.
+  if (dbErr) throw new Error(dbErr.message);
+
+  // Customer fallback (signed in, but no row in `users`)
+  if (!userData) {
     const fallbackUser: CurrentUserWithProfile = {
       id: authUser.id,
       email: authUser.email || "",
@@ -220,16 +237,18 @@ export function useCurrentUser() {
         setLoading(false);
       } catch (err) {
         console.error("❌ useCurrentUser error:", err);
-        hasLoaded = false;
         setError(err as Error);
+        setLoading(false);
+        globalUserCache = null;
+        invalidateSharedAuthUser();
+        // A failed background refresh keeps the last good user on screen;
+        // only a failed first load leaves the hook empty.
+        if (hasLoaded) return;
         setUser(null);
         setStoreSlug(null);
         setStoreId(null);
         setStoreStatus(null);
         setStoreIsActive(null);
-        setLoading(false);
-        globalUserCache = null;
-        invalidateSharedAuthUser();
       }
     };
 

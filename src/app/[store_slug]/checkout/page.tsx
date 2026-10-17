@@ -165,6 +165,38 @@ export default function CheckoutPage() {
     }, store_slug, { phone: leadPhone, name: leadName || undefined });
   }, [isMounted, isLoadingOverall, cartItems, leadPhone, leadName, calculations.subtotal, storeCurrency, store_slug]);
 
+  // Save the shopper (phone, name, city, cart) so the store owner can follow up
+  // if they leave without ordering. Debounced so typing doesn't hit the server
+  // on every keystroke, and stopped for good once the order is placed.
+  const orderPlacedRef = useRef(false);
+  const leadCity = checkoutFormData.city ?? "";
+  const leadCartKey = cartItems.map((i) => `${i.variantId ?? i.productId}:${i.quantity}`).join("|");
+  useEffect(() => {
+    if (orderPlacedRef.current || !isMounted || isLoadingOverall || cartItems.length === 0) return;
+    if (!/^(?:880|0)1\d{9}$/.test(leadPhone.replace(/\D/g, ""))) return;
+
+    const timer = setTimeout(() => {
+      if (orderPlacedRef.current) return;
+      fetch("/api/checkout-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          store_slug,
+          phone: leadPhone,
+          name: leadName,
+          city: leadCity,
+          items: cartItems.map((i) => ({ name: i.productName, quantity: i.quantity, price: i.displayPrice })),
+          value: calculations.subtotal,
+          currency: storeCurrency,
+        }),
+      }).catch(() => {});
+    }, 1500);
+
+    return () => clearTimeout(timer);
+    // cartItems is represented by leadCartKey so a re-render with identical items doesn't reset the timer
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, isLoadingOverall, leadPhone, leadName, leadCity, leadCartKey, calculations.subtotal, storeCurrency, store_slug]);
+
   // Check minimum order amount - WITHOUT NOTIFICATION
   useEffect(() => {
     if (isMounted && minOrderAmount > 0 && calculations.subtotal < minOrderAmount && !isLoadingOverall) {
@@ -557,6 +589,15 @@ export default function CheckoutPage() {
             order_id: result.orderNumber,
           }, store_slug, buyerIdentity);
         }
+
+        // Order placed: stop saving this shopper as an abandoned checkout and
+        // close out the lead they already left.
+        orderPlacedRef.current = true;
+        fetch("/api/checkout-lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ store_slug, phone: values.phone, converted: true }),
+        }).catch(() => {});
 
         setInvoiceData(createTempOrderData(values, storeCustomerId, result));
         setShowInvoice(true);

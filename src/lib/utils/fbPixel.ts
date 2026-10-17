@@ -52,10 +52,20 @@ function getFbc(): string | undefined {
   if (cookie) return cookie;
   try {
     const fromUrl = new URLSearchParams(window.location.search).get("fbclid");
-    const stored = localStorage.getItem("sh_utm");
-    const fromStorage = stored ? (JSON.parse(stored) as { fbclid?: string }).fbclid : undefined;
-    const fbclid = fromUrl || fromStorage;
-    return fbclid ? `fb.1.${Date.now()}.${fbclid}` : undefined;
+    const utm = localStorage.getItem("sh_utm");
+    const fromUtm = utm ? (JSON.parse(utm) as { fbclid?: string }).fbclid : undefined;
+    const fbclid = fromUrl || fromUtm;
+    if (!fbclid) return undefined;
+
+    // Meta wants the time of the click, not the time of this event — so the
+    // rebuilt value is built once per fbclid and reused until a new click arrives.
+    const saved = localStorage.getItem("sh_fbc");
+    const savedFbc = saved ? (JSON.parse(saved) as { fbclid?: string; fbc?: string }) : null;
+    if (savedFbc?.fbclid === fbclid && savedFbc.fbc) return savedFbc.fbc;
+
+    const fbc = `fb.1.${Date.now()}.${fbclid}`;
+    localStorage.setItem("sh_fbc", JSON.stringify({ fbclid, fbc }));
+    return fbc;
   } catch {
     return undefined;
   }

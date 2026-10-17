@@ -33,7 +33,7 @@ export type OrderBranchInfo =
       branchId: string | null;
       needsTransfer: boolean;
       confirmed: boolean;
-      /** Only pending/confirmed orders can move. */
+      /** Pending, confirmed and delivered (e.g. Quick Sale) orders can move. */
       canMove: boolean;
       options: OrderBranchOption[];
     }
@@ -103,7 +103,7 @@ export async function getOrderBranchOptions(orderId: string): Promise<OrderBranc
       branchId: order.branch_id,
       needsTransfer: !!order.needs_transfer,
       confirmed: order.branch_confirmed !== false,
-      canMove: order.status === "pending" || order.status === "confirmed",
+      canMove: order.status === "pending" || order.status === "confirmed" || order.status === "delivered",
       options,
     };
   } catch (err) {

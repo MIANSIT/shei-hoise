@@ -234,7 +234,16 @@ const OrderProductTable: React.FC<Props> = ({
     (order.status === OrderStatus.DELIVERED &&
       order.payment_status === PaymentStatus.PAID);
 
-  if (isFinalized) return null;
+  // A delivered order (every Quick Sale) has nothing left to manage, but its
+  // branch can still be corrected.
+  if (isFinalized) {
+    if (order.status !== OrderStatus.DELIVERED) return null;
+    return (
+      <div className="p-3 sm:p-4 rounded-md border">
+        <OrderBranchPanel orderId={order.id} onChanged={onRefresh} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 sm:p-4 rounded-md space-y-3 sm:space-y-4 border">

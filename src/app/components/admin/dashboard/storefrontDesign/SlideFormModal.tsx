@@ -5,7 +5,7 @@ import { Modal, Button, Form, Input, Switch } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import { Plus } from "lucide-react";
 import { ImageUploader } from "@/app/components/admin/dashboard/store-settings/storeCard/ImageUploader";
-import type { HeroSlide } from "@/lib/types/heroSlide";
+import { HERO_BUTTON_POSITIONS, type HeroButtonPosition, type HeroSlide } from "@/lib/types/heroSlide";
 
 type ModalMode = "create" | "edit";
 
@@ -14,7 +14,45 @@ export interface SlideFormValues {
   subtext?: string | null;
   button_text?: string | null;
   button_link?: string | null;
+  button_position?: HeroButtonPosition | null;
+  button_new_tab: boolean;
   is_active: boolean;
+}
+
+interface ButtonPositionPickerProps {
+  value?: HeroButtonPosition | null;
+  onChange?: (value: HeroButtonPosition | null) => void;
+}
+
+/** 3×3 grid: pick where the button sits on the banner. Click the active cell again to go back to "under the text". */
+function ButtonPositionPicker({ value, onChange }: ButtonPositionPickerProps) {
+  return (
+    <div>
+      <div
+        className="grid grid-cols-3 gap-1 w-48 aspect-16/7 p-1 rounded-lg border border-border bg-muted"
+        role="radiogroup"
+        aria-label="Button position"
+      >
+        {HERO_BUTTON_POSITIONS.map((pos) => {
+          const active = value === pos;
+          return (
+            <button
+              key={pos}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={pos.replace("-", " ")}
+              onClick={() => onChange?.(active ? null : pos)}
+              className={`rounded transition-colors ${active ? "bg-primary" : "bg-background hover:bg-primary/30"}`}
+            />
+          );
+        })}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {value ? value.replace("-", " ") : "Default: under the headline"}
+      </p>
+    </div>
+  );
 }
 
 interface SlideFormModalProps {
@@ -48,11 +86,13 @@ export default function SlideFormModal({
         subtext: editingSlide.subtext ?? undefined,
         button_text: editingSlide.button_text ?? undefined,
         button_link: editingSlide.button_link ?? undefined,
+        button_position: editingSlide.button_position,
+        button_new_tab: editingSlide.button_new_tab ?? false,
         is_active: editingSlide.is_active,
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ is_active: true });
+      form.setFieldsValue({ is_active: true, button_new_tab: false, button_position: null });
     }
   }, [open, mode, editingSlide, form]);
 
@@ -147,6 +187,12 @@ export default function SlideFormModal({
               <Input placeholder="/shop" className="rounded-lg h-9.5" />
             </Form.Item>
           </div>
+          <Form.Item name="button_position" label="Button Position">
+            <ButtonPositionPicker />
+          </Form.Item>
+          <Form.Item name="button_new_tab" label="Open link in a new tab" valuePropName="checked">
+            <Switch />
+          </Form.Item>
           <Form.Item name="is_active" label="Active" valuePropName="checked" style={{ marginBottom: 0 }}>
             <Switch />
           </Form.Item>

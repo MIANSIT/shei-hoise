@@ -4,13 +4,39 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { HeroSlide } from "@/lib/types/heroSlide";
+import type { HeroButtonPosition, HeroSlide } from "@/lib/types/heroSlide";
 
 interface HeroSliderProps {
   slides: HeroSlide[];
 }
 
 const AUTOPLAY_MS = 5000;
+
+// Flex alignment of the button inside the slide: items-* is vertical, justify-* horizontal.
+const POSITION_CLASSES: Record<HeroButtonPosition, string> = {
+  "top-left": "items-start justify-start",
+  "top-center": "items-start justify-center",
+  "top-right": "items-start justify-end",
+  "middle-left": "items-center justify-start",
+  "middle-center": "items-center justify-center",
+  "middle-right": "items-center justify-end",
+  "bottom-left": "items-end justify-start",
+  "bottom-center": "items-end justify-center",
+  "bottom-right": "items-end justify-end",
+};
+
+function HeroButton({ slide, className = "" }: { slide: HeroSlide; className?: string }) {
+  const newTab = slide.button_new_tab;
+  return (
+    <Link
+      href={slide.button_link ?? "#"}
+      {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className={`${className} inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:scale-95 transition-all duration-200`}
+    >
+      {slide.button_text}
+    </Link>
+  );
+}
 
 /** Admin-managed marketing carousel. Callers must only pass slides that already have an image_url — a slide with no image is never valid to render. */
 export function HeroSlider({ slides }: HeroSliderProps) {
@@ -59,7 +85,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
           />
           <div className="absolute inset-0 bg-linear-to-r from-black/65 via-black/30 to-black/5" />
 
-          {(slide.headline || slide.subtext || (slide.button_text && slide.button_link)) && (
+          {(slide.headline || slide.subtext || (slide.button_text && slide.button_link && !slide.button_position)) && (
             <div className="relative z-[2] h-full flex items-center">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-lg text-white">
@@ -69,16 +95,17 @@ export function HeroSlider({ slides }: HeroSliderProps) {
                   {slide.subtext && (
                     <p className="mt-3 text-sm sm:text-base text-white/85 drop-shadow-sm">{slide.subtext}</p>
                   )}
-                  {slide.button_text && slide.button_link && (
-                    <Link
-                      href={slide.button_link}
-                      className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:scale-95 transition-all duration-200"
-                    >
-                      {slide.button_text}
-                    </Link>
+                  {slide.button_text && slide.button_link && !slide.button_position && (
+                    <HeroButton slide={slide} className="mt-6" />
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {slide.button_text && slide.button_link && slide.button_position && (
+            <div className={`absolute inset-0 z-[2] pointer-events-none flex px-4 sm:px-8 py-10 sm:py-12 ${POSITION_CLASSES[slide.button_position]}`}>
+              <HeroButton slide={slide} className="pointer-events-auto" />
             </div>
           )}
         </div>

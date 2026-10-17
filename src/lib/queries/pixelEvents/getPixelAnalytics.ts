@@ -50,11 +50,20 @@ export interface EventSummary {
  * (0–1) of events that carried that identifier (fbp, fbc, ph, em, fn, ln, ct,
  * zp, country, external_id, ip, ua). Only events recorded after identifiers
  * started being logged count, so `total` can be less than the event total.
+ *
+ * Contact details (ph, em, fn, ln, ct, zp, country) only exist at checkout, so
+ * their share is measured against `checkoutTotal` — the checkout-stage events —
+ * not against every page view, which would make them look permanently empty.
  */
 export interface MatchQuality {
   total: number;
+  checkoutTotal: number;
   coverage: Record<string, number>;
 }
+
+/** Identifiers that can only be known once the shopper has filled in checkout. */
+const CHECKOUT_ONLY_KEYS: ReadonlySet<string> = new Set(["ph", "em", "fn", "ln", "ct", "zp", "country"]);
+const CHECKOUT_EVENTS: ReadonlySet<string> = new Set(["Lead", "AddPaymentInfo", "Purchase"]);
 
 export interface CountStat {
   name: string;
@@ -69,6 +78,11 @@ export interface BrandStat {
 
 export interface PixelAnalyticsData {
   totals: Record<string, number>;
+  /**
+   * Distinct visitors with a PageView in the period. Null when some PageViews
+   * predate visitor ids, because a partial count would understate it.
+   */
+  uniqueVisitors: number | null;
   allEvents: EventSummary[];
   matchQuality: MatchQuality;
   searchTerms: CountStat[];
@@ -177,8 +191,9 @@ export async function getPixelAnalytics(
   if (data.length === 0) {
     return {
       totals: {},
+      uniqueVisitors: null,
       allEvents: [],
-      matchQuality: { total: 0, coverage: {} },
+      matchQuality: { total: 0, checkoutTotal: 0, coverage: {} },
       searchTerms: [],
       categories: [],
       brands: [],
@@ -233,6 +248,9 @@ export async function getPixelAnalytics(
   const eventMap: Record<string, EventSummary> = {};
   const matchCounts: Record<string, number> = {};
   let matchTotal = 0;
+  let checkoutMatchTotal = 0;
+  const visitorIds = new Set<string>();
+  let pageViewsWithoutVisitor = 0;
   const searchMap: Record<string, number> = {};
   const categoryMap: Record<string, number> = {};
   const brandMap: Record<string, BrandStat> = {};
@@ -252,9 +270,16 @@ export async function getPixelAnalytics(
     // Customer-data coverage (older rows have no _match and are left out)
     if (Array.isArray(meta?._match)) {
       matchTotal++;
+      if (CHECKOUT_EVENTS.has(row.event_name)) checkoutMatchTotal++;
       (meta._match as unknown[]).forEach((key) => {
         if (typeof key === "string") matchCounts[key] = (matchCounts[key] ?? 0) + 1;
       });
+    }
+
+    // Unique visitors (PageView rows only)
+    if (row.event_name === "PageView") {
+      if (typeof meta?._visitor === "string") visitorIds.add(meta._visitor);
+      else pageViewsWithoutVisitor++;
     }
 
     // Search terms
@@ -376,13 +401,15 @@ export async function getPixelAnalytics(
 
   const coverage: Record<string, number> = {};
   Object.entries(matchCounts).forEach(([key, count]) => {
-    coverage[key] = matchTotal > 0 ? count / matchTotal : 0;
+    const base = CHECKOUT_ONLY_KEYS.has(key) ? checkoutMatchTotal : matchTotal;
+    coverage[key] = base > 0 ? Math.min(count / base, 1) : 0;
   });
 
   return {
     totals,
+    uniqueVisitors: pageViewsWithoutVisitor === 0 && visitorIds.size > 0 ? visitorIds.size : null,
     allEvents: Object.values(eventMap).sort((a, b) => b.count - a.count),
-    matchQuality: { total: matchTotal, coverage },
+    matchQuality: { total: matchTotal, checkoutTotal: checkoutMatchTotal, coverage },
     searchTerms: topCounts(searchMap),
     categories: topCounts(categoryMap),
     brands: Object.values(brandMap)

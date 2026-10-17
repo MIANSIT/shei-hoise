@@ -28,6 +28,7 @@ import {
   Check,
 } from "lucide-react";
 import Link from "next/link";
+import { AbandonedCheckoutsSection } from "./AbandonedCheckoutsSection";
 import { FacebookAdsSection } from "./FacebookAdsSection";
 import { MetaInsightsSections } from "./MetaInsightsSections";
 import {
@@ -613,10 +614,19 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            {data?.uniqueVisitors != null && (
+              <div className="text-center bg-white/10 rounded-xl px-4 py-3">
+                <p className="text-lg font-black">{n(data.uniqueVisitors)}</p>
+                <p className="text-indigo-200 text-[10px] font-medium mt-0.5">
+                  {t.admin.pixelUniqueVisitors}
+                </p>
+              </div>
+            )}
             <div className="text-center bg-white/10 rounded-xl px-4 py-3">
+              {/* Per visitor when visitor ids cover the whole period, else per page view */}
               <p className="text-lg font-black">
                 {data?.totalOrders
-                  ? `${n(((data.totalOrders / (totals.PageView || 1)) * 100).toFixed(2))}%`
+                  ? `${n(((data.totalOrders / (data.uniqueVisitors ?? (totals.PageView || 1))) * 100).toFixed(2))}%`
                   : "—"}
               </p>
               <p className="text-indigo-200 text-[10px] font-medium mt-0.5">
@@ -681,6 +691,9 @@ export default function PixelAnalyticsDashboard({ storeId, pixelId }: Props) {
         n={n}
         t={t}
       />
+
+      {/* ── Shoppers who typed a phone number but didn't order — call them back ── */}
+      <AbandonedCheckoutsSection storeId={storeId} days={period === "7d" ? 7 : period === "30d" ? 30 : 90} />
 
       {/* ── Facebook Ads (Marketing API: spend, reach, ROAS from the owner's own ad account) ── */}
       <FacebookAdsSection storeId={storeId} period={period} trackedRevenue={data?.totalRevenue ?? 0} />

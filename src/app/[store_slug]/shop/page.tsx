@@ -309,9 +309,16 @@ export default function ShopPage({ params }: ShopPageProps) {
   const lastTrackedCategory = useRef("");
   useEffect(() => {
     if (!categoryKey || categoryKey === lastTrackedCategory.current) return;
+    // Report names, not slugs — wait for the category list to load so a
+    // shared ?category= link resolves to a real name instead of a slug.
+    if (categories.length === 0) return;
     lastTrackedCategory.current = categoryKey;
-    fbq(FbEvent.VIEW_CATEGORY, { content_category: categoryKey, content_type: "product_group" }, store_slug);
-  }, [categoryKey, store_slug]);
+    const names = categoryKey
+      .split(",")
+      .map((slug) => categories.find((c) => c.slug === slug)?.name ?? slug)
+      .join(", ");
+    fbq(FbEvent.VIEW_CATEGORY, { content_category: names, content_type: "product_group" }, store_slug);
+  }, [categoryKey, categories, store_slug]);
 
   const handleFiltersChange = useCallback((next: ShopFilterValues) => {
     setActiveCategories(next.categories);

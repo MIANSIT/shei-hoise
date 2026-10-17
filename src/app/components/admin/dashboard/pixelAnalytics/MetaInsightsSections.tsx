@@ -25,6 +25,9 @@ function Card({ title, subtitle, gradient, children }: { title: string; subtitle
   );
 }
 
+/** Details only known once the shopper fills in checkout — measured against checkout events. */
+const CHECKOUT_ONLY_KEYS: ReadonlySet<string> = new Set(["ph", "em", "fn", "ln", "ct", "zp", "country"]);
+
 // Coverage bars: ≥70% healthy, ≥30% middling, below that neutral — a detail
 // the store never collects (e.g. email on a phone-only checkout) is just
 // "not collected", not an alarm.
@@ -101,11 +104,15 @@ export function MetaInsightsSections({ data, loading, funnel }: MetaInsightsSect
               {matchRows.map(([key, label]) => {
                 const share = data.matchQuality.coverage[key] ?? 0;
                 const style = coverageStyle(share);
+                // No checkout has happened yet, so there is nothing to measure against.
+                const notMeasured = CHECKOUT_ONLY_KEYS.has(key) && data.matchQuality.checkoutTotal === 0;
                 return (
                   <div key={key}>
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="font-medium text-foreground">{label}</span>
-                      <span className={`font-semibold tabular-nums ${style.text}`}>{pct(share)}</span>
+                      <span className={`font-semibold tabular-nums ${notMeasured ? "text-muted-foreground" : style.text}`}>
+                        {notMeasured ? "—" : pct(share)}
+                      </span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${style.bar}`} style={{ width: `${share * 100}%` }} />
@@ -116,6 +123,9 @@ export function MetaInsightsSections({ data, loading, funnel }: MetaInsightsSect
             </div>
             <p className="text-[11px] text-muted-foreground mt-4">
               {n(data.matchQuality.total)} {t.admin.pixelMatchEventsCounted}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {t.admin.pixelMatchCheckoutNote} {n(data.matchQuality.checkoutTotal)}
             </p>
           </>
         )}

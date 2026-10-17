@@ -204,6 +204,25 @@ CREATE TABLE IF NOT EXISTS "public"."brands" (
 ALTER TABLE "public"."brands" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."checkout_leads" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "store_id" "uuid" NOT NULL,
+    "phone" character varying(20) NOT NULL,
+    "customer_name" character varying(255),
+    "city" character varying(255),
+    "items" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    "num_items" integer DEFAULT 0 NOT NULL,
+    "cart_value" numeric(12,2) DEFAULT 0 NOT NULL,
+    "currency" character varying(10),
+    "converted_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."checkout_leads" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."contact_us" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "full_name" "text" NOT NULL,
@@ -778,6 +797,8 @@ CREATE TABLE IF NOT EXISTS "public"."store_hero_slides" (
     "subtext" "text",
     "button_text" "text",
     "button_link" "text",
+    "button_position" "text",
+    "button_new_tab" boolean DEFAULT false NOT NULL,
     "sort_order" integer DEFAULT 0 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,

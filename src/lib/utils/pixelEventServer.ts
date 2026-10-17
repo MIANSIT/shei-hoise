@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { hasFeature } from "./planFeatures";
 import { getStoreFeatureSubscription } from "./getStoreFeatureSubscription";
@@ -23,7 +24,8 @@ interface FireServerPixelEventParams {
  *
  * The row's metadata also carries `_match`: the names (never the values) of the
  * identifiers sent with the event, which the analytics dashboard uses to show
- * the store's customer-data coverage.
+ * the store's customer-data coverage — and `_visitor`, a hashed anonymous
+ * visitor id used to count unique visitors.
  */
 export async function fireServerPixelEvent(params: FireServerPixelEventParams): Promise<void> {
   const matchKeys = listMatchKeys({
@@ -34,12 +36,18 @@ export async function fireServerPixelEvent(params: FireServerPixelEventParams): 
     customer: params.customer,
   });
 
+  // A short one-way hash of the anonymous visitor id, so the dashboard can
+  // count distinct visitors without storing the id itself.
+  const visitor = params.customer?.externalId
+    ? createHash("sha256").update(params.customer.externalId).digest("hex").slice(0, 16)
+    : undefined;
+
   const { data: inserted } = await supabaseAdmin
     .from("pixel_events")
     .insert({
       store_id: params.storeId,
       event_name: params.eventName,
-      metadata: { ...params.eventParams, _match: matchKeys },
+      metadata: { ...params.eventParams, _match: matchKeys, ...(visitor ? { _visitor: visitor } : {}) },
     })
     .select("id")
     .single();
