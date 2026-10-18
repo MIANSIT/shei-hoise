@@ -184,7 +184,11 @@ export default function DesktopHeader({
                   storeSlug={storeSlug}
                 />
               ) : !isAdmin ? (
-                <AuthButtons links={authLinks} isAdminPanel={false} />
+                <AuthButtons
+                  links={authLinks}
+                  isAdminPanel={false}
+                  tone="header"
+                />
               ) : null}
             </>
           )}

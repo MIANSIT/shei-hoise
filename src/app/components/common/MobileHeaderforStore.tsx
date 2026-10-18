@@ -282,6 +282,7 @@ export default function MobileHeader({
                           links={authLinks}
                           isVertical={true}
                           isAdminPanel={false}
+                          tone="header"
                         />
                       </li>
                     </>

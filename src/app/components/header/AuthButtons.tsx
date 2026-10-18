@@ -10,6 +10,7 @@ interface AuthButtonsProps {
   isAdminPanel?: boolean;
   isVertical?: boolean;
   disableNavigation?: boolean; // Prevent automatic redirect param
+  tone?: "default" | "header"; // "header" follows the store header colour
 }
 
 export default function AuthButtons({
@@ -17,6 +18,7 @@ export default function AuthButtons({
   isAdminPanel = false,
   isVertical = false,
   disableNavigation = false,
+  tone = "default",
 }: AuthButtonsProps) {
   const { isAdminLoggedIn, logout } = useAuthStore();
   const router = useRouter();
@@ -59,7 +61,9 @@ export default function AuthButtons({
             className={`text-sm font-medium px-4 py-1.5 rounded-md ${
               link.isHighlighted
                 ? "bg-primary text-primary-foreground font-semibold hover:bg-primary-hover"
-                : "text-muted-foreground hover:text-foreground border border-border"
+                : tone === "header"
+                  ? "text-header-foreground border border-header-foreground/40 hover:bg-header-foreground/10"
+                  : "text-muted-foreground hover:text-foreground border border-border"
             } block transition-colors`}
           >
             <span className="relative top-[-1px]">{link.name}</span>
