@@ -39,7 +39,7 @@ const StockPage = () => {
   const { storeId, storeSlug } = useCurrentUser();
   // Stores with branches: the header's branch picker decides whose stock this
   // page shows and changes. "All branches" is read-only.
-  const { enabled: branchesOn, selectedBranchId, selectedBranch, branchFileSuffix } = useBranches();
+  const { enabled: branchesOn, selectedBranchId, selectedBranch, branches, canSeeAllBranches } = useBranches();
   const stockBranchId = branchesOn ? selectedBranchId : null;
   const stockReadOnly = branchesOn && !selectedBranchId;
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
@@ -106,7 +106,7 @@ const StockPage = () => {
   // Shared by both exports: fetch every product matching the current filters,
   // ignoring pagination. Memoised because TraderPriceExportModal takes it as an
   // effect dependency — a new identity each render would re-trigger the load.
-  const fetchAllProducts = useCallback(async () => {
+  const fetchAllProducts = useCallback(async (branchId: string | null = stockBranchId) => {
     if (!storeSlug) return [];
     const result = await getProductWithStock(
       storeSlug,
@@ -115,7 +115,7 @@ const StockPage = () => {
       1,
       Number.MAX_SAFE_INTEGER,
       null,
-      stockBranchId,
+      branchId,
     );
     return result.data;
   }, [storeSlug, searchText, stockFilter, stockBranchId]);
@@ -161,7 +161,9 @@ const StockPage = () => {
             </span>
           )}
           <StockExportButton
-            storeSlug={storeSlug ? `${storeSlug}${branchFileSuffix}` : undefined}
+            storeSlug={storeSlug ?? undefined}
+            branches={branchesOn ? branches : undefined}
+            allowAllBranches={canSeeAllBranches}
             locked={!exportAllowed}
             fetchAllProducts={fetchAllProducts}
           />

@@ -25,7 +25,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode, Copy, MoreHorizontal } from "lucide-react";
+import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode, Copy, MoreHorizontal, Percent } from "lucide-react";
 import { getEffectivePrice, isSaleActive } from "@/lib/utils/getEffectivePrice";
 import { Modal, Checkbox, Button, Dropdown, Popover } from "antd";
 import { LockOutlined } from "@ant-design/icons";
@@ -50,6 +50,7 @@ import { generateBulkBarcodeLabelPdf, isSkuTooLongForBarcodeLabel } from "@/lib/
 import { isBarcode128Encodable } from "@/lib/utils/productBarcode";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import QrLabelPreviewModal from "./QrLabelPreviewModal";
+import { BulkMrpModal } from "./BulkMrpModal";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 
 type QrLayout = "pages" | "strip" | "sheet";
@@ -92,6 +93,8 @@ interface ProductTableProps {
   storeLogoUrl?: string | null;
   /** Called after a drag is saved, so the list can be refetched. */
   onReorderSuccess?: () => void;
+  /** Called after a bulk MRP change is saved, so the list can be refetched. */
+  onPricesUpdated?: () => void;
   /** Whether this store's plan includes QR code labels — gates the per-row/bulk QR actions and the modal's QR tab. */
   qrAllowed?: boolean;
   /** Whether this store's plan includes barcode labels — gates the per-row/bulk barcode actions and the modal's Barcode tab. */
@@ -250,6 +253,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   storeName,
   storeLogoUrl,
   onReorderSuccess,
+  onPricesUpdated,
   qrAllowed = false,
   barcodeAllowed = false,
   allowDrag = false,
@@ -281,6 +285,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   >(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [mrpModalOpen, setMrpModalOpen] = useState(false);
   const [bulkLabelsBlob, setBulkLabelsBlob] = useState<Blob | null>(null);
   const [bulkLabelsFileName, setBulkLabelsFileName] = useState("");
   const [bulkLabelsTitle, setBulkLabelsTitle] = useState("QR Labels");
@@ -826,6 +831,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 </Button>
               </Popover>
             )}
+            {canEdit && (
+              <Button size="small" onClick={() => setMrpModalOpen(true)} disabled={bulkGenerating}>
+                <Percent className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
+                Change MRP
+              </Button>
+            )}
             <Button size="small" onClick={() => setSelectedIds([])} disabled={bulkGenerating}>
               Clear
             </Button>
@@ -980,6 +991,17 @@ const ProductTable: React.FC<ProductTableProps> = ({
           barcodeAllowed={barcodeAllowed}
         />
       )}
+
+      <BulkMrpModal
+        open={mrpModalOpen}
+        productIds={selectedIds}
+        currencySymbol={typeof cur === "string" ? cur : "৳"}
+        onClose={() => setMrpModalOpen(false)}
+        onDone={() => {
+          setSelectedIds([]);
+          onPricesUpdated?.();
+        }}
+      />
 
       <QrLabelPreviewModal
         open={bulkLabelsPreviewOpen}

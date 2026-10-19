@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined, LockOutlined } from "@ant-design/icons";
 import { Star, ArrowUpDown } from "lucide-react";
 import ProductTable from "./ProductTable";
+import { ExportProductsModal, type ProductExportOptions } from "./ExportProductsModal";
+import { adjustMrp } from "@/lib/utils/mrpAdjust";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductReorderList } from "./ProductReorderList";
 import {
   getProductsWithVariants,
@@ -29,6 +32,12 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useBranches } from "@/lib/context/BranchContext";
 
+const imageUrl = (images: { image_url: string; is_primary?: boolean | null }[] | null | undefined): string =>
+  (images?.find((i) => i.is_primary) ?? images?.[0])?.image_url ?? "";
+
+const slugifyBranch = (name: string): string =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
 const Products: React.FC = () => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -36,9 +45,11 @@ const Products: React.FC = () => {
   const searchParams = useSearchParams();
   const { user, storeSlug } = useCurrentUser();
   // Stores with branches: stock shown is the header's branch (the store total on "All branches").
-  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchFileSuffix } = useBranches();
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branches, canSeeAllBranches } = useBranches();
   const stockBranchId = branchesOn ? selectedBranchId : null;
   const { store } = useStore(user?.store_id ?? null);
+  const { icon: currencyIcon } = useUserCurrencyIcon();
+  const currencySymbol = typeof currencyIcon === "string" ? currencyIcon : "৳";
   const { allowed: qrAllowed } = useFeatureGate(user?.store_id, "qr");
   const { allowed: barcodeAllowed } = useFeatureGate(user?.store_id, "barcode");
   // Its own flag, separate from the Stock page's "export_data" (stock
@@ -107,6 +118,7 @@ const Products: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [printingLabels, setPrintingLabels] = useState(false);
   const [counts, setCounts] = useState<Record<ProductStatus | "ALL", number>>({
     [ProductStatus.ACTIVE]: 0,
@@ -164,8 +176,13 @@ const Products: React.FC = () => {
     return () => clearTimeout(handler);
   }, [localSearch, search, setSearch, setPage]);
 
-  const handleDownloadProductsCsv = async () => {
+  // Export scope: "all" is the whole store; otherwise one branch's stock.
+  const handleDownloadProductsCsv = async ({ scope, mrp, includeImages }: ProductExportOptions) => {
     if (!user?.store_id) return;
+
+    const exportBranch = branchesOn ? branches.find((b) => b.id === scope) : undefined;
+    const exportBranchId = exportBranch?.id ?? null;
+    const exportSuffix = exportBranch ? `-${slugifyBranch(exportBranch.name)}` : "";
 
     setExporting(true);
     try {
@@ -176,7 +193,7 @@ const Products: React.FC = () => {
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
         sort,
-        branchId: stockBranchId,
+        branchId: exportBranchId,
       });
 
       const productsToExport = res.data;
@@ -209,6 +226,9 @@ const Products: React.FC = () => {
             0,
           ) ?? 0;
 
+        const productPrice = mrp ? adjustMrp(product, mrp.mode, mrp.value) : null;
+        const productImage = includeImages ? imageUrl(product.product_images) : "";
+
         const baseRow = [
           product.id,
           product.name,
@@ -218,14 +238,14 @@ const Products: React.FC = () => {
           product.status,
           product.featured ? "Yes" : "No",
           product.free_delivery ? "Yes" : "No",
-          product.base_price ?? 0,
-          product.discounted_price ?? 0,
+          productPrice?.base_price ?? product.base_price ?? 0,
+          productPrice ? (productPrice.discounted_price ?? 0) : (product.discounted_price ?? 0),
           productAvailable,
           productReserved,
         ];
 
         if (!product.product_variants?.length) {
-          rows.push([...baseRow, "", "", "", "", "", "", "", "", "", "", ""]);
+          rows.push([...baseRow, "", "", "", "", "", "", "", "", "", "", "", ...(includeImages ? [productImage, ""] : [])]);
           continue;
         }
 
@@ -241,20 +261,23 @@ const Products: React.FC = () => {
               0,
             ) ?? 0;
 
+          const variantPrice = mrp ? adjustMrp(variant, mrp.mode, mrp.value) : null;
+
           rows.push([
             ...baseRow,
             variant.id,
             variant.variant_name ?? "",
             variant.sku ?? "",
-            variant.base_price ?? 0,
-            variant.discounted_price ?? 0,
-            variant.discount_amount ?? 0,
+            variantPrice?.base_price ?? variant.base_price ?? 0,
+            variantPrice ? (variantPrice.discounted_price ?? 0) : (variant.discounted_price ?? 0),
+            variantPrice ? (variantPrice.discount_amount ?? 0) : (variant.discount_amount ?? 0),
             variant.tp_price ?? 0,
             variant.weight ?? 0,
             variant.color ?? "",
             variant.is_active ? "Yes" : "No",
             variantAvailable,
             variantReserved,
+            ...(includeImages ? [productImage, imageUrl(variant.product_images) || productImage] : []),
           ]);
         }
       }
@@ -284,6 +307,7 @@ const Products: React.FC = () => {
         "Variant Active",
         "Variant Stock Available",
         "Variant Stock Reserved",
+        ...(includeImages ? ["Product Image URL", "Variant Image URL"] : []),
       ];
 
       const csvContent = [header, ...rows]
@@ -298,7 +322,7 @@ const Products: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `products${branchFileSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute("download", `products${exportSuffix}_${new Date().toISOString().slice(0, 10)}.csv`);
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
@@ -471,7 +495,7 @@ const Products: React.FC = () => {
             <Button
               icon={<DownloadOutlined />}
               loading={exporting}
-              onClick={handleDownloadProductsCsv}
+              onClick={() => setExportModalOpen(true)}
             >
               {t.admin.productDownloadCsv}
             </Button>
@@ -491,6 +515,25 @@ const Products: React.FC = () => {
           )}
         </div>
       </div>
+
+      <ExportProductsModal
+        open={exportModalOpen}
+        exporting={exporting}
+        currencySymbol={currencySymbol}
+        scopes={
+          branchesOn
+            ? [
+                ...(canSeeAllBranches ? [{ value: "all", label: "All branches" }] : []),
+                ...branches.map((b) => ({ value: b.id, label: b.name })),
+              ]
+            : []
+        }
+        onClose={() => setExportModalOpen(false)}
+        onExport={async (options) => {
+          await handleDownloadProductsCsv(options);
+          setExportModalOpen(false);
+        }}
+      />
 
       {reorderMode && user?.store_id ? (
         <ProductReorderList
@@ -622,6 +665,7 @@ const Products: React.FC = () => {
             pagination={undefined}
             onDeleteSuccess={fetchProducts}
             onReorderSuccess={fetchProducts}
+            onPricesUpdated={fetchProducts}
             storeSlug={storeSlug ?? undefined}
             storeName={store?.store_name ?? undefined}
             storeLogoUrl={store?.logo_url}
