@@ -725,6 +725,50 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
 ALTER TABLE "public"."products" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."product_in_stock"("p" "public"."products")
+RETURNS boolean
+LANGUAGE "sql" STABLE
+SECURITY DEFINER
+SET "search_path" TO 'public'
+AS $$
+  SELECT CASE
+    WHEN p.product_type = 'bundle' THEN
+      EXISTS (SELECT 1 FROM public.bundle_items b WHERE b.bundle_product_id = p.id)
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.bundle_items bi
+        WHERE bi.bundle_product_id = p.id
+        GROUP BY COALESCE(bi.option_group_id::text, bi.id::text)
+        HAVING NOT bool_or(
+          COALESCE((
+            SELECT i.quantity_available
+            FROM public.product_inventory i
+            WHERE i.product_id = bi.component_product_id
+              AND i.variant_id IS NOT DISTINCT FROM bi.component_variant_id
+            LIMIT 1
+          ), 0) >= GREATEST(bi.quantity_needed, 1)
+        )
+      )
+    WHEN EXISTS (
+      SELECT 1 FROM public.product_variants v
+      WHERE v.product_id = p.id AND v.is_active
+    ) THEN
+      EXISTS (
+        SELECT 1
+        FROM public.product_variants v
+        JOIN public.product_inventory i ON i.variant_id = v.id
+        WHERE v.product_id = p.id AND v.is_active AND i.quantity_available > 0
+      )
+    ELSE
+      EXISTS (
+        SELECT 1 FROM public.product_inventory i
+        WHERE i.product_id = p.id AND i.variant_id IS NULL AND i.quantity_available > 0
+      )
+  END
+$$;
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."store_customer_links" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "customer_id" "uuid" NOT NULL,

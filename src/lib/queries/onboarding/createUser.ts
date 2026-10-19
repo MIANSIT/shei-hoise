@@ -13,7 +13,7 @@ import {
   isOnboardingEmailVerified,
   clearOnboardingVerification,
 } from "@/lib/queries/onboarding/emailVerification";
-import { sendWelcomeEmail } from "@/lib/email/welcomeEmail";
+import { sendNewStoreAdminNotice, sendWelcomeEmail } from "@/lib/email/welcomeEmail";
 // ✅ Domain error codes for production
 
 async function assignDefaultTrialPlan(storeId: string, userId: string): Promise<Date | null> {
@@ -102,6 +102,20 @@ export async function createUser(data: CreateUserType) {
         });
       } catch (emailErr) {
         console.error("sendWelcomeEmail failed (non-fatal):", emailErr);
+      }
+
+      // 6️⃣ Heads-up to the Shei Hoise team — separate from the welcome email so
+      // one failing never blocks the other.
+      try {
+        await sendNewStoreAdminNotice({
+          ownerName: payload.first_name,
+          ownerEmail: payload.email,
+          storeName: payload.store.store_name,
+          storeSlug: payload.store.store_slug,
+          trialEndsAt,
+        });
+      } catch (noticeErr) {
+        console.error("sendNewStoreAdminNotice failed (non-fatal):", noticeErr);
       }
     }
 

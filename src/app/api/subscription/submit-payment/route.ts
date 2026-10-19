@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { z } from "zod";
+import { sendSubscriptionRequestAdminNotice } from "@/lib/email/subscriptionAdminEmail";
 
 const submitSchema = z.object({
   store_id: z.string().uuid(),
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
 
     // Use the service-role admin client to bypass RLS for the UPDATE.
     // Auth has already been verified above.
-    const { error } = await supabaseAdmin
+    const { data: invoice, error } = await supabaseAdmin
       .from("subscription_invoices")
       .update({
         payment_method: validated.payment_method,
@@ -55,10 +56,38 @@ export async function POST(req: Request) {
         status: "submitted",
       })
       .eq("id", validated.invoice_id)
-      .eq("store_id", validated.store_id);
+      .eq("store_id", validated.store_id)
+      .select("invoice_number, plan_name, amount, currency, billing_cycle")
+      .maybeSingle();
 
     if (error) {
       return Response.json({ error: error.message }, { status: 400 });
+    }
+
+    // Heads-up to the Shei Hoise team — best-effort, never fails the request.
+    if (invoice) {
+      try {
+        const { data: store } = await supabaseAdmin
+          .from("stores")
+          .select("store_name")
+          .eq("id", validated.store_id)
+          .maybeSingle();
+        await sendSubscriptionRequestAdminNotice({
+          storeName: store?.store_name ?? validated.store_id,
+          ownerEmail: user.email ?? "",
+          invoiceNumber: invoice.invoice_number,
+          planName: invoice.plan_name,
+          billingCycle: invoice.billing_cycle,
+          amount: Number(invoice.amount),
+          currency: invoice.currency,
+          paymentMethod: validated.payment_method,
+          paymentReference: validated.payment_reference,
+          senderNumber: validated.sender_number,
+          notes: validated.notes,
+        });
+      } catch (noticeErr) {
+        console.error("sendSubscriptionRequestAdminNotice failed (non-fatal):", noticeErr);
+      }
     }
 
     return Response.json({ success: true }, { status: 200 });

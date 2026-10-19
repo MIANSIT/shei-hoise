@@ -20,18 +20,23 @@ export interface ShopFilterValues {
   brands: string[];
   minPrice: string;
   maxPrice: string;
+  /** "in" / "out"; having both (or neither) means no stock filter. */
+  stock: StockChoice[];
 }
+
+export type StockChoice = "in" | "out";
 
 export const EMPTY_SHOP_FILTERS: ShopFilterValues = {
   categories: [],
   brands: [],
   minPrice: "",
   maxPrice: "",
+  stock: [],
 };
 
 /** Number of filters in effect (a price range counts once). */
 export function countShopFilters(v: ShopFilterValues): number {
-  return v.categories.length + v.brands.length + (v.minPrice || v.maxPrice ? 1 : 0);
+  return v.categories.length + v.brands.length + (v.minPrice || v.maxPrice ? 1 : 0) + v.stock.length;
 }
 
 interface ShopFilterPanelProps {
@@ -255,6 +260,20 @@ export default function ShopFilterPanel({ categories, brands, values, onChange }
           )}
         </Section>
       )}
+
+      <Section title={t.filter.availability}>
+        {(["in", "out"] as const).map((choice) => (
+          <OptionRow
+            key={choice}
+            checked={values.stock.includes(choice)}
+            onToggle={() => onChange({ ...values, stock: toggle(values.stock, choice) as StockChoice[] })}
+          >
+            <span className="min-w-0 flex-1 truncate">
+              {choice === "in" ? t.filter.inStock : t.filter.outOfStock}
+            </span>
+          </OptionRow>
+        ))}
+      </Section>
 
       <Section title={t.filter.price}>
         <div className="flex items-center gap-2">

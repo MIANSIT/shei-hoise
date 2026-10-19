@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { z } from "zod";
+import { sendSubscriptionRequestAdminNotice } from "@/lib/email/subscriptionAdminEmail";
 
 const selectPlanSchema = z.object({
   plan_id: z.string().uuid(),
@@ -177,6 +178,30 @@ export async function POST(req: Request) {
 
     if (invoiceError || !invoice) {
       return Response.json({ error: invoiceError?.message ?? "Failed to create invoice" }, { status: 400 });
+    }
+
+    // Heads-up to the Shei Hoise team — best-effort, never fails the request.
+    try {
+      const { data: store } = await supabaseAdmin
+        .from("stores")
+        .select("store_name")
+        .eq("id", storeId)
+        .maybeSingle();
+      await sendSubscriptionRequestAdminNotice({
+        storeName: store?.store_name ?? storeId,
+        ownerEmail: user.email ?? "",
+        invoiceNumber: invoice.invoice_number,
+        planName: plan.name,
+        billingCycle: billing_cycle,
+        amount,
+        currency: plan.currency,
+        paymentMethod: payment.method,
+        paymentReference: payment.reference,
+        senderNumber: payment.sender_number,
+        notes: payment.notes,
+      });
+    } catch (noticeErr) {
+      console.error("sendSubscriptionRequestAdminNotice failed (non-fatal):", noticeErr);
     }
 
     return Response.json(

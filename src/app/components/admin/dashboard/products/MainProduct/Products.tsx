@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { SearchOutlined, PlusOutlined, DownloadOutlined, QrcodeOutlined, LockOutlined } from "@ant-design/icons";
 import { Star, ArrowUpDown } from "lucide-react";
 import ProductTable from "./ProductTable";
-import { ExportProductsModal, type ProductExportOptions } from "./ExportProductsModal";
+import { ExportProductsModal, UNCATEGORISED_KEY, type ProductExportOptions } from "./ExportProductsModal";
 import { adjustMrp } from "@/lib/utils/mrpAdjust";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { ProductReorderList } from "./ProductReorderList";
@@ -177,15 +177,14 @@ const Products: React.FC = () => {
   }, [localSearch, search, setSearch, setPage]);
 
   // Export scope: "all" is the whole store; otherwise one branch's stock.
-  const handleDownloadProductsCsv = async ({ scope, mrp, includeImages }: ProductExportOptions) => {
-    if (!user?.store_id) return;
+  const branchForScope = (scope: string) =>
+    branchesOn ? branches.find((b) => b.id === scope) : undefined;
 
-    const exportBranch = branchesOn ? branches.find((b) => b.id === scope) : undefined;
-    const exportBranchId = exportBranch?.id ?? null;
-    const exportSuffix = exportBranch ? `-${slugifyBranch(exportBranch.name)}` : "";
-
-    setExporting(true);
-    try {
+  // Everything matching the page's search/status filters for the chosen branch,
+  // not just the visible page.
+  const loadExportProducts = useCallback(
+    async (scope: string): Promise<ProductWithVariants[]> => {
+      if (!user?.store_id) return [];
       const res = await getProductsWithVariants({
         storeId: user.store_id,
         search,
@@ -193,11 +192,23 @@ const Products: React.FC = () => {
         featured: featuredOnly ? true : undefined,
         excludeBundles: true,
         sort,
-        branchId: exportBranchId,
+        branchId: branchesOn ? (branches.find((b) => b.id === scope)?.id ?? null) : null,
       });
+      return res.data;
+    },
+    [user?.store_id, search, status, featuredOnly, sort, branchesOn, branches],
+  );
 
-      const productsToExport = res.data;
-      if (!productsToExport?.length) {
+  const handleDownloadProductsCsv = async (
+    { scope, mode, defaultChange, categoryChanges, includeImages }: ProductExportOptions,
+    productsToExport: ProductWithVariants[],
+  ) => {
+    const exportBranch = branchForScope(scope);
+    const exportSuffix = exportBranch ? `-${slugifyBranch(exportBranch.name)}` : "";
+
+    setExporting(true);
+    try {
+      if (!productsToExport.length) {
         notification.info({
           message: t.admin.noProductsFound,
           description: t.admin.productNoProductsForDownload,
@@ -226,6 +237,9 @@ const Products: React.FC = () => {
             0,
           ) ?? 0;
 
+        // A category's own change wins; everything else follows "All products".
+        const change = categoryChanges[product.category_id ?? UNCATEGORISED_KEY] ?? defaultChange;
+        const mrp = change ? { mode, value: change } : null;
         const productPrice = mrp ? adjustMrp(product, mrp.mode, mrp.value) : null;
         const productImage = includeImages ? imageUrl(product.product_images) : "";
 
@@ -529,8 +543,9 @@ const Products: React.FC = () => {
             : []
         }
         onClose={() => setExportModalOpen(false)}
-        onExport={async (options) => {
-          await handleDownloadProductsCsv(options);
+        loadProducts={loadExportProducts}
+        onExport={async (options, list) => {
+          await handleDownloadProductsCsv(options, list);
           setExportModalOpen(false);
         }}
       />

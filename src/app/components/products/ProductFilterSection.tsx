@@ -240,6 +240,15 @@ export default function ProductFilterSection({
               }
             />
           ))}
+          {values.stock.map((choice) => (
+            <FilterChip
+              key={`s-${choice}`}
+              label={choice === "in" ? t.filter.inStock : t.filter.outOfStock}
+              onRemove={() =>
+                onFiltersChange({ ...values, stock: values.stock.filter((s) => s !== choice) })
+              }
+            />
+          ))}
           {hasPrice && (
             <FilterChip
               label={priceLabel}

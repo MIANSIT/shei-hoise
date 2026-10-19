@@ -55,7 +55,9 @@ export async function clientGetProducts(
   /** Only products of these brands (plan feature "brands"); the caller resolves ids from the store's brand list. */
   brandIds?: string[],
   /** Price range on the list price (`base_price`), whole taka; omit a side to leave it open. */
-  priceRange?: { min?: number; max?: number }
+  priceRange?: { min?: number; max?: number },
+  /** Only products you can buy now ("in") or sold-out ones ("out"); omit for both. Uses the product_in_stock column. */
+  stock?: "in" | "out"
 ): Promise<{ products: Product[]; hasMore: boolean; totalCount: number }> {
 
   try {
@@ -113,6 +115,7 @@ export async function clientGetProducts(
     if (brandIds?.length) query = query.in("brand_id", brandIds);
     if (priceRange?.min !== undefined) query = query.gte("base_price", priceRange.min);
     if (priceRange?.max !== undefined) query = query.lte("base_price", priceRange.max);
+    if (stock) query = query.eq("product_in_stock", stock === "in");
 
     // Apply category filter — resolved by slug, so a renamed category doesn't
     // break links already shared with a ?category= in them. Older links (and

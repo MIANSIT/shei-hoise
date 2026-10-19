@@ -123,3 +123,58 @@ export async function sendWelcomeEmail(
     html: buildEmailHTML(params),
   });
 }
+
+interface NewStoreNoticeParams {
+  ownerName: string;
+  ownerEmail: string;
+  storeName: string;
+  storeSlug: string;
+  trialEndsAt: Date | null;
+}
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+/**
+ * Tells the Shei Hoise team (the same Gmail account that sends our mail) that a
+ * new store was created. Sent to ourselves, never to the store owner.
+ */
+export async function sendNewStoreAdminNotice(
+  params: NewStoreNoticeParams
+): Promise<void> {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+
+  if (!user || !pass) {
+    console.warn("⚠️ New store notice skipped: GMAIL_USER or GMAIL_APP_PASSWORD not set.");
+    return;
+  }
+
+  const { ownerName, ownerEmail, storeName, storeSlug, trialEndsAt } = params;
+  const lines = [
+    `Store: ${storeName} (${storeSlug})`,
+    `Owner: ${ownerName}`,
+    `Owner email: ${ownerEmail}`,
+    trialEndsAt ? `Trial ends: ${formatDate(trialEndsAt)}` : "",
+  ].filter(Boolean);
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+
+  await transporter.sendMail({
+    from: `"Shei Hoise" <${user}>`,
+    to: user,
+    replyTo: ownerEmail,
+    subject: `New store created — ${storeName}`,
+    text: ["A new store was just created on Shei Hoise.", "", ...lines].join("\n"),
+    html: `<p>A new store was just created on Shei Hoise.</p><p>${lines
+      .map((line) => escapeHtml(line))
+      .join("<br />")}</p>`,
+  });
+}

@@ -6,7 +6,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import useCartStore from "@/lib/store/cartStore";
 import ProductGrid from "../../components/products/ProductGrid";
 import ProductFilterSection, { ShopFilterSidebar } from "@/app/components/products/ProductFilterSection";
-import type { ShopFilterValues } from "@/app/components/products/ShopFilterPanel";
+import type { ShopFilterValues, StockChoice } from "@/app/components/products/ShopFilterPanel";
 import { StorePageSkeleton } from "../../components/skeletons/StorePageSkeleton";
 import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
 import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
@@ -60,6 +60,16 @@ function toPriceRange(min: string, max: string): { min?: number; max?: number } 
   };
 }
 
+/** ?stock=in / out / in,out to the choices (anything else is dropped). */
+function parseStockParam(value: string | null): StockChoice[] {
+  return parseListParam(value).filter((v): v is StockChoice => v === "in" || v === "out");
+}
+
+/** The query's stock filter: only when exactly one of in/out is picked. */
+function toStockFilter(choices: StockChoice[]): StockChoice | undefined {
+  return choices.length === 1 ? choices[0] : undefined;
+}
+
 /** Guards the ?sort= param — anything unrecognised falls back to the default. */
 function parseSortParam(value: string | null): ProductSortOption {
   return SORT_OPTIONS.find((o) => o === value) ?? "default";
@@ -94,6 +104,9 @@ export default function ShopPage({ params }: ShopPageProps) {
   // Price range on the list price, whole taka from ?min= / ?max=; "" = open.
   const [minPrice, setMinPrice] = useState<string>(parsePriceParam(searchParams.get("min")));
   const [maxPrice, setMaxPrice] = useState<string>(parsePriceParam(searchParams.get("max")));
+  const [activeStock, setActiveStock] = useState<StockChoice[]>(
+    parseStockParam(searchParams.get("stock")),
+  );
   const [searchQuery, setSearchQuery] = useState<string>(
     searchParams.get("search") || "",
   );
@@ -118,12 +131,14 @@ export default function ShopPage({ params }: ShopPageProps) {
     brand: string[],
     min: string,
     max: string,
+    stock: StockChoice[],
   ) => {
     const p = new URLSearchParams();
     if (category.length > 0) p.set("category", category.join(","));
     if (brand.length > 0) p.set("brand", brand.join(","));
     if (min) p.set("min", min);
     if (max) p.set("max", max);
+    if (stock.length > 0) p.set("stock", stock.join(","));
     if (search.trim()) p.set("search", search.trim());
     if (sort !== "default") p.set("sort", sort);
     const qs = p.toString();
@@ -143,6 +158,7 @@ export default function ShopPage({ params }: ShopPageProps) {
       isInitialLoad: boolean = false,
       brandIds: string[] = [],
       priceRange?: { min?: number; max?: number },
+      stock?: StockChoice,
     ) => {
       // Only "load more" is dropped while a request is in flight. A new
       // filter/search must always run — dropping it left the grid showing the
@@ -167,6 +183,7 @@ export default function ShopPage({ params }: ShopPageProps) {
           sort,
           brandIds.length > 0 ? brandIds : undefined,
           priceRange,
+          stock,
         );
 
         if (requestId !== requestIdRef.current) return;
@@ -226,6 +243,7 @@ export default function ShopPage({ params }: ShopPageProps) {
             true,
             initialBrandIds,
             toPriceRange(minPrice, maxPrice),
+            toStockFilter(activeStock),
           ),
         ]);
 
@@ -259,7 +277,7 @@ export default function ShopPage({ params }: ShopPageProps) {
     }
 
     init();
-    updateURLParams(activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice);
+    updateURLParams(activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice, activeStock);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store_slug]);
 
@@ -276,10 +294,10 @@ export default function ShopPage({ params }: ShopPageProps) {
 
     setCurrentPage(1);
     setHasMore(true);
-    loadProducts(1, activeCategories, searchQuery, sortOption, true, activeBrandIds, priceRange);
-    updateURLParams(activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice);
+    loadProducts(1, activeCategories, searchQuery, sortOption, true, activeBrandIds, priceRange, toStockFilter(activeStock));
+    updateURLParams(activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice, activeStock);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice]);
+  }, [activeCategories, searchQuery, sortOption, activeBrands, minPrice, maxPrice, activeStock]);
 
   // The header search (and shared links) navigate to /shop?search=… while this
   // page may already be mounted — the initial useState values above only read
@@ -291,17 +309,20 @@ export default function ShopPage({ params }: ShopPageProps) {
   const urlBrand = searchParams.get("brand") || "";
   const urlMin = parsePriceParam(searchParams.get("min"));
   const urlMax = parsePriceParam(searchParams.get("max"));
+  const urlStock = searchParams.get("stock") || "";
   useEffect(() => {
     if (!initializedRef.current) return;
     const nextBrands = parseListParam(urlBrand);
     const nextCategories = parseListParam(urlCategory);
     setMinPrice(urlMin);
     setMaxPrice(urlMax);
+    const nextStock = parseStockParam(urlStock);
+    setActiveStock((prev) => (sameList(prev, nextStock) ? prev : nextStock));
     setActiveBrands((prev) => (sameList(prev, nextBrands) ? prev : nextBrands));
     setActiveCategories((prev) => (sameList(prev, nextCategories) ? prev : nextCategories));
     setSearchQuery((prev) => (prev.trim() === urlSearch.trim() ? prev : urlSearch));
     setSortOption((prev) => (prev === urlSort ? prev : urlSort));
-  }, [urlCategory, urlSearch, urlSort, urlBrand, urlMin, urlMax]);
+  }, [urlCategory, urlSearch, urlSort, urlBrand, urlMin, urlMax, urlStock]);
 
   // One ViewCategory per distinct category selection (not per re-render), so
   // the dashboard can show which categories shoppers actually browse.
@@ -325,6 +346,7 @@ export default function ShopPage({ params }: ShopPageProps) {
     setActiveBrands(next.brands);
     setMinPrice(next.minPrice);
     setMaxPrice(next.maxPrice);
+    setActiveStock(next.stock);
     setSearchQuery("");
   }, []);
 
@@ -344,7 +366,7 @@ export default function ShopPage({ params }: ShopPageProps) {
     if (!hasMore || loadingMore || isLoadingRef.current) return;
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    await loadProducts(nextPage, activeCategories, searchQuery, sortOption, false, activeBrandIds, priceRange);
+    await loadProducts(nextPage, activeCategories, searchQuery, sortOption, false, activeBrandIds, priceRange, toStockFilter(activeStock));
   }, [
     hasMore,
     loadingMore,
@@ -354,6 +376,7 @@ export default function ShopPage({ params }: ShopPageProps) {
     sortOption,
     activeBrandIds,
     priceRange,
+    activeStock,
     loadProducts,
   ]);
 
@@ -405,6 +428,7 @@ export default function ShopPage({ params }: ShopPageProps) {
     brands: activeBrands,
     minPrice,
     maxPrice,
+    stock: activeStock,
   };
 
   // The empty state names the filters the shopper sees, not their slugs.
