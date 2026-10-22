@@ -9,6 +9,9 @@ import {
   getProductRatingSummaries,
   RatingSummary,
 } from "@/lib/queries/reviews/getProductRatingSummaries";
+import { getStoreIdBySlug } from "@/lib/queries/stores/getStoreIdBySlug";
+import { getAutoApplyCoupons } from "@/lib/queries/coupons/getAutoApplyCoupons";
+import type { Coupon } from "@/lib/types/coupon";
 
 interface ProductGridProps {
   products: Product[];
@@ -29,6 +32,23 @@ export default function ProductGrid({
   columnsClassName,
 }: ProductGridProps) {
   const [ratings, setRatings] = useState<Record<string, RatingSummary>>({});
+  const [autoCoupons, setAutoCoupons] = useState<Coupon[]>([]);
+
+  // Auto-apply coupons for the "Extra X% off" badge on each card.
+  useEffect(() => {
+    let cancelled = false;
+    getStoreIdBySlug(store_slug)
+      .then((storeId) => (storeId ? getAutoApplyCoupons(storeId) : []))
+      .then((list) => {
+        if (!cancelled) setAutoCoupons(list);
+      })
+      .catch(() => {
+        /* badge only — cards just render without it */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [store_slug]);
 
   // One batched query for every card on the page instead of one per card.
   useEffect(() => {
@@ -84,6 +104,7 @@ export default function ProductGrid({
               onAddToCart={() => onAddToCart(product)}
               isLoading={loadingProductId === product.id}
               rating={ratings[product.id]}
+              autoCoupons={autoCoupons}
             />
           </m.div>
         ))}

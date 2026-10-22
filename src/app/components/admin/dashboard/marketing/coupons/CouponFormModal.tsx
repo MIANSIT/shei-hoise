@@ -24,6 +24,7 @@ export interface CouponFormValues {
   title?: string | null;
   is_featured: boolean;
   show_on_storefront: boolean;
+  auto_apply: boolean;
 }
 
 interface CouponFormModalProps {
@@ -71,6 +72,7 @@ function CouponFormModal({
         title: editingCoupon.title ?? undefined,
         is_featured: editingCoupon.is_featured,
         show_on_storefront: editingCoupon.show_on_storefront,
+        auto_apply: editingCoupon.auto_apply,
       });
     } else {
       form.resetFields();
@@ -79,6 +81,7 @@ function CouponFormModal({
         is_active: true,
         is_featured: false,
         show_on_storefront: false,
+        auto_apply: false,
       });
     }
   }, [open, mode, editingCoupon, form]);
@@ -286,6 +289,16 @@ function CouponFormModal({
               <Switch />
             </Form.Item>
           </div>
+
+          <Form.Item
+            name="auto_apply"
+            label={<FieldLabel>Auto-apply at Checkout</FieldLabel>}
+            tooltip="Customers don't need to type the code: it is applied automatically at checkout, and the product page shows the price after this coupon. Only one coupon applies per order, so if several are auto-apply, the one giving the biggest discount wins."
+            valuePropName="checked"
+            style={{ marginTop: 16, marginBottom: 0 }}
+          >
+            <Switch />
+          </Form.Item>
         </Form>
       </div>
     </Modal>

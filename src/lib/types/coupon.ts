@@ -18,6 +18,7 @@ export interface Coupon {
   title: string | null;
   is_featured: boolean;
   show_on_storefront: boolean;
+  auto_apply: boolean;
   created_at: string;
   updated_at: string;
 }

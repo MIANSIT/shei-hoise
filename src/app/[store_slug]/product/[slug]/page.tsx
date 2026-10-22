@@ -30,6 +30,9 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { StoreSettings } from "@/lib/types/store/store";
 import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
+import { getAutoApplyCoupons } from "@/lib/queries/coupons/getAutoApplyCoupons";
+import { computeCouponDiscount } from "@/lib/utils/couponDiscount";
+import type { Coupon } from "@/lib/types/coupon";
 import {
   Minus,
   Plus,
@@ -322,6 +325,7 @@ export default function ProductPage() {
   const [soldCount, setSoldCount] = useState(0);
   const [brand, setBrand] = useState<StorefrontBrand | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [autoCoupons, setAutoCoupons] = useState<Coupon[]>([]);
   const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [descExpanded, setDescExpanded] = useState(false);
   const [descOverflows, setDescOverflows] = useState(false);
@@ -534,6 +538,22 @@ export default function ProductPage() {
     if (product_slug) fetchData();
   }, [product_slug, store_slug]);
 
+  // Auto-apply coupons for the "price with coupon" line under the price.
+  useEffect(() => {
+    if (!storeId) return;
+    let cancelled = false;
+    getAutoApplyCoupons(storeId)
+      .then((list) => {
+        if (!cancelled) setAutoCoupons(list);
+      })
+      .catch(() => {
+        /* preview only — the price line just doesn't show */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId]);
+
   // Cap the open-by-default description at a fixed height with a
   // "Read more" toggle — only for descriptions that actually overflow it,
   // so a typical short/medium description shows in full with no extra click.
@@ -669,6 +689,18 @@ export default function ProductPage() {
   const hasVariants = (product.product_variants?.length ?? 0) > 0;
   const totalPrice = displayPrice * quantity;
 
+  // Best auto-apply coupon on a single unit. Coupons whose minimum order the
+  // unit price doesn't meet still show (with an "on orders over" note) so the
+  // customer knows the offer exists; ones that do meet it win over those.
+  const couponPreview = autoCoupons
+    .map((c) => ({
+      code: c.code,
+      finalPrice: displayPrice - computeCouponDiscount(c, displayPrice),
+      minOrder: c.min_order_amount !== null && displayPrice < c.min_order_amount ? c.min_order_amount : null,
+    }))
+    .filter((p) => p.finalPrice < displayPrice)
+    .sort((a, b) => Number(a.minOrder !== null) - Number(b.minOrder !== null) || a.finalPrice - b.finalPrice)[0];
+
   return (
     <div className="min-h-screen bg-background transition-colors duration-200">
       {/* Top bar */}
@@ -745,6 +777,30 @@ export default function ProductPage() {
                 originalPrice={originalPrice}
                 freeDelivery={product.free_delivery}
               />
+              {couponPreview && (
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-[13px] font-semibold text-primary">
+                  <span>
+                    {t.product.couponPriceLabel}:{" "}
+                    <span className="text-base font-extrabold">
+                      {curr}
+                      {n(couponPreview.finalPrice.toFixed(2))}
+                    </span>
+                    {couponPreview.minOrder !== null && (
+                      <span className="font-medium text-muted-foreground">
+                        {" "}
+                        {t.product.couponOnOrdersOver} {curr}
+                        {n(couponPreview.minOrder)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
+                    {couponPreview.code}
+                  </span>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {t.product.couponAutoApplied}
+                  </span>
+                </p>
+              )}
               {product.product_type === "bundle" &&
                 (product.component_value ?? 0) > displayPrice && (
                   <p className="mt-1.5 text-[13px] font-semibold text-emerald-600 dark:text-emerald-400">

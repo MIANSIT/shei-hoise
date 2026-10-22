@@ -557,11 +557,24 @@ export async function createCustomerOrder(
         subtotal,
         customerInfo.customer_id || null,
       );
-      if (!validation.valid || !validation.coupon) {
-        throw new Error(validation.error || "Invalid coupon code");
+      if (validation.valid && validation.coupon) {
+        finalDiscount = validation.discountAmount;
+        redeemedCoupon = { id: validation.coupon.id, code: validation.coupon.code };
+      } else {
+        // An auto-applied coupon the customer never typed (e.g. they already
+        // used its per-customer limit — the checkout preview can't know that
+        // before the customer is resolved) is dropped rather than blocking
+        // the order. A coupon the customer entered themselves still errors.
+        const { data: autoCoupon } = await supabaseAdmin
+          .from("coupons")
+          .select("auto_apply")
+          .eq("store_id", storeId)
+          .eq("code", couponCode.trim().toUpperCase())
+          .maybeSingle();
+        if (!autoCoupon?.auto_apply) {
+          throw new Error(validation.error || "Invalid coupon code");
+        }
       }
-      finalDiscount = validation.discountAmount;
-      redeemedCoupon = { id: validation.coupon.id, code: validation.coupon.code };
     }
 
     // ✅ INVENTORY VALIDATION — resolve bundle lines into their component
@@ -620,7 +633,10 @@ export async function createCustomerOrder(
       // Discount is never client-trusted (see coupon re-check above), so the
       // total is recomputed from it here rather than trusting the client's
       // totalAmount for that portion.
-      total_amount: subtotal - finalDiscount + taxAmount + deliveryCost + (additionalCharges || 0),
+      // Rounded to the nearest whole taka (x.5 and above rounds up).
+      total_amount: Math.round(
+        subtotal - finalDiscount + taxAmount + deliveryCost + (additionalCharges || 0),
+      ),
       currency: currency,
       payment_status: paymentStatus,
       payment_method: paymentMethod,

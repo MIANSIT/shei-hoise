@@ -55,7 +55,7 @@ export function useOrderProcess(store_slug: string) {
 
       // ✅ Calculate total with tax
       const subtotal = calculations?.subtotal || 0;
-      const totalWithTax = subtotal + shippingFee + taxAmount - discountAmount;
+      const totalWithTax = Math.round(subtotal + shippingFee + taxAmount - discountAmount);
 
       // Prepare order data with enum values
       const orderData = {

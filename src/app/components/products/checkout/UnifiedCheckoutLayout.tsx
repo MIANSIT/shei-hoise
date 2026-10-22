@@ -192,11 +192,14 @@ export default function UnifiedCheckoutLayout({
   const couponDiscountAmount =
     appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
 
-  const totalWithShippingAndTax =
+  // Rounded to the nearest whole taka (x.5 and above rounds up) — must match
+  // the total_amount createCustomerOrder stores.
+  const totalWithShippingAndTax = Math.round(
     calculations.totalPrice -
-    couponDiscountAmount +
-    shippingFee +
-    (taxAmount > 0 ? taxAmount : 0);
+      couponDiscountAmount +
+      shippingFee +
+      (taxAmount > 0 ? taxAmount : 0),
+  );
 
   const displayCurrencyIcon = currencyLoading ? null : currencyIcon ?? null;
   const displayCurrencyIconSafe = displayCurrencyIcon || "৳";
@@ -508,7 +511,7 @@ export default function UnifiedCheckoutLayout({
                         transition={{ duration: 0.2 }}
                       >
                         {displayCurrencyIconSafe}
-                        {n(totalWithShippingAndTax.toFixed(2))}
+                        {n(totalWithShippingAndTax)}
                       </m.span>
                     </div>
 

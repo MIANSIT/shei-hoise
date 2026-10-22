@@ -12,6 +12,9 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { RatingSummary } from "@/lib/queries/reviews/getProductRatingSummaries";
 import { StarRating } from "@/app/components/products/reviews/StarRating";
 import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
+import { computeCouponDiscount } from "@/lib/utils/couponDiscount";
+import { CouponDiscountType } from "@/lib/types/enums";
+import type { Coupon } from "@/lib/types/coupon";
 
 interface ProductCardProps {
   store_slug: string;
@@ -20,6 +23,8 @@ interface ProductCardProps {
   onAddToCart: () => Promise<void>;
   /** Undefined while the batched ratings fetch for the grid is still loading. */
   rating?: RatingSummary;
+  /** Live auto-apply coupons — the best one for this price shows as an "Extra X% off" badge. */
+  autoCoupons?: Coupon[];
 }
 
 export default function ProductCard({
@@ -27,6 +32,7 @@ export default function ProductCard({
   product,
   onAddToCart,
   rating,
+  autoCoupons = [],
 }: ProductCardProps) {
   const [adding, setAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -73,6 +79,13 @@ export default function ProductCard({
     originalPrice > displayPrice
       ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
       : 0;
+
+  // Biggest saving among auto-apply coupons at this card's price (min-order
+  // is ignored here — the product page spells that out).
+  const couponBadge = autoCoupons
+    .map((c) => ({ coupon: c, saving: computeCouponDiscount(c, displayPrice) }))
+    .filter((x) => x.saving > 0)
+    .sort((a, b) => b.saving - a.saving)[0]?.coupon;
 
   const isInStock = (): boolean => {
     if (product.variants && product.variants.length > 0) {
@@ -212,6 +225,16 @@ export default function ProductCard({
             )}
           </div>
         </div>
+
+        {couponBadge && productInStock && (
+          <span className="absolute bottom-2 left-2 z-10 pointer-events-none inline-flex items-center gap-1 text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full shadow-md whitespace-nowrap">
+            {t.card.couponExtra}{" "}
+            {couponBadge.discount_type === CouponDiscountType.PERCENTAGE
+              ? `${n(couponBadge.discount_value)}%`
+              : `${displayCurrencyIconSafe}${n(couponBadge.discount_value)}`}{" "}
+            {t.checkout.couponOffSuffix} · {couponBadge.code}
+          </span>
+        )}
 
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-black/20 transition-colors duration-300" />
       </Link>

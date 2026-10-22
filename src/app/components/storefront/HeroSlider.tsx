@@ -83,7 +83,9 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             className="object-cover object-center"
             sizes="100vw"
           />
-          <div className="absolute inset-0 bg-linear-to-r from-black/65 via-black/30 to-black/5" />
+          {(slide.headline || slide.subtext) && (
+            <div className="absolute inset-0 bg-linear-to-r from-black/65 via-black/30 to-black/5" />
+          )}
 
           {(slide.headline || slide.subtext || (slide.button_text && slide.button_link && !slide.button_position)) && (
             <div className="relative z-[2] h-full flex items-center">

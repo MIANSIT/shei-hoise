@@ -30,6 +30,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { fbq, FbEvent } from "@/lib/utils/fbPixel";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
+import { getAutoApplyCoupons } from "@/lib/queries/coupons/getAutoApplyCoupons";
 import type { CouponValidationResult } from "@/lib/types/coupon";
 
 export default function CheckoutPage() {
@@ -249,6 +250,48 @@ export default function CheckoutPage() {
     [],
   );
 
+  // Auto-apply coupons: once the cart is known, apply the best valid coupon
+  // the owner flagged `auto_apply` — silently (no error toast; a coupon that
+  // doesn't fit this cart is simply skipped). Stops for good as soon as the
+  // customer applies or removes a coupon themselves, so their choice wins.
+  // Re-runs when the subtotal changes so a min_order_amount reached later is
+  // picked up, and a coupon that no longer fits is dropped.
+  const couponTouchedByUser = useRef(false);
+  const autoAppliedCode = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isMounted || cartLoading || calculations.subtotal <= 0) return;
+    if (couponTouchedByUser.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const storeId = await getStoreIdBySlug(store_slug);
+        if (!storeId) return;
+        const candidates = await getAutoApplyCoupons(storeId);
+        const results = await Promise.all(
+          candidates.map((c) => validateCoupon(c.code, storeId, calculations.subtotal)),
+        );
+        if (cancelled || couponTouchedByUser.current) return;
+        const best = results
+          .filter((r) => r.valid && r.coupon)
+          .sort((a, b) => b.discountAmount - a.discountAmount)[0];
+        if (best?.coupon) {
+          autoAppliedCode.current = best.coupon.code;
+          setCouponCode(best.coupon.code);
+          setAppliedCoupon(best);
+        } else if (autoAppliedCode.current) {
+          autoAppliedCode.current = null;
+          setCouponCode("");
+          setAppliedCoupon(null);
+        }
+      } catch {
+        /* auto-apply is best-effort; the customer can still enter a code */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isMounted, cartLoading, calculations.subtotal, store_slug]);
+
   // Coupon apply/remove — this is only a live preview; the discount is
   // always (re)computed server-side again in createCustomerOrder right
   // before the order commits, so a stale/raced preview here can never
@@ -260,6 +303,7 @@ export default function CheckoutPage() {
     // against the not-yet-updated state value.
     const code = codeOverride ?? couponCode;
     if (!code.trim()) return;
+    couponTouchedByUser.current = true;
     if (codeOverride) setCouponCode(codeOverride);
     setCouponValidating(true);
     try {
@@ -279,6 +323,7 @@ export default function CheckoutPage() {
   }, [couponCode, calculations.subtotal, store_slug, notify]);
 
   const handleRemoveCoupon = useCallback(() => {
+    couponTouchedByUser.current = true;
     setCouponCode("");
     setAppliedCoupon(null);
   }, []);
@@ -337,8 +382,9 @@ export default function CheckoutPage() {
       };
 
       const discountAmount = appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
-      const totalWithTax =
-        calculations.totalPrice - discountAmount + shippingFee + taxAmount;
+      const totalWithTax = Math.round(
+        calculations.totalPrice - discountAmount + shippingFee + taxAmount,
+      );
 
       // Email is always empty for guest checkout
       const customerEmail = "";

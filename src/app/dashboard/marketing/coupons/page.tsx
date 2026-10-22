@@ -41,6 +41,7 @@ function toCreateCouponType(values: CouponFormValues): CreateCouponType {
     title: values.title ?? null,
     is_featured: values.is_featured,
     show_on_storefront: values.show_on_storefront,
+    auto_apply: values.auto_apply,
   };
 }
 
