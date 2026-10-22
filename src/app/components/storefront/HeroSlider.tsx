@@ -73,7 +73,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
       {slides.map((slide, i) => (
         <div
           key={slide.id}
-          className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-[1]" : "opacity-0 pointer-events-none"}`}
+          className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-1" : "opacity-0 pointer-events-none"}`}
         >
           <Image
             src={slide.image_url}
@@ -88,7 +88,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
           )}
 
           {(slide.headline || slide.subtext || (slide.button_text && slide.button_link && !slide.button_position)) && (
-            <div className="relative z-[2] h-full flex items-center">
+            <div className="relative z-2 h-full flex items-center">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-lg text-white">
                   {slide.headline && (
@@ -106,7 +106,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
           )}
 
           {slide.button_text && slide.button_link && slide.button_position && (
-            <div className={`absolute inset-0 z-[2] pointer-events-none flex px-4 sm:px-8 py-10 sm:py-12 ${POSITION_CLASSES[slide.button_position]}`}>
+            <div className={`absolute inset-0 z-2 pointer-events-none flex px-4 sm:px-8 py-10 sm:py-12 ${POSITION_CLASSES[slide.button_position]}`}>
               <HeroButton slide={slide} className="pointer-events-auto" />
             </div>
           )}
@@ -119,7 +119,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             type="button"
             aria-label="Previous slide"
             onClick={() => move(-1)}
-            className="absolute z-[3] top-1/2 left-4 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+            className="absolute z-3 top-1/2 left-4 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -127,11 +127,11 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             type="button"
             aria-label="Next slide"
             onClick={() => move(1)}
-            className="absolute z-[3] top-1/2 right-4 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+            className="absolute z-3 top-1/2 right-4 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
-          <div className="absolute z-[3] bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
+          <div className="absolute z-3 bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
             {slides.map((slide, i) => (
               <button
                 key={slide.id}
