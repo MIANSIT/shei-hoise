@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { sendSubscriptionRequestAdminNotice } from "@/lib/email/subscriptionAdminEmail";
+import { GRACE_PERIOD_DAYS } from "@/lib/utils/subscriptionAccess";
 
 const selectPlanSchema = z.object({
   plan_id: z.string().uuid(),
@@ -118,14 +119,20 @@ export async function POST(req: Request) {
 
     const now = new Date();
 
-    // Renewing the same plan while time is already paid for must extend from
-    // where the current period ends, not reset to today — otherwise a store
-    // that pays early loses the days it already paid for. A plan switch still
-    // starts fresh from now, since it's a different price/feature set.
+    // Renewing the same plan continues from where the current period ended, so
+    // billing stays continuous: early payers keep the days they already paid
+    // for, and a store renewing inside the grace window (the days after expiry
+    // it was still allowed to use) pays for those days instead of getting them
+    // free. Only a store lapsed past grace — already locked out — starts fresh
+    // from today, so it isn't back-billed for time it couldn't use. A plan
+    // switch always starts fresh from now, since it's a different price/feature set.
     const isSamePlanRenewal = existingSub?.plan_id === plan_id;
     const existingPeriodEnd = existingSub?.current_period_end ? new Date(existingSub.current_period_end) : null;
+    const graceEndMs = existingPeriodEnd
+      ? existingPeriodEnd.getTime() + GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000
+      : 0;
     const periodStart =
-      isSamePlanRenewal && existingPeriodEnd && existingPeriodEnd.getTime() > now.getTime()
+      isSamePlanRenewal && existingPeriodEnd && now.getTime() <= graceEndMs
         ? existingPeriodEnd
         : now;
     const periodEnd = computePeriodEnd(periodStart, billing_cycle);
