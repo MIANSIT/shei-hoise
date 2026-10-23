@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -41,6 +41,8 @@ function HeroButton({ slide, className = "" }: { slide: HeroSlide; className?: s
 /** Admin-managed marketing carousel. Callers must only pass slides that already have an image_url — a slide with no image is never valid to render. */
 export function HeroSlider({ slides }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
+  // Natural width/height per slide so phones can show the whole image instead of a cropped 16:5 strip.
+  const [ratios, setRatios] = useState<Record<string, number>>({});
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const resetAutoplay = () => {
@@ -69,7 +71,10 @@ export function HeroSlider({ slides }: HeroSliderProps) {
   const move = (dir: 1 | -1) => goTo((current + dir + slides.length) % slides.length);
 
   return (
-    <section className="relative w-full aspect-16/5 min-h-64 overflow-hidden bg-muted">
+    <section
+      style={{ "--hero-ratio": ratios[slides[current].id] ?? 16 / 5 } as CSSProperties}
+      className="relative w-full aspect-(--hero-ratio) sm:aspect-16/5 sm:min-h-64 overflow-hidden bg-muted"
+    >
       {slides.map((slide, i) => (
         <div
           key={slide.id}
@@ -82,6 +87,11 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             priority={i === 0}
             className="object-cover object-center"
             sizes="100vw"
+            onLoad={(e) => {
+              const { naturalWidth, naturalHeight } = e.currentTarget;
+              if (!naturalWidth || !naturalHeight) return;
+              setRatios((r) => (r[slide.id] ? r : { ...r, [slide.id]: naturalWidth / naturalHeight }));
+            }}
           />
           {(slide.headline || slide.subtext) && (
             <div className="absolute inset-0 bg-linear-to-r from-black/65 via-black/30 to-black/5" />
