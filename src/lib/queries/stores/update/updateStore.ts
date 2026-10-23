@@ -1,4 +1,6 @@
 "use server";
+import { revalidatePath } from "next/cache";
+import { invalidateStoreFullCache } from "@/lib/queries/stores/getStoreBySlugFull";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { UpdatedStoreData, StoreData } from "@/lib/types/store/store";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
@@ -81,6 +83,12 @@ export async function updateStore(
     console.error("Error updating store:", error);
     return null;
   }
+
+  // The storefront layout/footer (name, logo, contact details, SEO) sits behind
+  // the 10-min in-memory cache in getStoreBySlugFull and the 5-min route cache
+  // on [store_slug]/layout.tsx — clear both so edits show up immediately.
+  invalidateStoreFullCache(storeId);
+  revalidatePath("/[store_slug]", "layout");
 
   return data;
 }

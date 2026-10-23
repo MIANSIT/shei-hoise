@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { encrypt } from "@/lib/utils/encryption";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
@@ -8,6 +9,7 @@ import type {
   StoreSettings,
 } from "@/lib/types/store/store";
 import { requireOwner } from "@/lib/permissions/server";
+import { invalidateStoreSettingsCache } from "@/lib/queries/stores/getStoreSettings";
 
 export async function updateStoreSettings(
   storeId: string,
@@ -51,6 +53,12 @@ export async function updateStoreSettings(
     console.error("Error updating store settings:", error);
     return null;
   }
+
+  // The storefront layout (announcement bar's free-shipping text, header,
+  // footer) reads these settings through a short in-memory cache and sits
+  // behind a 5-min route cache — clear both so edits show up immediately.
+  invalidateStoreSettingsCache(storeId);
+  revalidatePath("/[store_slug]", "layout");
 
   // Never send the (encrypted) token value back over the wire — the caller
   // never needs it, and it should never round-trip into client state.
