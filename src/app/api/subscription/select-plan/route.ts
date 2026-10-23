@@ -199,6 +199,7 @@ export async function POST(req: Request) {
         paymentReference: payment.reference,
         senderNumber: payment.sender_number,
         notes: payment.notes,
+        requestType: !existingSub ? "new" : isSamePlanRenewal ? "renewal" : "switch",
       });
     } catch (noticeErr) {
       console.error("sendSubscriptionRequestAdminNotice failed (non-fatal):", noticeErr);

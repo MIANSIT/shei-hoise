@@ -12,7 +12,15 @@ interface SubscriptionRequestNoticeParams {
   paymentReference: string;
   senderNumber: string;
   notes?: string | null;
+  /** Omitted when the caller can't tell (e.g. paying an already-created invoice). */
+  requestType?: "new" | "renewal" | "switch";
 }
+
+const REQUEST_TYPE_LABEL: Record<NonNullable<SubscriptionRequestNoticeParams["requestType"]>, string> = {
+  new: "New subscription",
+  renewal: "Renewal",
+  switch: "Plan switch",
+};
 
 const escapeHtml = (value: string): string =>
   value
@@ -36,7 +44,10 @@ export async function sendSubscriptionRequestAdminNotice(
     return;
   }
 
+  const typeLabel = params.requestType ? REQUEST_TYPE_LABEL[params.requestType] : null;
+
   const lines = [
+    typeLabel ? `Type: ${typeLabel}` : "",
     `Store: ${params.storeName}`,
     `Owner email: ${params.ownerEmail}`,
     `Invoice: ${params.invoiceNumber}`,
@@ -57,7 +68,7 @@ export async function sendSubscriptionRequestAdminNotice(
     from: `"Shei Hoise" <${user}>`,
     to: user,
     replyTo: params.ownerEmail,
-    subject: `Plan payment to review — ${params.storeName} (${params.planName})`,
+    subject: `${typeLabel ? `${typeLabel} — ` : ""}Plan payment to review — ${params.storeName} (${params.planName})`,
     text: ["A store submitted a plan payment. Please review and approve it.", "", ...lines].join("\n"),
     html: `<p>A store submitted a plan payment. Please review and approve it.</p><p>${lines
       .map((line) => escapeHtml(line))
