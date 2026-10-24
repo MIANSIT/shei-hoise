@@ -54,6 +54,7 @@ export async function updateHeroSlide(
       button_text: payload.button_text ?? null,
       button_link: payload.button_link ?? null,
       button_position: payload.button_position ?? null,
+      button_position_mobile: payload.button_position_mobile ?? null,
       button_new_tab: payload.button_new_tab,
       is_active: payload.is_active,
       updated_at: new Date().toISOString(),

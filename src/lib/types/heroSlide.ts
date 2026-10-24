@@ -22,6 +22,8 @@ export interface HeroSlide {
   button_link: string | null;
   /** null = under the headline/subtext, as before. */
   button_position: HeroButtonPosition | null;
+  /** null = phones use button_position. */
+  button_position_mobile: HeroButtonPosition | null;
   button_new_tab: boolean;
   sort_order: number;
   is_active: boolean;

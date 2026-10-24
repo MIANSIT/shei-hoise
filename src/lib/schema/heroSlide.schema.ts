@@ -9,6 +9,7 @@ export const heroSlideFieldsSchema = z.object({
   button_text: z.string().trim().max(40).optional().nullable(),
   button_link: z.string().trim().max(500).optional().nullable(),
   button_position: z.enum(HERO_BUTTON_POSITIONS).optional().nullable(),
+  button_position_mobile: z.enum(HERO_BUTTON_POSITIONS).optional().nullable(),
   button_new_tab: z.boolean().default(false),
   is_active: z.boolean().default(true),
 });

@@ -15,6 +15,7 @@ export interface SlideFormValues {
   button_text?: string | null;
   button_link?: string | null;
   button_position?: HeroButtonPosition | null;
+  button_position_mobile?: HeroButtonPosition | null;
   button_new_tab: boolean;
   is_active: boolean;
 }
@@ -22,10 +23,16 @@ export interface SlideFormValues {
 interface ButtonPositionPickerProps {
   value?: HeroButtonPosition | null;
   onChange?: (value: HeroButtonPosition | null) => void;
+  /** Shown when nothing is picked. */
+  emptyText?: string;
 }
 
-/** 3×3 grid: pick where the button sits on the banner. Click the active cell again to go back to "under the text". */
-function ButtonPositionPicker({ value, onChange }: ButtonPositionPickerProps) {
+/** 3×3 grid: pick where the button sits on the banner. Click the active cell again to clear it. */
+function ButtonPositionPicker({
+  value,
+  onChange,
+  emptyText = "Default: under the headline",
+}: ButtonPositionPickerProps) {
   return (
     <div>
       <div
@@ -49,7 +56,7 @@ function ButtonPositionPicker({ value, onChange }: ButtonPositionPickerProps) {
         })}
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {value ? value.replace("-", " ") : "Default: under the headline"}
+        {value ? value.replace("-", " ") : emptyText}
       </p>
     </div>
   );
@@ -87,12 +94,13 @@ export default function SlideFormModal({
         button_text: editingSlide.button_text ?? undefined,
         button_link: editingSlide.button_link ?? undefined,
         button_position: editingSlide.button_position,
+        button_position_mobile: editingSlide.button_position_mobile,
         button_new_tab: editingSlide.button_new_tab ?? false,
         is_active: editingSlide.is_active,
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ is_active: true, button_new_tab: false, button_position: null });
+      form.setFieldsValue({ is_active: true, button_new_tab: false, button_position: null, button_position_mobile: null });
     }
   }, [open, mode, editingSlide, form]);
 
@@ -187,9 +195,14 @@ export default function SlideFormModal({
               <Input placeholder="/shop" className="rounded-lg h-9.5" />
             </Form.Item>
           </div>
-          <Form.Item name="button_position" label="Button Position">
-            <ButtonPositionPicker />
-          </Form.Item>
+          <div className="grid grid-cols-2 gap-x-4">
+            <Form.Item name="button_position" label="Button Position (Desktop)">
+              <ButtonPositionPicker />
+            </Form.Item>
+            <Form.Item name="button_position_mobile" label="Button Position (Mobile)">
+              <ButtonPositionPicker emptyText="Same as desktop" />
+            </Form.Item>
+          </div>
           <Form.Item name="button_new_tab" label="Open link in a new tab" valuePropName="checked">
             <Switch />
           </Form.Item>

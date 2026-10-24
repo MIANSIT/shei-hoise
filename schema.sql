@@ -842,6 +842,7 @@ CREATE TABLE IF NOT EXISTS "public"."store_hero_slides" (
     "button_text" "text",
     "button_link" "text",
     "button_position" "text",
+    "button_position_mobile" "text",
     "button_new_tab" boolean DEFAULT false NOT NULL,
     "sort_order" integer DEFAULT 0 NOT NULL,
     "is_active" boolean DEFAULT true NOT NULL,

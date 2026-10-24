@@ -25,13 +25,26 @@ const POSITION_CLASSES: Record<HeroButtonPosition, string> = {
   "bottom-right": "items-end justify-end",
 };
 
+// Same alignments, scoped to sm and up. Literal strings so Tailwind can see them.
+const SM_POSITION_CLASSES: Record<HeroButtonPosition, string> = {
+  "top-left": "sm:items-start sm:justify-start",
+  "top-center": "sm:items-start sm:justify-center",
+  "top-right": "sm:items-start sm:justify-end",
+  "middle-left": "sm:items-center sm:justify-start",
+  "middle-center": "sm:items-center sm:justify-center",
+  "middle-right": "sm:items-center sm:justify-end",
+  "bottom-left": "sm:items-end sm:justify-start",
+  "bottom-center": "sm:items-end sm:justify-center",
+  "bottom-right": "sm:items-end sm:justify-end",
+};
+
 function HeroButton({ slide, className = "" }: { slide: HeroSlide; className?: string }) {
   const newTab = slide.button_new_tab;
   return (
     <Link
       href={slide.button_link ?? "#"}
       {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className={`${className} inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:scale-95 transition-all duration-200`}
+      className={`${className} inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-6 sm:py-3 rounded-full font-bold text-xs sm:text-sm bg-primary text-primary-foreground shadow-lg hover:bg-primary-hover active:scale-95 transition-all duration-200`}
     >
       {slide.button_text}
     </Link>
@@ -75,7 +88,14 @@ export function HeroSlider({ slides }: HeroSliderProps) {
       style={{ "--hero-ratio": ratios[slides[current].id] ?? 16 / 5 } as CSSProperties}
       className="relative w-full aspect-(--hero-ratio) sm:aspect-16/5 sm:min-h-64 overflow-hidden bg-muted"
     >
-      {slides.map((slide, i) => (
+      {slides.map((slide, i) => {
+        const hasButton = Boolean(slide.button_text && slide.button_link);
+        const desktopPos = slide.button_position;
+        // Phones fall back to the desktop position when no mobile one is set.
+        const mobilePos = slide.button_position_mobile ?? slide.button_position;
+        // The under-the-text button shows on any screen size that has no positioned button.
+        const inlineClass = `mt-6 ${mobilePos ? "max-sm:hidden" : ""} ${desktopPos ? "sm:hidden" : ""}`;
+        return (
         <div
           key={slide.id}
           className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-1" : "opacity-0 pointer-events-none"}`}
@@ -97,7 +117,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             <div className="absolute inset-0 bg-linear-to-r from-black/65 via-black/30 to-black/5" />
           )}
 
-          {(slide.headline || slide.subtext || (slide.button_text && slide.button_link && !slide.button_position)) && (
+          {(slide.headline || slide.subtext || (hasButton && !(mobilePos && desktopPos))) && (
             <div className="relative z-2 h-full flex items-center">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-lg text-white">
@@ -107,21 +127,24 @@ export function HeroSlider({ slides }: HeroSliderProps) {
                   {slide.subtext && (
                     <p className="mt-3 text-sm sm:text-base text-white/85 drop-shadow-sm">{slide.subtext}</p>
                   )}
-                  {slide.button_text && slide.button_link && !slide.button_position && (
-                    <HeroButton slide={slide} className="mt-6" />
-                  )}
+                  {hasButton && !(mobilePos && desktopPos) && <HeroButton slide={slide} className={inlineClass} />}
                 </div>
               </div>
             </div>
           )}
 
-          {slide.button_text && slide.button_link && slide.button_position && (
-            <div className={`absolute inset-0 z-2 pointer-events-none flex px-4 sm:px-8 py-10 sm:py-12 ${POSITION_CLASSES[slide.button_position]}`}>
+          {hasButton && (mobilePos || desktopPos) && (
+            <div
+              className={`absolute inset-0 z-2 pointer-events-none flex px-12 sm:px-8 py-6 sm:py-12 ${
+                mobilePos ? POSITION_CLASSES[mobilePos] : "max-sm:hidden"
+              } ${desktopPos ? SM_POSITION_CLASSES[desktopPos] : "sm:hidden"}`}
+            >
               <HeroButton slide={slide} className="pointer-events-auto" />
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {slides.length > 1 && (
         <>
@@ -129,7 +152,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             type="button"
             aria-label="Previous slide"
             onClick={() => move(-1)}
-            className="absolute z-3 top-1/2 left-4 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+            className="absolute z-3 top-1/2 left-2 sm:left-4 -translate-y-1/2 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -137,11 +160,11 @@ export function HeroSlider({ slides }: HeroSliderProps) {
             type="button"
             aria-label="Next slide"
             onClick={() => move(1)}
-            className="absolute z-3 top-1/2 right-4 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+            className="absolute z-3 top-1/2 right-2 sm:right-4 -translate-y-1/2 w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-white/25 transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
-          <div className="absolute z-3 bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
+          <div className="absolute z-3 bottom-2 sm:bottom-5 left-1/2 -translate-x-1/2 flex gap-2">
             {slides.map((slide, i) => (
               <button
                 key={slide.id}
