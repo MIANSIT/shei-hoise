@@ -122,7 +122,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-lg text-white">
                   {slide.headline && (
-                    <h1 className="text-2xl sm:text-4xl font-black leading-tight drop-shadow-md">{slide.headline}</h1>
+                    <h2 className="text-2xl sm:text-4xl font-black leading-tight drop-shadow-md">{slide.headline}</h2>
                   )}
                   {slide.subtext && (
                     <p className="mt-3 text-sm sm:text-base text-white/85 drop-shadow-sm">{slide.subtext}</p>

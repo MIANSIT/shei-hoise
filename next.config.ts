@@ -21,6 +21,7 @@ import type { NextConfig } from "next";
 const isLocalDev = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").includes("localhost");
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false, // no need to advertise the framework in every response
   output: "standalone", // ✅ produces a minimal .next/standalone bundle for Docker
 
   // sharp ships prebuilt native binaries per platform/libc. Bundling it would

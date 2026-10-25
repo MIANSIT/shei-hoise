@@ -33,7 +33,15 @@ export async function generateMetadata({
   }
 
   const storeUrl = `${baseUrl}/${store_slug}`;
-  const title = store.seo_title || store.store_name;
+  // No seo_title set: build one from the store's own data only (no country or
+  // product-type guesses — a store can sell anything, anywhere). Use the short
+  // description when it keeps the title at a sensible length, else a neutral tag.
+  const tagline = store.short_description?.trim();
+  const title =
+    store.seo_title ||
+    (tagline && store.store_name.length + tagline.length + 3 <= 60
+      ? `${store.store_name} – ${tagline}`
+      : `${store.store_name} – Shop Online`);
   const description =
     store.seo_description ?? store.short_description ?? store.description ?? `Shop at ${store.store_name} – browse our latest products.`;
 

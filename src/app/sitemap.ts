@@ -65,14 +65,18 @@ interface StoreRow {
   updated_at: string | null;
 }
 
+interface ProductStore {
+  store_slug: string;
+  is_active: boolean;
+  status: string;
+}
+
+// products → stores is many-to-one, so PostgREST returns a single object, not
+// an array. Accept both so the sitemap doesn't silently drop every product.
 interface ProductRow {
   slug: string;
   updated_at: string | null;
-  stores: {
-    store_slug: string;
-    is_active: boolean;
-    status: string;
-  }[];
+  stores: ProductStore | ProductStore[] | null;
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -121,23 +125,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("[sitemap] Failed to fetch products:", productsError.message);
   }
 
-  const productRoutes: MetadataRoute.Sitemap = ((products ?? []) as ProductRow[])
-    .filter((product) => {
-      const store = product.stores[0];
-      return (
-        store?.is_active &&
-        (store.status === "approved" || store.status === "trial")
-      );
-    })
-    .map((product) => {
-      const store = product.stores[0];
-      return {
-        url: `${baseUrl}/${store.store_slug}/product/${product.slug}`,
-        lastModified: product.updated_at ? new Date(product.updated_at) : new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.7,
-      };
-    });
+  const productRoutes: MetadataRoute.Sitemap = ((products ?? []) as unknown as ProductRow[]).flatMap(
+    (product) => {
+      const store = Array.isArray(product.stores) ? product.stores[0] : product.stores;
+      if (!store?.is_active || (store.status !== "approved" && store.status !== "trial")) {
+        return [];
+      }
+      return [
+        {
+          url: `${baseUrl}/${store.store_slug}/product/${product.slug}`,
+          lastModified: product.updated_at ? new Date(product.updated_at) : new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+        },
+      ];
+    },
+  );
 
   return [...staticRoutes, ...storeRoutes, ...productRoutes];
 }
