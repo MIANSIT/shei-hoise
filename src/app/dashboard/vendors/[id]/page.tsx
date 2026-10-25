@@ -624,7 +624,7 @@ export default function VendorDetailPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-card rounded-2xl border border-border shadow-sm p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-card rounded-2xl border border-border shadow-sm p-4">
           <div>
             <div className="text-xs text-gray-400">Total Dispatched</div>
             <div className="font-semibold text-foreground">{stats?.total_dispatched ?? 0}</div>
@@ -634,6 +634,13 @@ export default function VendorDetailPage() {
             <div className="font-semibold text-foreground">
               {fmtMoney(stats?.total_receivable ?? 0)}
             </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-400">Delivery Billed</div>
+            <div className="font-semibold text-foreground">
+              {fmtMoney(invoiceBalances.reduce((sum, b) => sum + b.delivery_cost, 0))}
+            </div>
+            <div className="text-[11px] text-gray-400">Part of Current Due</div>
           </div>
           <div>
             <div className="text-xs text-gray-400">Total Paid</div>
@@ -741,6 +748,8 @@ export default function VendorDetailPage() {
         open={settlementOpen}
         stock={stock}
         submitting={submitting}
+        currentDue={stats?.current_due ?? 0}
+        deliveryBilled={invoiceBalances.reduce((sum, b) => sum + b.delivery_cost, 0)}
         onSubmit={handleSettlementSubmit}
         onCancel={() => setSettlementOpen(false)}
       />

@@ -573,6 +573,11 @@ export default function CreateVendorOrderPage() {
               placeholder="0"
             />
           </div>
+          {deliveryCost > 0 && (
+            <p className="m-0 -mt-1.5 text-[11px] text-muted-foreground">
+              Billed to the vendor: it is added to the grand total and to what they owe.
+            </p>
+          )}
           <div className="flex justify-between items-center text-sm">
             <span className="text-gray-500">Discount</span>
             <InputNumber

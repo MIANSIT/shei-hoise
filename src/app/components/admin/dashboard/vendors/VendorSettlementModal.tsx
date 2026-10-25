@@ -30,6 +30,10 @@ interface VendorSettlementModalProps {
   open: boolean;
   stock: VendorStockRow[];
   submitting: boolean;
+  /** What the vendor owes right now: goods not returned + delivery charges − payments. */
+  currentDue: number;
+  /** Delivery charges billed on this vendor's confirmed dispatches (already inside `currentDue`). */
+  deliveryBilled: number;
   onSubmit: (payload: {
     settlementDate: string;
     items: VendorSettlementItemInput[];
@@ -44,6 +48,8 @@ function VendorSettlementModal({
   open,
   stock,
   submitting,
+  currentDue,
+  deliveryBilled,
   onSubmit,
   onCancel,
 }: VendorSettlementModalProps) {
@@ -78,6 +84,21 @@ function VendorSettlementModal({
     () => rows.reduce((sum, r) => sum + r.sold_quantity * r.unit_price, 0),
     [rows],
   );
+
+  // Settling moves stock out of "goods the vendor holds" (valued at its last
+  // dispatch price) and sells it at this visit's unit price, so the balance
+  // after the visit — before any payment — is what's left to collect,
+  // delivery charges included. Without this, a payment that only covers the
+  // goods leaves the delivery charge standing as a surprise "due".
+  const dueAfterSettling = useMemo(() => {
+    const stockOut = rows.reduce(
+      (sum, r) => sum + (r.sold_quantity + r.returned_quantity) * (r.last_vendor_tp ?? 0),
+      0,
+    );
+    return currentDue - stockOut + totalReceivable;
+  }, [rows, currentDue, totalReceivable]);
+  const dueAfterPayment = dueAfterSettling - paymentAmount;
+  const round2 = (v: number) => Math.round(v * 100) / 100;
 
   const columns: ColumnsType<SettlementRow> = [
     {
@@ -177,7 +198,10 @@ function VendorSettlementModal({
       footer={
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <div className="text-sm font-semibold text-foreground">
-            Total Receivable: {totalReceivable.toFixed(2)}
+            Still due after this payment:{" "}
+            <span className={dueAfterPayment > 0.005 ? "text-rose-600" : "text-emerald-600"}>
+              {Math.max(dueAfterPayment, 0).toFixed(2)}
+            </span>
           </div>
           <div className="flex gap-2">
             <Button className="rounded-xl h-9 font-medium" onClick={onCancel} disabled={submitting}>
@@ -217,6 +241,24 @@ function VendorSettlementModal({
               onChange={(v) => setPaymentAmount(v ?? 0)}
               className="w-full mt-1 rounded-lg"
             />
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setPaymentAmount(round2(totalReceivable))}
+                disabled={totalReceivable <= 0}
+                className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40"
+              >
+                Sold items only
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentAmount(round2(Math.max(dueAfterSettling, 0)))}
+                disabled={dueAfterSettling <= 0}
+                className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+              >
+                Everything due
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground">Payment Method</label>
@@ -228,6 +270,29 @@ function VendorSettlementModal({
               className="w-full mt-1"
             />
           </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm space-y-1">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Sold this visit</span>
+            <span className="font-medium tabular-nums">{totalReceivable.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Vendor owes after this visit</span>
+            <span className="font-semibold tabular-nums">{Math.max(dueAfterSettling, 0).toFixed(2)}</span>
+          </div>
+          {deliveryBilled > 0 && (
+            <p className="m-0 text-[11px] text-muted-foreground">
+              Includes {deliveryBilled.toFixed(2)} delivery charge billed on dispatches. It is part of what the
+              vendor owes, so a payment of only the sold items leaves it due — use &ldquo;Everything due&rdquo; to
+              collect it too.
+            </p>
+          )}
+          {paymentAmount > dueAfterSettling + 0.005 && dueAfterSettling >= 0 && (
+            <p className="m-0 text-[11px] text-amber-600">
+              This is more than the vendor owes — the extra becomes a credit on their account.
+            </p>
+          )}
         </div>
 
         <Table

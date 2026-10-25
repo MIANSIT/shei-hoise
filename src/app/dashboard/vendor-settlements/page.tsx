@@ -440,6 +440,8 @@ export default function VendorSettlementsPage() {
         open={settlementOpen}
         stock={settlementStock}
         submitting={submitting}
+        currentDue={selectedVendorStats?.current_due ?? 0}
+        deliveryBilled={selectedVendorInvoices.reduce((sum, b) => sum + b.delivery_cost, 0)}
         onSubmit={handleSettlementSubmit}
         onCancel={() => setSettlementOpen(false)}
       />

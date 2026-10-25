@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { getVendorProfitByDay, getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
+import { getVendorSalesForPeriod } from "@/lib/queries/vendor/getVendorSalesForPeriod";
 import { getSalesSummary } from "./getSalesSummary";
 
 export interface ProfitLossTrendPoint {
@@ -12,6 +13,8 @@ export interface ProfitLossReport {
   salesAll: number;
   /** Sales − received. */
   toCollect: number;
+  /** Confirmed vendor orders dated in the period (goods + delivery − discount). Kept apart from `salesAll`, which is the store's own orders only. */
+  vendorSales: number;
   /** Received: paid sales, the base the profit is worked out on. */
   totalSales: number;
   /** Packaging/handling/etc. charged to the customer on paid orders. Already inside totalSales — shown on its own so it isn't hidden. */
@@ -30,6 +33,7 @@ export interface ProfitLossReport {
 const EMPTY: ProfitLossReport = {
   salesAll: 0,
   toCollect: 0,
+  vendorSales: 0,
   totalSales: 0,
   additionalCharges: 0,
   cogs: 0,
@@ -55,7 +59,7 @@ export async function getProfitLossReport(
 ): Promise<ProfitLossReport> {
   if (!storeId) return EMPTY;
 
-  const [{ data, error }, vendorProfitResult, salesSummary, vendorProfitByDay] = await Promise.all([
+  const [{ data, error }, vendorProfitResult, salesSummary, vendorProfitByDay, vendorSalesResult] = await Promise.all([
     supabase.rpc("get_profit_loss_report", {
       p_store_id: storeId,
       p_period_start: fromDate,
@@ -68,6 +72,8 @@ export async function getProfitLossReport(
     getSalesSummary(storeId, fromDate, toDate, null, null, branchId),
     // The trend needs vendor profit day by day, so its points add up to the headline net profit.
     getVendorProfitByDay(storeId, fromDate, toDate, branchId ?? null),
+    // Same range twice — only vendor_sales (not prev_vendor_sales) is used.
+    getVendorSalesForPeriod(storeId, fromDate, toDate, fromDate, toDate, branchId ?? null),
   ]);
 
   if (error) {
@@ -81,6 +87,7 @@ export async function getProfitLossReport(
   return {
     salesAll: salesSummary?.sales ?? received,
     toCollect: salesSummary?.toCollect ?? 0,
+    vendorSales: vendorSalesResult.vendor_sales,
     totalSales: received,
     additionalCharges: Number(data.additional_charges) || 0,
     cogs: Number(data.cogs) || 0,

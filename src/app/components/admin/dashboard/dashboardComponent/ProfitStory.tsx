@@ -30,6 +30,12 @@ export interface ProfitStoryFigures {
    * "Sales received" — profit is only counted on money that came in.
    */
   allSales?: number;
+  /**
+   * Goods dispatched to vendors in the period (confirmed vendor orders). Shown as its own
+   * figure after "To collect" — it is not part of `allSales`, and its profit is counted
+   * through `vendorProfit` as vendors pay.
+   */
+  vendorSales?: number;
   /** Days in the period (inclusive). When given, the card adds a per-day average of sales and profit. */
   dayCount?: number;
 }
@@ -77,13 +83,14 @@ const BAR: Record<Step["tone"], string> = {
 export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, dayCount } = figures;
+  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount } = figures;
   // Per-day average of the sales figure the card leads with: every order when
   // known, else what was received.
   const showDailyAverage = dayCount !== undefined && dayCount > 0;
   const avgSales = showDailyAverage ? (allSales ?? sales) / dayCount : 0;
   const avgProfit = showDailyAverage ? netProfit / dayCount : 0;
   const showCollection = allSales !== undefined;
+  const showVendorSales = showCollection && (vendorSales ?? 0) > 0.005;
   const toCollect = showCollection ? Math.max(allSales - sales, 0) : 0;
   const receivedPct = showCollection && allSales > 0 ? Math.min((sales / allSales) * 100, 100) : 100;
   const separateDelivery = deliveryCost !== undefined;
@@ -217,7 +224,7 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
         <div className="lg:col-span-3 p-4 sm:p-6">
           {showCollection && (
             <div className="mb-5 rounded-xl border border-border bg-muted/40 p-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
+              <div className={`grid grid-cols-1 gap-2 text-center ${showVendorSales ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t.admin.psSalesAll}</div>
                   <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-foreground">{formatMoney(allSales)}</div>
@@ -230,11 +237,20 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{t.admin.psToCollect}</div>
                   <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(toCollect)}</div>
                 </div>
+                {showVendorSales && (
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-400">{t.admin.psVendorSales}</div>
+                    <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-violet-700 dark:text-violet-400">{formatMoney(vendorSales ?? 0)}</div>
+                  </div>
+                )}
               </div>
               <div className="mt-2.5 h-2 rounded-full bg-amber-200 dark:bg-amber-500/30 overflow-hidden" aria-hidden="true">
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${receivedPct}%` }} />
               </div>
-              <p className="m-0 mt-2 text-[11px] text-muted-foreground">{t.admin.psCollectionNote}</p>
+              <p className="m-0 mt-2 text-[11px] text-muted-foreground">
+                {t.admin.psCollectionNote}
+                {showVendorSales && ` ${t.admin.psVendorSalesNote}`}
+              </p>
             </div>
           )}
           <h3 className="text-sm font-bold text-foreground m-0">{t.admin.psHowTitle}</h3>

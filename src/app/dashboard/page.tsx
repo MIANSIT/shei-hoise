@@ -491,7 +491,7 @@ export default function DashboardPage() {
           netProfit: expenseMetrics.netProfit,
           netChangePct: isAllTime ? null : expenseMetrics.changePercentage.netProfit,
           // Customers only: vendor sales and dues have their own Vendor Payments block.
-          ...(salesSummary ? { allSales: salesSummary.sales } : {}),
+          ...(salesSummary ? { allSales: salesSummary.sales, vendorSales } : {}),
         },
         formatMoney: (amount: number) => renderCurrency(amount),
         ...(showComparison && comparison && comparison.length > 1

@@ -65,6 +65,7 @@ function StatTile({
 const EMPTY: ProfitLossReportData = {
   salesAll: 0,
   toCollect: 0,
+  vendorSales: 0,
   totalSales: 0,
   additionalCharges: 0,
   cogs: 0,
@@ -203,6 +204,7 @@ export default function ProfitLossReport() {
                 netChangePct: null,
                 deliveryCost: report.deliveryNetCost,
                 allSales: report.salesAll,
+                vendorSales: report.vendorSales,
                 dayCount: range[1].startOf("day").diff(range[0].startOf("day"), "day") + 1,
               }}
             />
