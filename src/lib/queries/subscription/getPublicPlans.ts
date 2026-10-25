@@ -6,6 +6,7 @@ export interface PublicPlan {
   slug: string;
   description: string | null;
   price_monthly: number;
+  price_half_yearly: number;
   price_yearly: number;
   currency: string;
   features: unknown;
@@ -18,7 +19,7 @@ export interface PublicPlan {
 }
 
 export const PLAN_COLUMNS =
-  "id, name, slug, description, price_monthly, price_yearly, currency, features, limits, trial_days, is_featured, is_public, is_default_trial_plan, sort_order";
+  "id, name, slug, description, price_monthly, price_half_yearly, price_yearly, currency, features, limits, trial_days, is_featured, is_public, is_default_trial_plan, sort_order";
 
 const ACRONYM_WORDS = new Set(["pos", "seo", "api", "pdf", "csv", "id", "url", "sms"]);
 const LOWERCASE_WORDS = new Set(["per", "and", "or", "to", "of", "in", "on", "at", "a", "an", "the"]);

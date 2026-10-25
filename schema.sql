@@ -25,6 +25,7 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 CREATE TYPE "public"."billing_cycle" AS ENUM (
     'monthly',
+    'half_yearly',
     'yearly'
 );
 
@@ -1079,6 +1080,7 @@ CREATE TABLE IF NOT EXISTS "public"."subscription_plans" (
     "description" "text",
     "price_monthly" numeric(12,2) DEFAULT 0 NOT NULL,
     "price_yearly" numeric(12,2) DEFAULT 0 NOT NULL,
+    "price_half_yearly" numeric(12,2) DEFAULT 0 NOT NULL,
     "currency" character(3) DEFAULT 'BDT'::"bpchar" NOT NULL,
     "features" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
     "limits" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,

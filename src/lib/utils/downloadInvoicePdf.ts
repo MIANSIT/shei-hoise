@@ -3,6 +3,7 @@ import { CONTACT_INFO } from "@/lib/store/contact";
 import dayjs from "dayjs";
 import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
 import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
+import { billingCycleLabel } from "@/lib/utils/billingCycle";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const NAVY   = [15,  23,  42]  as const; // slate-900
@@ -53,10 +54,6 @@ function statusRGB(status: string): [number, number, number] {
     case "refunded":                   return [124, 58,  237];
     default:                           return [100, 116, 139];
   }
-}
-
-function cap(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 async function loadLogo(): Promise<string | null> {
@@ -205,7 +202,7 @@ export async function downloadInvoicePdf(
 
   // Detail cells: Billing Cycle | Period | Due Date | Paid At
   const detailCells: [string, string][] = [
-    ["Billing Cycle", cap(invoice.billing_cycle)],
+    ["Billing Cycle", billingCycleLabel(invoice.billing_cycle)],
     ["Period", `${fmt(invoice.period_start)} – ${fmt(invoice.period_end)}`],
     ["Due Date", fmt(invoice.due_date)],
     ...(invoice.paid_at ? [["Paid At", fmt(invoice.paid_at)] as [string, string]] : []),
@@ -235,7 +232,7 @@ export async function downloadInvoicePdf(
     head: [["Description", "Billing Cycle", "Amount"]],
     body: [[
       `${invoice.plan_name} Subscription`,
-      cap(invoice.billing_cycle),
+      billingCycleLabel(invoice.billing_cycle),
       fmtAmount(invoice.amount, invoice.currency),
     ]],
     styles: {

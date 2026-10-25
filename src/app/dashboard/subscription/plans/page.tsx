@@ -10,6 +10,21 @@ import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscri
 import { getPlansForStore } from "@/lib/queries/subscription/getPlansForStore";
 import { parseFeatures, parseLimits, type PublicPlan } from "@/lib/queries/subscription/getPublicPlans";
 import { CONTACT_INFO } from "@/lib/store/contact";
+import { CYCLE_MONTHS, isPlanBillingCycle, planPriceForCycle, type PlanBillingCycle } from "@/lib/utils/billingCycle";
+
+type Translations = ReturnType<typeof useTranslation>;
+
+function perCycleLabel(t: Translations, cycle: PlanBillingCycle): string {
+  return cycle === "yearly" ? t.admin.subPerYear : cycle === "half_yearly" ? t.admin.subPerHalfYear : t.admin.subPerMonth;
+}
+
+function billedLabel(t: Translations, cycle: PlanBillingCycle): string {
+  return cycle === "half_yearly" ? t.admin.subBilledHalfYearly : t.admin.subBilledYearly;
+}
+
+function cycleName(t: Translations, cycle: PlanBillingCycle): string {
+  return cycle === "yearly" ? t.admin.subCycleYearly : cycle === "half_yearly" ? t.admin.subCycleHalfYearly : t.admin.subCycleMonthly;
+}
 
 // ── Plan card ─────────────────────────────────────────────────────────────────
 
@@ -24,7 +39,7 @@ function PlanCard({
 }: {
   plan: PublicPlan;
   isCurrent: boolean;
-  billingCycle: string;
+  billingCycle: PlanBillingCycle;
   hasSubscription: boolean;
   showAction: boolean;
   isCustomCycle: boolean;
@@ -32,9 +47,9 @@ function PlanCard({
 }) {
   const t = useTranslation();
   const features = [...parseFeatures(plan.features), ...parseLimits(plan.limits)];
-  const isYearly = billingCycle === "yearly";
-  const price = isYearly ? plan.price_yearly : plan.price_monthly;
-  const perMonth = isYearly ? plan.price_yearly / 12 : plan.price_monthly;
+  const price = planPriceForCycle(plan, billingCycle);
+  const perMonth = price / CYCLE_MONTHS[billingCycle];
+  const isLongCycle = billingCycle !== "monthly";
   const currency = plan.currency.trim();
 
   const VISIBLE_LIMIT = 5;
@@ -116,12 +131,12 @@ function PlanCard({
               {currency}{price.toLocaleString("en-BD")}
             </span>
             <span className="text-sm text-muted-foreground">
-              {isYearly ? t.admin.subPerYear : t.admin.subPerMonth}
+              {perCycleLabel(t, billingCycle)}
             </span>
           </div>
-          {isYearly && (
+          {isLongCycle && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-              {t.admin.subApproxPrefix} {currency}{Math.round(perMonth).toLocaleString("en-BD")}{t.admin.subPerMonth} {t.admin.subBilledYearly}
+              {t.admin.subApproxPrefix} {currency}{Math.round(perMonth).toLocaleString("en-BD")}{t.admin.subPerMonth} {billedLabel(t, billingCycle)}
             </p>
           )}
           {plan.trial_days > 0 && (
@@ -192,7 +207,7 @@ export default function SubscriptionPlansPage() {
   const [isCustomCycle, setIsCustomCycle] = useState(false);
   const [plans, setPlans] = useState<PublicPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [billingCycle, setBillingCycle] = useState<PlanBillingCycle>("monthly");
 
   const isSuperAdmin = role === "super_admin";
   const canPay = !isSuperAdmin;
@@ -208,7 +223,7 @@ export default function SubscriptionPlansPage() {
       setCurrentPlanId(sub?.plan_id ?? null);
       setHasSubscription(!!sub);
       setIsCustomCycle(sub?.billing_cycle === "custom");
-      if (sub?.billing_cycle === "yearly" || sub?.billing_cycle === "monthly") {
+      if (isPlanBillingCycle(sub?.billing_cycle)) {
         setBillingCycle(sub.billing_cycle);
       }
 
@@ -220,12 +235,11 @@ export default function SubscriptionPlansPage() {
   }, [storeId, userLoading, role, isSuperAdmin]);
 
   function handleSelectPlan(plan: PublicPlan) {
-    const isYearly = billingCycle === "yearly";
-    const price = isYearly ? plan.price_yearly : plan.price_monthly;
+    const price = planPriceForCycle(plan, billingCycle);
     const currency = plan.currency.trim();
 
-    const cycleLabel = isYearly ? t.admin.subCycleYearly.toLowerCase() : t.admin.subCycleMonthly.toLowerCase();
-    const perLabel = isYearly ? t.admin.subPerYear : t.admin.subPerMonth;
+    const cycleLabel = cycleName(t, billingCycle).toLowerCase();
+    const perLabel = perCycleLabel(t, billingCycle);
 
     modal.confirm({
       title: `${t.admin.subSubscribeTo} ${plan.name}`,
@@ -239,9 +253,11 @@ export default function SubscriptionPlansPage() {
     });
   }
 
-  const hasYearly = plans.some((p) => p.price_yearly > 0);
+  const hasHalfYearly = plans.some((p) => planPriceForCycle(p, "half_yearly") > 0);
+  const hasYearly = plans.some((p) => planPriceForCycle(p, "yearly") > 0);
+  // Monthly is always offered; a longer cycle only lists plans that price it.
   const visiblePlans =
-    billingCycle === "yearly" ? plans.filter((p) => p.price_yearly > 0) : plans;
+    billingCycle === "monthly" ? plans : plans.filter((p) => planPriceForCycle(p, billingCycle) > 0);
 
   if (userLoading || loading) {
     return (
@@ -281,7 +297,7 @@ export default function SubscriptionPlansPage() {
           {t.admin.subPlansTagline}
         </p>
 
-        {hasYearly && (
+        {(hasYearly || hasHalfYearly) && (
           <div className="inline-flex items-center mt-6 rounded-full border border-border bg-background p-1 gap-1">
             <button
               type="button"
@@ -294,6 +310,29 @@ export default function SubscriptionPlansPage() {
             >
               {t.admin.subCycleMonthly}
             </button>
+            {hasHalfYearly && (
+              <button
+                type="button"
+                onClick={() => setBillingCycle("half_yearly")}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                  billingCycle === "half_yearly"
+                    ? "bg-violet-600 text-white shadow"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.admin.subCycleHalfYearly}
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    billingCycle === "half_yearly"
+                      ? "bg-white/20 text-white"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                  }`}
+                >
+                  {t.admin.subSave}
+                </span>
+              </button>
+            )}
+            {hasYearly && (
             <button
               type="button"
               onClick={() => setBillingCycle("yearly")}
@@ -314,6 +353,7 @@ export default function SubscriptionPlansPage() {
                 {t.admin.subSave}
               </span>
             </button>
+            )}
           </div>
         )}
       </div>
@@ -322,7 +362,11 @@ export default function SubscriptionPlansPage() {
       {visiblePlans.length === 0 ? (
         <Empty
           description={
-            billingCycle === "yearly" ? t.admin.subNoPlansYearly : t.admin.subNoPlansGeneric
+            billingCycle === "yearly"
+              ? t.admin.subNoPlansYearly
+              : billingCycle === "half_yearly"
+                ? t.admin.subNoPlansHalfYearly
+                : t.admin.subNoPlansGeneric
           }
         />
       ) : (

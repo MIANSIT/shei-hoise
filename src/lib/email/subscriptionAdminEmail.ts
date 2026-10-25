@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { billingCycleLabel } from "@/lib/utils/billingCycle";
 
 interface SubscriptionRequestNoticeParams {
   storeName: string;
@@ -51,7 +52,7 @@ export async function sendSubscriptionRequestAdminNotice(
     `Store: ${params.storeName}`,
     `Owner email: ${params.ownerEmail}`,
     `Invoice: ${params.invoiceNumber}`,
-    `Plan: ${params.planName} (${params.billingCycle})`,
+    `Plan: ${params.planName} (${billingCycleLabel(params.billingCycle)})`,
     `Amount: ${params.amount} ${params.currency}`,
     `Method: ${params.paymentMethod}`,
     `Reference: ${params.paymentReference}`,

@@ -11,6 +11,7 @@ import { getStoreSubscription } from "@/lib/queries/subscription/getStoreSubscri
 import { PaymentMethodPicker, type MethodType } from "@/components/subscription/PaymentMethodPicker";
 import { PaymentDetailsForm } from "@/components/subscription/PaymentDetailsForm";
 import { generateInvoiceNumber } from "@/lib/utils/generateInvoiceNumber";
+import { isPlanBillingCycle, planPriceForCycle } from "@/lib/utils/billingCycle";
 
 function CheckoutContent() {
   const router = useRouter();
@@ -20,7 +21,8 @@ function CheckoutContent() {
   const { storeId, loading: userLoading } = useCurrentUser();
 
   const planId = searchParams.get("plan");
-  const cycle = searchParams.get("cycle") === "yearly" ? "yearly" : "monthly";
+  const cycleParam = searchParams.get("cycle");
+  const cycle = isPlanBillingCycle(cycleParam) ? cycleParam : "monthly";
 
   const [invoiceNumber] = useState(() => generateInvoiceNumber());
   const [plan, setPlan] = useState<PublicPlan | null>(null);
@@ -55,7 +57,7 @@ function CheckoutContent() {
     load().finally(() => setLoading(false));
   }, [planId, storeId, userLoading]);
 
-  const amount = plan ? (cycle === "yearly" ? plan.price_yearly : plan.price_monthly) : 0;
+  const amount = plan ? planPriceForCycle(plan, cycle) : 0;
   const currency = plan?.currency.trim() ?? "";
   const features = plan ? [...parseFeatures(plan.features), ...parseLimits(plan.limits)] : [];
 
@@ -176,12 +178,12 @@ function CheckoutContent() {
             {t.admin.subSubscribeTo} {plan.name}
           </p>
           <span className="text-xs text-violet-300 bg-violet-800/50 border border-violet-600/50 px-2.5 py-1 rounded-full shrink-0">
-            {cycle === "yearly" ? t.admin.subCycleYearly : t.admin.subCycleMonthly}
+            {cycle === "yearly" ? t.admin.subCycleYearly : cycle === "half_yearly" ? t.admin.subCycleHalfYearly : t.admin.subCycleMonthly}
           </span>
         </div>
         <p className="text-4xl font-bold text-white font-mono tracking-tight">
           {currency}{amount.toLocaleString("en-BD")}
-          <span className="text-base font-normal text-violet-300">{cycle === "yearly" ? t.admin.subPerYear : t.admin.subPerMonth}</span>
+          <span className="text-base font-normal text-violet-300">{cycle === "yearly" ? t.admin.subPerYear : cycle === "half_yearly" ? t.admin.subPerHalfYear : t.admin.subPerMonth}</span>
         </p>
         {plan.description && (
           <p className="text-sm text-violet-200 mt-2">{plan.description}</p>

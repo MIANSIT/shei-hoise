@@ -178,7 +178,7 @@ export default function PayInvoicePage() {
         <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
           <span className="text-sm text-violet-200 font-mono">{invoice.invoice_number}</span>
           <span className="text-xs text-violet-300 bg-violet-800/50 border border-violet-600/50 px-2.5 py-1 rounded-full">
-            {invoice.billing_cycle === "yearly" ? t.admin.subCycleYearly : t.admin.subCycleMonthly} · {invoice.plan_name}
+            {invoice.billing_cycle === "yearly" ? t.admin.subCycleYearly : invoice.billing_cycle === "half_yearly" ? t.admin.subCycleHalfYearly : t.admin.subCycleMonthly} · {invoice.plan_name}
           </span>
         </div>
         {invoice.due_date && (

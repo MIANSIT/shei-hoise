@@ -3,10 +3,11 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { sendSubscriptionRequestAdminNotice } from "@/lib/email/subscriptionAdminEmail";
 import { GRACE_PERIOD_DAYS } from "@/lib/utils/subscriptionAccess";
+import { computePeriodEnd, planPriceForCycle } from "@/lib/utils/billingCycle";
 
 const selectPlanSchema = z.object({
   plan_id: z.string().uuid(),
-  billing_cycle: z.enum(["monthly", "yearly"]),
+  billing_cycle: z.enum(["monthly", "half_yearly", "yearly"]),
   invoice_number: z.string().min(1),
   payment: z.object({
     method: z.enum(["bkash", "nagad", "bank"]),
@@ -15,16 +16,6 @@ const selectPlanSchema = z.object({
     notes: z.string().optional(),
   }),
 });
-
-function computePeriodEnd(start: Date, billingCycle: "monthly" | "yearly"): Date {
-  const end = new Date(start);
-  if (billingCycle === "yearly") {
-    end.setFullYear(end.getFullYear() + 1);
-  } else {
-    end.setMonth(end.getMonth() + 1);
-  }
-  return end;
-}
 
 export async function POST(req: Request) {
   try {
@@ -99,7 +90,7 @@ export async function POST(req: Request) {
     // Load the plan — must be active, and public unless it's the store's current plan
     const { data: plan, error: planError } = await supabaseAdmin
       .from("subscription_plans")
-      .select("id, name, price_monthly, price_yearly, currency, is_public, is_active")
+      .select("id, name, price_monthly, price_half_yearly, price_yearly, currency, is_public, is_active")
       .eq("id", plan_id)
       .eq("is_active", true)
       .maybeSingle();
@@ -112,9 +103,10 @@ export async function POST(req: Request) {
       return Response.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    const amount = billing_cycle === "yearly" ? plan.price_yearly : plan.price_monthly;
-    if (billing_cycle === "yearly" && !(amount > 0)) {
-      return Response.json({ error: "Yearly billing is not available for this plan" }, { status: 400 });
+    const amount = planPriceForCycle(plan, billing_cycle);
+    // Monthly is always offered; the longer cycles only when the plan has a price for them.
+    if (billing_cycle !== "monthly" && !(amount > 0)) {
+      return Response.json({ error: "This billing period is not available for this plan" }, { status: 400 });
     }
 
     const now = new Date();

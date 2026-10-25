@@ -176,7 +176,14 @@ function InvoiceStatusTag({ status }: { status: string }) {
 
 function BillingCycleTag({ cycle }: { cycle: string }) {
   const t = useTranslation();
-  const label = cycle === "yearly" ? t.admin.subCycleYearly : cycle === "monthly" ? t.admin.subCycleMonthly : cycle;
+  const label =
+    cycle === "yearly"
+      ? t.admin.subCycleYearly
+      : cycle === "half_yearly"
+        ? t.admin.subCycleHalfYearly
+        : cycle === "monthly"
+          ? t.admin.subCycleMonthly
+          : cycle;
   return <Tag color="blue">{label}</Tag>;
 }
 
