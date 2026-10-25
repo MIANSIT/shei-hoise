@@ -19,6 +19,7 @@ import type { StockSort } from "@/lib/queries/products/getProductWithStock";
 import { CaretDownOutlined } from "@ant-design/icons";
 import StockHistoryPopover from "./StockHistoryPopover";
 import { QuickAddStock } from "./QuickAddStock";
+import { ClipboardList } from "lucide-react";
 import { StockSellingCell } from "./StockSellingCell";
 import { skuInsightKey, type StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
 import { BranchStockLine } from "@/app/components/admin/branches/BranchStockLine";
@@ -47,6 +48,10 @@ interface StockTableProps {
   insights?: StockInsightLookup | null;
   /** "Stock arrived": adds units to a product or variant. Without it the quick-add button is hidden. */
   onQuickAdd?: (productId: string, variantId: string | null, quantity: number) => Promise<void>;
+  /** Product id → supplier name, shown as a chip under the product name. */
+  supplierNames?: Readonly<Record<string, string>>;
+  /** Put one product or variant on the reorder list. Without it the button is hidden. */
+  onAddToReorder?: (productId: string, variantId: string | null) => void;
 }
 
 /** Fraction of a "healthy" reference level (3x the low-stock threshold), capped at 100%. */
@@ -94,6 +99,8 @@ const StockTable: React.FC<StockTableProps> = ({
   onSortChange,
   insights = null,
   onQuickAdd,
+  supplierNames = {},
+  onAddToReorder,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -179,6 +186,11 @@ const StockTable: React.FC<StockTableProps> = ({
             <span className="text-sm font-medium text-foreground">
               {title}
             </span>
+            {isProduct && supplierNames[record.id] && (
+              <span className="inline-flex w-fit items-center rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                {t.admin.spSupplierLabel}: {supplierNames[record.id]}
+              </span>
+            )}
             <div className="flex flex-wrap gap-1">
               {/* Simple product: out of stock */}
               {record.isOutOfStock && <Badge tone="out">{t.admin.stockOutOfStock}</Badge>}
@@ -407,6 +419,21 @@ const StockTable: React.FC<StockTableProps> = ({
                 disabled={readOnly}
                 onAdd={(quantity) => onQuickAdd(parentId, variantId, quantity)}
               />
+            )}
+
+            {onAddToReorder && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToReorder(parentId, variantId);
+                }}
+                title={t.admin.roAddToListButton}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground hover:text-indigo-700 hover:border-indigo-400 transition-colors"
+              >
+                <ClipboardList size={12} aria-hidden="true" />
+                {t.admin.roReorderShort}
+              </button>
             )}
 
             {showSave && (

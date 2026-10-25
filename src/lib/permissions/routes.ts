@@ -38,6 +38,7 @@ const ROUTE_REQUIREMENTS: ReadonlyArray<readonly [string, RouteRequirement]> = [
   ["/dashboard/products/stocks-update", "stock.view"],
   ["/dashboard/stock/health", "stock.insights"],
   ["/dashboard/stock/reorder", "stock.insights"],
+  ["/dashboard/stock/suppliers", "stock.view"],
   ["/dashboard/products", "products.view"],
 
   ["/dashboard/reviews", "reviews.view"],

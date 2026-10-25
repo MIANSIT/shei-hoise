@@ -498,9 +498,39 @@ CREATE TABLE IF NOT EXISTS "public"."owner_withdrawals" (
     "payment_method" text DEFAULT 'cash' NOT NULL,
     "withdrawal_date" date NOT NULL,
     "notes" text,
+    "kind" text DEFAULT 'withdrawal' NOT NULL,
+    "to_method" text,
     "created_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT "owner_withdrawals_amount_check" CHECK ("amount" > 0)
+);
+
+CREATE TABLE IF NOT EXISTS "public"."suppliers" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "name" text NOT NULL,
+    "phone" text,
+    "email" text,
+    "address" text,
+    "notes" text,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."supplier_ledger" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "supplier_id" uuid NOT NULL REFERENCES "public"."suppliers"("id") ON DELETE CASCADE,
+    "kind" text NOT NULL,
+    "amount" numeric(12,2) NOT NULL,
+    "entry_date" date NOT NULL,
+    "payment_method" text,
+    "note" text,
+    "created_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "supplier_ledger_kind_check" CHECK ("kind" IN ('bill', 'payment')),
+    CONSTRAINT "supplier_ledger_amount_check" CHECK ("amount" > 0)
 );
 
 CREATE TABLE IF NOT EXISTS "public"."branch_inventory" (
@@ -712,6 +742,7 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "store_id" "uuid",
     "category_id" "uuid",
     "brand_id" "uuid",
+    "supplier_id" "uuid",
     "name" character varying(255) NOT NULL,
     "slug" character varying(255) NOT NULL,
     "description" "text",

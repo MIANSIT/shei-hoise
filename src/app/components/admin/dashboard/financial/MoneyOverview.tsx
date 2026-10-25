@@ -13,12 +13,11 @@ import {
   Smartphone,
   Truck,
   Users,
-  Warehouse,
   Wallet,
   CircleDollarSign,
   ArrowRight,
-  HandCoins,
   Trash2,
+  ArrowRightLeft,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -37,6 +36,9 @@ import { deleteOwnerWithdrawal, recordOwnerWithdrawal } from "@/lib/queries/fina
 
 const EMPTY: MoneyOverviewData = {
   receivedTotal: 0,
+  vendorReceivedTotal: 0,
+  sources: { ordersThisPeriod: 0, ordersEarlier: 0, dueCollections: 0, vendorPayments: 0 },
+  salesComparison: null,
   withdrawnTotal: 0,
   leftTotal: 0,
   byBranch: [],
@@ -97,6 +99,9 @@ export default function MoneyOverview() {
   const [saving, setSaving] = useState(false);
   const [wAmount, setWAmount] = useState<number | null>(null);
   const [wMethod, setWMethod] = useState<WithdrawMethod>("cash");
+  // "withdraw" takes money out of the business; "move" changes the method it sits in (bKash → cash).
+  const [wKind, setWKind] = useState<"withdraw" | "move">("withdraw");
+  const [wToMethod, setWToMethod] = useState<WithdrawMethod>("cash");
   const [wDate, setWDate] = useState<Dayjs>(dayjs());
   const [wNotes, setWNotes] = useState("");
   const [wBranch, setWBranch] = useState<string | null>(null);
@@ -125,9 +130,12 @@ export default function MoneyOverview() {
     load();
   }, [load]);
 
-  const openWithdraw = () => {
+  const openWithdraw = (kind: "withdraw" | "move" = "withdraw") => {
     setWAmount(null);
-    setWMethod("cash");
+    setWKind(kind);
+    // A cash-out usually starts from mobile banking and lands in cash.
+    setWMethod(kind === "move" ? "mobile_banking" : "cash");
+    setWToMethod("cash");
     setWDate(dayjs());
     setWNotes("");
     // A branch's own page records against that branch; on "All branches" start from the branch you work in.
@@ -145,6 +153,10 @@ export default function MoneyOverview() {
       showError(t.admin.moChooseBranch);
       return;
     }
+    if (wKind === "move" && wToMethod === wMethod) {
+      showError(t.admin.moMoveSame);
+      return;
+    }
     setSaving(true);
     try {
       const result = await recordOwnerWithdrawal({
@@ -154,12 +166,13 @@ export default function MoneyOverview() {
         withdrawalDate: wDate.format("YYYY-MM-DD"),
         notes: wNotes,
         branchId: branchesOn ? wBranch : null,
+        ...(wKind === "move" ? { kind: "transfer" as const, toMethod: wToMethod } : {}),
       });
       if (!result.success) {
         showError(result.error ?? t.admin.moWithdrawFailed);
         return;
       }
-      success(t.admin.moWithdrawSaved);
+      success(wKind === "move" ? t.admin.moMoved : t.admin.moWithdrawSaved);
       setWithdrawOpen(false);
       await load();
     } finally {
@@ -192,6 +205,25 @@ export default function MoneyOverview() {
   };
 
   const { pending } = data;
+
+  // Where the money sits now: cash, and the digital methods, after anything cashed out.
+  const DIGITAL_METHODS: readonly MoneyMethodKey[] = ["mobile_banking", "card", "bank_transfer", "online"];
+  const cashRow = data.byMethod.find((r) => r.method === "cash");
+  const digitalRows = data.byMethod.filter((r) => DIGITAL_METHODS.includes(r.method));
+  const cashLeft = cashRow?.left ?? 0;
+  const cashFromVendors = cashRow?.fromVendors ?? 0;
+  const digitalFromVendors = digitalRows.reduce((sum, r) => sum + r.fromVendors, 0);
+  const shownMethods = data.byMethod.filter(
+    (r) => r.total > 0.005 || r.withdrawn > 0.005 || r.movedOut > 0.005 || r.movedIn > 0.005,
+  );
+  const vendorMethods = data.byMethod.filter((r) => r.fromVendors > 0.005);
+  const cashedIntoCash = cashRow?.movedIn ?? 0;
+  const digitalLeft = digitalRows.reduce((sum, r) => sum + r.left, 0);
+  const digitalCashedOut = digitalRows.reduce((sum, r) => sum + r.movedOut - r.movedIn, 0);
+  // COD from couriers and anything not recorded as cash or digital.
+  const otherLeft = data.byMethod
+    .filter((r) => r.method !== "cash" && !DIGITAL_METHODS.includes(r.method))
+    .reduce((sum, r) => sum + r.left, 0);
   const pendingRows = [
     {
       key: "customers",
@@ -208,14 +240,6 @@ export default function MoneyOverview() {
       hint: t.admin.moPendingCodHint,
       amount: pending.codWithCourier,
       href: "/dashboard/cod-settlements",
-    },
-    {
-      key: "vendors",
-      icon: <Warehouse size={18} />,
-      label: t.admin.moPendingVendors,
-      hint: t.admin.moPendingVendorsHint,
-      amount: pending.vendorDue,
-      href: "/dashboard/vendors",
     },
   ];
 
@@ -249,14 +273,16 @@ export default function MoneyOverview() {
               disabledDate={(d) => d.isAfter(dayjs(), "day")}
             />
             {isOwner && (
-              <button
-                type="button"
-                onClick={openWithdraw}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
-              >
-                <HandCoins size={15} aria-hidden="true" />
-                {t.admin.moRecordWithdrawal}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => openWithdraw("move")}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                >
+                  <ArrowRightLeft size={15} aria-hidden="true" />
+                  {t.admin.moMoveMoney}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -282,21 +308,35 @@ export default function MoneyOverview() {
               </div>
               {isOwner && (
                 <>
-                  <div className="rounded-2xl p-5 text-white bg-linear-to-br from-slate-500 to-slate-700">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/85">
-                      <HandCoins size={16} aria-hidden="true" />
-                      {t.admin.moWithdrawn}
-                    </div>
-                    <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(data.withdrawnTotal)}</div>
-                    <div className="mt-1 text-xs text-white/85">{t.admin.moWithdrawnSub}</div>
-                  </div>
                   <div className="rounded-2xl p-5 text-white bg-linear-to-br from-sky-500 to-indigo-600">
                     <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/85">
-                      <PiggyBank size={16} aria-hidden="true" />
-                      {t.admin.moLeft}
+                      <Banknote size={16} aria-hidden="true" />
+                      {t.admin.moInCash}
                     </div>
-                    <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(data.leftTotal)}</div>
-                    <div className="mt-1 text-xs text-white/85">{t.admin.moLeftSub}</div>
+                    <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(cashLeft)}</div>
+                    <div className="mt-1 text-xs text-white/85">
+                      {[
+                        cashedIntoCash > 0.005 ? t.admin.moCashIncludes.replace("{n}", money(cashedIntoCash)) : t.admin.moInCashSub,
+                        cashFromVendors > 0.005 ? t.admin.moInclVendors.replace("{n}", money(cashFromVendors)) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl p-5 text-white bg-linear-to-br from-violet-500 to-purple-700">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/85">
+                      <Smartphone size={16} aria-hidden="true" />
+                      {t.admin.moInDigital}
+                    </div>
+                    <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(digitalLeft)}</div>
+                    <div className="mt-1 text-xs text-white/85">
+                      {[
+                        digitalCashedOut > 0.005 ? t.admin.moDigitalAfter.replace("{n}", money(digitalCashedOut)) : t.admin.moInDigitalSub,
+                        digitalFromVendors > 0.005 ? t.admin.moInclVendors.replace("{n}", money(digitalFromVendors)) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
                   </div>
                 </>
               )}
@@ -310,20 +350,36 @@ export default function MoneyOverview() {
               </div>
             </div>
 
+            {isOwner && (Math.abs(otherLeft) > 0.005 || data.withdrawnTotal > 0.005) && (
+              <p className="m-0 -mt-2 text-xs text-muted-foreground">
+                {Math.abs(otherLeft) > 0.005 && (
+                  <span className="mr-3">
+                    {t.admin.moOtherLine}: <span className="font-semibold text-foreground tabular-nums">{money(otherLeft)}</span>
+                  </span>
+                )}
+                {data.withdrawnTotal > 0.005 && (
+                  <span>
+                    {t.admin.moOwnerTook
+                      .replace("{w}", money(data.withdrawnTotal))
+                      .replace("{l}", money(data.leftTotal))}
+                  </span>
+                )}
+              </p>
+            )}
+
             <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
               <h2 className="text-sm font-bold text-foreground m-0">{t.admin.moByMethodTitle}</h2>
               <p className="text-xs text-muted-foreground m-0 mt-0.5 mb-4">{t.admin.moByMethodSub}</p>
 
-              {data.byMethod.length === 0 ? (
+              {shownMethods.length === 0 ? (
                 <p className="text-sm text-muted-foreground m-0 py-6 text-center">{t.admin.moNothingReceived}</p>
               ) : (
                 <ul className="m-0 p-0 list-none space-y-4">
-                  {data.byMethod.map((row) => {
+                  {shownMethods.map((row) => {
                     const share = data.receivedTotal > 0 ? (row.total / data.receivedTotal) * 100 : 0;
                     const sources = [
                       row.fromOrders > 0.005 ? `${t.admin.moSrcOrders} ${money(row.fromOrders)}` : null,
                       row.fromDues > 0.005 ? `${t.admin.moSrcDues} ${money(row.fromDues)}` : null,
-                      row.fromVendors > 0.005 ? `${t.admin.moSrcVendors} ${money(row.fromVendors)}` : null,
                     ].filter((s): s is string => s !== null);
                     return (
                       <li key={row.method}>
@@ -341,9 +397,12 @@ export default function MoneyOverview() {
                           </div>
                           <div className="text-right shrink-0">
                             <div className="text-sm font-bold tabular-nums text-foreground">{money(row.total)}</div>
-                            {isOwner && row.withdrawn > 0.005 ? (
+                            {isOwner && (row.withdrawn > 0.005 || row.movedOut > 0.005 || row.movedIn > 0.005) ? (
                               <div className="text-[11px] text-muted-foreground tabular-nums">
-                                −{money(row.withdrawn)} · {t.admin.moLeftShort} {money(row.left)}
+                                {row.withdrawn > 0.005 && <>−{money(row.withdrawn)} · </>}
+                                {row.movedOut > 0.005 && <>{t.admin.moMovedOut} {money(row.movedOut)} · </>}
+                                {row.movedIn > 0.005 && <>{t.admin.moMovedIn} {money(row.movedIn)} · </>}
+                                {t.admin.moLeftShort} {money(row.left)}
                               </div>
                             ) : (
                               <div className="text-[11px] text-muted-foreground tabular-nums">{n(share.toFixed(1))}%</div>
@@ -358,7 +417,64 @@ export default function MoneyOverview() {
                   })}
                 </ul>
               )}
-              <p className="m-0 mt-4 text-[11px] text-muted-foreground">{t.admin.moByMethodNote}</p>
+              <p className="m-0 mt-1.5 text-[11px] text-muted-foreground">
+                {t.admin.moByMethodNote} {t.admin.moByMethodVendorNote}
+              </p>
+            </section>
+
+            {/* Sales and money are different things; this sets them side by side so the gap makes sense. */}
+            <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
+              <h2 className="text-sm font-bold text-foreground m-0">{t.admin.moWhyTitle}</h2>
+              <p className="text-xs text-muted-foreground m-0 mt-0.5 mb-4">{t.admin.moWhySub}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {data.salesComparison && (
+                  <div className="rounded-xl border border-border p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t.admin.moSalesCol}</div>
+                    <dl className="m-0 mt-2 space-y-1.5 text-sm">
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">{t.admin.moSalesAll}</dt>
+                        <dd className="m-0 font-bold tabular-nums text-foreground">{money(data.salesComparison.sales)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">{t.admin.moSalesPaid}</dt>
+                        <dd className="m-0 tabular-nums text-foreground">{money(data.salesComparison.received)}</dd>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <dt className="text-muted-foreground">{t.admin.moSalesUnpaid}</dt>
+                        <dd className="m-0 tabular-nums text-foreground">{money(data.salesComparison.unpaid)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
+                <div className="rounded-xl border border-border p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t.admin.moMoneyCol}</div>
+                  <dl className="m-0 mt-2 space-y-1.5 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">{t.admin.moFromOrdersNow}</dt>
+                      <dd className="m-0 tabular-nums text-foreground">{money(data.sources.ordersThisPeriod)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">{t.admin.moFromOrdersEarlier}</dt>
+                      <dd className="m-0 tabular-nums text-foreground">{money(data.sources.ordersEarlier)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-muted-foreground">{t.admin.moSrcDues}</dt>
+                      <dd className="m-0 tabular-nums text-foreground">{money(data.sources.dueCollections)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3 border-t border-border pt-1.5">
+                      <dt className="font-semibold text-foreground">{t.admin.moReceived}</dt>
+                      <dd className="m-0 font-bold tabular-nums text-foreground">{money(data.receivedTotal)}</dd>
+                    </div>
+                    {data.sources.vendorPayments > 0.005 && (
+                      <div className="flex justify-between gap-3 text-xs">
+                        <dt className="text-muted-foreground">{t.admin.moVendorLine}</dt>
+                        <dd className="m-0 tabular-nums text-muted-foreground">{money(data.sources.vendorPayments)}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              </div>
+              <p className="m-0 mt-3 text-[11px] text-muted-foreground">{t.admin.moWhyNote}</p>
             </section>
 
             {branchesOn && !reportBranchId && data.byBranch.length > 0 && (
@@ -405,7 +521,9 @@ export default function MoneyOverview() {
                       <li key={w.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-foreground">
-                            {methodLabel[withdrawalMethod(w.payment_method)]}
+                            {w.kind === "transfer" && w.to_method
+                              ? `${methodLabel[withdrawalMethod(w.payment_method)]} → ${methodLabel[withdrawalMethod(w.to_method)]}`
+                              : methodLabel[withdrawalMethod(w.payment_method)]}
                             <span className="ml-2 text-xs font-normal text-muted-foreground">
                               {dayjs(w.withdrawal_date).format("DD-MM-YYYY")}
                               {branchesOn && w.branch_id ? ` · ${branchName(w.branch_id)}` : ""}
@@ -414,7 +532,10 @@ export default function MoneyOverview() {
                           {w.notes && <div className="text-[11px] text-muted-foreground break-words">{w.notes}</div>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-sm font-bold tabular-nums text-foreground">−{money(w.amount)}</span>
+                          <span className="text-sm font-bold tabular-nums text-foreground">
+                            {w.kind === "transfer" ? "" : "−"}
+                            {money(w.amount)}
+                          </span>
                           <Popconfirm
                             title={t.admin.moDeleteWithdrawalConfirm}
                             okText={t.admin.moDelete}
@@ -465,6 +586,47 @@ export default function MoneyOverview() {
                 ))}
               </ul>
             </section>
+
+            {/* Vendors are kept apart so they never blur the shop's own numbers. */}
+            {(data.vendorReceivedTotal > 0.005 || pending.vendorDue > 0.005) && (
+              <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
+                <h2 className="text-sm font-bold text-foreground m-0">{t.admin.moVendorsTitle}</h2>
+                <p className="text-xs text-muted-foreground m-0 mt-0.5 mb-4">{t.admin.moVendorsSub}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-border p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {t.admin.moVendorsReceived}
+                    </div>
+                    <div className="mt-1 text-xl font-black tabular-nums text-foreground">{money(data.vendorReceivedTotal)}</div>
+                    {vendorMethods.length > 0 && (
+                      <ul className="m-0 mt-2 p-0 list-none space-y-0.5 text-xs text-muted-foreground">
+                        {vendorMethods.map((r) => (
+                          <li key={r.method} className="flex justify-between gap-3">
+                            <span>{methodLabel[r.method]}</span>
+                            <span className="tabular-nums text-foreground">{money(r.fromVendors)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <Link
+                    href="/dashboard/vendors"
+                    className="rounded-xl border border-border p-3 hover:bg-muted/60 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t.admin.moPendingVendors}
+                      </span>
+                      <ArrowRight size={14} className="text-muted-foreground" aria-hidden="true" />
+                    </div>
+                    <div className="mt-1 text-xl font-black tabular-nums text-foreground">{money(pending.vendorDue)}</div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {reportBranchId ? t.admin.moPendingVendorsStoreWide : t.admin.moPendingVendorsHint}
+                    </div>
+                  </Link>
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>
@@ -476,10 +638,12 @@ export default function MoneyOverview() {
         okText={t.admin.moSaveWithdrawal}
         cancelText={t.admin.moCancel}
         confirmLoading={saving}
-        title={t.admin.moRecordWithdrawal}
+        title={wKind === "move" ? t.admin.moMoveMoney : t.admin.moRecordWithdrawal}
         destroyOnHidden
       >
-        <p className="text-xs text-muted-foreground mt-0 mb-4">{t.admin.moWithdrawExplain}</p>
+        <p className="text-xs text-muted-foreground mt-0 mb-4">
+          {wKind === "move" ? t.admin.moMoveExplain : t.admin.moWithdrawExplain}
+        </p>
         <div className="space-y-3">
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moAmount}</label>
@@ -499,7 +663,9 @@ export default function MoneyOverview() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">{t.admin.moTakenFrom}</label>
+              <label className="text-xs font-semibold text-muted-foreground">
+                {wKind === "move" ? t.admin.moMoveFrom : t.admin.moTakenFrom}
+              </label>
               <Select
                 value={wMethod}
                 onChange={setWMethod}
@@ -507,6 +673,17 @@ export default function MoneyOverview() {
                 options={WITHDRAW_METHODS.map((m) => ({ value: m, label: methodLabel[m] }))}
               />
             </div>
+            {wKind === "move" && (
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">{t.admin.moMoveTo}</label>
+                <Select
+                  value={wToMethod}
+                  onChange={setWToMethod}
+                  className="w-full mt-1"
+                  options={WITHDRAW_METHODS.filter((m) => m !== wMethod).map((m) => ({ value: m, label: methodLabel[m] }))}
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs font-semibold text-muted-foreground">{t.admin.moDate}</label>
               <DatePicker

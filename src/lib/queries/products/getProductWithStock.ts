@@ -114,6 +114,8 @@ export async function getProductWithStock(
    * stock table). The tiles and filter counts still cover every product.
    */
   onlyProductIds: ReadonlySet<string> | readonly string[] | null = null,
+  /** Leave these products out (the "No supplier" filter shows everything except suppliers' products). */
+  excludeProductIds: ReadonlySet<string> | readonly string[] | null = null,
 ): Promise<{ data: ProductWithStock[]; total: number; stats: StockAggregateStats }> {
   let query = supabaseAdmin
     .from("products")
@@ -319,8 +321,12 @@ export async function getProductWithStock(
 
   // --- Stock filtering ---
   const idSet = onlyProductIds ? new Set(onlyProductIds) : null;
+  const excludeSet = excludeProductIds ? new Set(excludeProductIds) : null;
   const filtered = mapped.filter(
-    (product) => matchesFilter(product, stockFilter) && (!idSet || idSet.has(product.id)),
+    (product) =>
+      matchesFilter(product, stockFilter) &&
+      (!idSet || idSet.has(product.id)) &&
+      (!excludeSet || !excludeSet.has(product.id)),
   );
 
   // --- Optional sort by stock level — variant products sort by their worst

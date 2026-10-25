@@ -8,6 +8,11 @@ export interface VendorOrderQueryParams {
   search?: string; // invoice number
   dateFrom?: string | null;
   dateTo?: string | null;
+  /**
+   * Stores with branches: only orders sent from this branch. Drafts have no
+   * branch yet (it is set when the order is confirmed), so they stay visible.
+   */
+  branchId?: string | null;
   page?: number;
   pageSize?: number;
 }
@@ -30,6 +35,7 @@ export async function getVendorOrders(
     search,
     dateFrom,
     dateTo,
+    branchId,
     page = 1,
     pageSize = 10,
   } = params;
@@ -55,6 +61,7 @@ export async function getVendorOrders(
   if (search?.trim()) query = query.ilike("invoice_number", `%${search.trim()}%`);
   if (dateFrom) query = query.gte("order_date", dateFrom);
   if (dateTo) query = query.lte("order_date", dateTo);
+  if (branchId) query = query.or(`branch_id.eq.${branchId},status.eq.draft`);
 
   const { data, error, count } = await query;
 

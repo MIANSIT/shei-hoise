@@ -138,6 +138,7 @@ export const sideMenu: MenuItem[] = [
       { title: "Stock List", labelKey: "menuStockUpdate", href: "/dashboard/products/stocks-update", icon: Edit },
       { title: "Stock Health", labelKey: "menuStockHealth", href: "/dashboard/stock/health", icon: Activity },
       { title: "Reorder List", labelKey: "menuReorderList", href: "/dashboard/stock/reorder", icon: ClipboardList },
+      { title: "Suppliers", labelKey: "menuSuppliers", href: "/dashboard/stock/suppliers", icon: Truck },
       {
         title: "Stock Transfers",
         labelKey: "menuStockTransfers",

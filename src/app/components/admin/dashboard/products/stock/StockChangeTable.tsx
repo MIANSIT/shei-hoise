@@ -8,6 +8,11 @@ import {
 } from "@/lib/queries/products/getProductWithStock";
 import StockTableMobile from "./StockTableMobile";
 import StockTable from "./StockTable";
+import { BulkSupplierAssign } from "./BulkSupplierAssign";
+import { BulkReorderAdd } from "./BulkReorderAdd";
+import { useReorderListStore } from "@/lib/store/reorderListStore";
+import { assignSupplierToProducts } from "@/lib/queries/supplier/suppliers";
+import type { Supplier } from "@/lib/queries/supplier/supplierTypes";
 import BulkStockUpdate from "./BulkStockUpdate";
 import {
   mapProductsForModernTable,
@@ -45,6 +50,18 @@ interface StockChangeTableProps {
   onlyProductIds?: ReadonlySet<string> | null;
   /** Called after stock was added or changed, so figures built from sales and stock can refresh. */
   onStockChanged?: () => void;
+  /** Leave these products out (the "No supplier" filter). */
+  excludeProductIds?: ReadonlySet<string> | null;
+  /** The store's suppliers, for the "Set supplier" bar. */
+  suppliers?: readonly Supplier[];
+  /** Product id → supplier id, for the supplier chip on each row. */
+  supplierByProduct?: Readonly<Record<string, string>>;
+  /** Can this person give products a supplier (needs the stock edit permission)? */
+  canAssignSupplier?: boolean;
+  /** Called after suppliers were assigned, so the map above reloads. */
+  onSuppliersChanged?: () => void;
+  /** Can this person put products on the reorder list (needs the sales-speed permission)? */
+  canReorder?: boolean;
 }
 
 const StockChangeTable: React.FC<StockChangeTableProps> = ({
@@ -61,6 +78,12 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   insights = null,
   onlyProductIds = null,
   onStockChanged,
+  excludeProductIds = null,
+  suppliers = [],
+  supplierByProduct = {},
+  canAssignSupplier = false,
+  onSuppliersChanged,
+  canReorder = false,
 }) => {
   const t = useTranslation();
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -68,6 +91,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [loading, setLoading] = useState(true);
   const [bulkActive, setBulkActive] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   const { user, storeSlug, loading: userLoading } = useCurrentUser();
   const notify = useSheiNotification();
@@ -91,6 +115,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
           stockSort,
           branchId,
           onlyProductIds ? [...onlyProductIds] : null,
+          excludeProductIds ? [...excludeProductIds] : null,
         );
 
         if (stale) return;
@@ -122,6 +147,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     stockSort,
     branchId,
     onlyProductIds,
+    excludeProductIds,
     onTotalChange,
     onStatsChange,
   ]);
@@ -138,6 +164,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         stockSort,
         branchId,
         onlyProductIds ? [...onlyProductIds] : null,
+        excludeProductIds ? [...excludeProductIds] : null,
       );
       setProducts(mapProductsForModernTable(result.data));
       if (onTotalChange) onTotalChange(result.total);
@@ -230,6 +257,80 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       notify.error(err instanceof Error ? err.message : t.admin.shAddStockFailed);
     }
   };
+
+  // --- Give the ticked products a supplier ---
+  // A ticked key is a product id or (on variant rows) a variant id; either way
+  // the supplier belongs to the product.
+  const selectedProductIds = (): string[] => {
+    const ids = new Set<string>();
+    for (const key of selectedRowKeys) {
+      const keyStr = key as string;
+      const product = products.find((p) => p.id === keyStr || p.variants?.some((v) => v.id === keyStr));
+      if (product) ids.add(product.id);
+    }
+    return [...ids];
+  };
+
+  const handleAssignSupplier = async (supplierId: string | null) => {
+    if (!user?.store_id) return;
+    const ids = selectedProductIds();
+    if (ids.length === 0) return;
+    setAssigning(true);
+    try {
+      const result = await assignSupplierToProducts(user.store_id, ids, supplierId);
+      if (!result.success) {
+        notify.error(result.error ?? t.admin.spAssignFailed);
+        return;
+      }
+      notify.success(t.admin.spAssignDone);
+      setSelectedRowKeys([]);
+      onSuppliersChanged?.();
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // --- Put products on the reorder list ---
+  const addToReorderList = useReorderListStore((s) => s.addItems);
+
+  // Ticked rows as items: a ticked product id is a simple product (or every active variant of one
+  // that has variants); a ticked variant id is just that variant.
+  const selectedSkus = (): { productId: string; variantId: string | null }[] => {
+    const skus: { productId: string; variantId: string | null }[] = [];
+    for (const key of selectedRowKeys) {
+      const keyStr = key as string;
+      const product = products.find((p) => p.id === keyStr);
+      if (product) {
+        const active = (product.variants ?? []).filter((v) => v.isActive);
+        if (active.length > 0) for (const v of active) skus.push({ productId: product.id, variantId: v.id });
+        else skus.push({ productId: product.id, variantId: null });
+        continue;
+      }
+      for (const p of products) {
+        const variant = p.variants?.find((v) => v.id === keyStr);
+        if (variant) {
+          skus.push({ productId: p.id, variantId: variant.id });
+          break;
+        }
+      }
+    }
+    return skus;
+  };
+
+  const handleAddToReorder = (items: { productId: string; variantId: string | null }[]) => {
+    if (!user?.store_id || items.length === 0) return;
+    const added = addToReorderList(user.store_id, items);
+    notify.success(
+      added > 0 ? t.admin.roAddedCount.replace("{n}", String(added)) : t.admin.roAlreadyInList,
+    );
+  };
+
+  const supplierNameById = new Map(suppliers.map((s) => [s.id, s.name]));
+  const supplierNames: Record<string, string> = {};
+  for (const [productId, supplierId] of Object.entries(supplierByProduct)) {
+    const name = supplierNameById.get(supplierId);
+    if (name) supplierNames[productId] = name;
+  }
 
   // --- Bulk update ---
   // selectedRowKeys can be:
@@ -391,6 +492,23 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               loading={bulkActive}
             />
           )}
+          {canReorder && (
+            <BulkReorderAdd
+              selectedCount={selectedSkus().length}
+              onAdd={() => {
+                handleAddToReorder(selectedSkus());
+                setSelectedRowKeys([]);
+              }}
+            />
+          )}
+          {canAssignSupplier && (
+            <BulkSupplierAssign
+              selectedCount={selectedProductIds().length}
+              suppliers={suppliers}
+              onAssign={handleAssignSupplier}
+              loading={assigning}
+            />
+          )}
           {/* A disabled fieldset disables every input and button inside it —
               fine for the mobile cards, but on the desktop table it would also
               kill the row-expand arrow, the sort header and the history
@@ -407,6 +525,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
                 bulkActive={bulkActive}
                 insights={insights}
                 onQuickAdd={handleQuickAdd}
+                supplierNames={supplierNames}
+                onAddToReorder={canReorder ? (productId, variantId) => handleAddToReorder([{ productId, variantId }]) : undefined}
               />
             </div>
           </fieldset>
@@ -424,6 +544,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               onSortChange={onSortChange}
               insights={insights}
               onQuickAdd={handleQuickAdd}
+              supplierNames={supplierNames}
+              onAddToReorder={canReorder ? (productId, variantId) => handleAddToReorder([{ productId, variantId }]) : undefined}
             />
           </div>
         </>

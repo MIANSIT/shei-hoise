@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 import { getCustomersWithDue } from "@/lib/queries/customers/getCustomersWithDue";
 import { getUnsettledCodOrders } from "@/lib/queries/orders/codSettlements";
+import { getPendingBalanceParts } from "@/lib/queries/dashboard/getPendingBalance";
+import { getSalesSummary } from "@/lib/queries/dashboard/getSalesSummary";
 import { getVendorsOverviewStats } from "@/lib/queries/vendor/getVendorsOverviewStats";
 import { getOwnerWithdrawals } from "./getOwnerWithdrawals";
 
@@ -30,13 +32,17 @@ export interface MoneyMethodRow {
   fromOrders: number;
   /** Payments collected against customer dues and part-paid orders. */
   fromDues: number;
-  /** Payments received from vendors. */
+  /** Payments received from vendors. Kept apart: not part of `total`. */
   fromVendors: number;
-  /** Total received on this method. */
+  /** The shop's money received on this method (orders and due collections). Vendor payments are not included. */
   total: number;
   /** The owner took this much out on this method (0 unless withdrawals were requested). */
   withdrawn: number;
-  /** total − withdrawn. */
+  /** Moved out of this method into another (e.g. bKash cashed out to cash). Stays in the business. */
+  movedOut: number;
+  /** Moved into this method from another. */
+  movedIn: number;
+  /** What is on this method now: total + fromVendors − withdrawn − movedOut + movedIn. */
   left: number;
 }
 
@@ -48,9 +54,36 @@ export interface MoneyBranchRow {
   left: number;
 }
 
+/** Where the money that arrived in the period came from, adding up to receivedTotal. */
+export interface MoneySources {
+  /** Orders placed in the period and paid at the sale or settled by the courier. */
+  ordersThisPeriod: number;
+  /** Orders placed before the period that were paid during it. */
+  ordersEarlier: number;
+  /** Customer due collections and part-payments. */
+  dueCollections: number;
+  /** Payments from vendors. */
+  vendorPayments: number;
+}
+
+/** The dashboard's sales figures for the same period, to set beside the money. */
+export interface SalesComparison {
+  /** Every order placed in the period that wasn't cancelled or returned, paid or not. */
+  sales: number;
+  /** The paid part of those orders. */
+  received: number;
+  /** Placed in the period and not paid yet. */
+  unpaid: number;
+}
+
 export interface MoneyOverview {
-  /** Everything that came in during the period, whatever the way. */
+  /** The shop's money that came in during the period (orders and due collections). Vendor payments are kept apart. */
   receivedTotal: number;
+  /** Payments received from vendors during the period, shown on their own. */
+  vendorReceivedTotal: number;
+  sources: MoneySources;
+  /** Null when the database doesn't have the sales summary yet. */
+  salesComparison: SalesComparison | null;
   /** What the owner took out for themselves in the period (0 unless withdrawals were requested). */
   withdrawnTotal: number;
   /** receivedTotal − withdrawnTotal. */
@@ -62,16 +95,20 @@ export interface MoneyOverview {
   /** What is still outstanding right now (not limited to the period). */
   pending: {
     customerDue: number;
-    /** Delivered COD orders whose cash the courier hasn't handed over yet, after the courier's own charge. */
+    /** Delivered COD orders whose cash the courier hasn't handed over yet, at the full order total (as the dashboard counts it). */
     codWithCourier: number;
-    /** What vendors owe the store (vendor-wide, whichever branch sent the goods). */
+    /** What vendors owe the store. A vendor has one account for the whole store, so this is never split by branch. */
     vendorDue: number;
+    /** customerDue + codWithCourier, the same as the dashboard's Pending Amount. What vendors owe is kept apart. */
     total: number;
   };
 }
 
 const EMPTY: MoneyOverview = {
   receivedTotal: 0,
+  vendorReceivedTotal: 0,
+  sources: { ordersThisPeriod: 0, ordersEarlier: 0, dueCollections: 0, vendorPayments: 0 },
+  salesComparison: null,
   withdrawnTotal: 0,
   leftTotal: 0,
   byBranch: [],
@@ -86,6 +123,7 @@ function normalizeMethod(raw: string | null | undefined): MoneyMethodKey {
 
 interface PaidOrderRow {
   id: string;
+  order_date: string | null;
   branch_id?: string | null;
   payment_method: string | null;
   subtotal: number | null;
@@ -141,14 +179,14 @@ export async function getMoneyOverview(
     const paidFrom = dayStartIso(fromDate);
     const paidTo = dayEndIso(toDate);
 
-    const [orders, duePayments, vendorPayments, customerDues, codOrders, vendorStats, withdrawals] = await Promise.all([
+    const [orders, duePayments, vendorPayments, pendingParts, vendorStats, withdrawals, salesSummary] = await Promise.all([
       fetchAllPaged<PaidOrderRow>((from, to) => {
         let query = supabase
           .from("orders")
           .select(
             withBranches
-              ? "id, branch_id, payment_method, subtotal, discount_amount, additional_charges"
-              : "id, payment_method, subtotal, discount_amount, additional_charges",
+              ? "id, order_date, branch_id, payment_method, subtotal, discount_amount, additional_charges"
+              : "id, order_date, payment_method, subtotal, discount_amount, additional_charges",
           )
           .eq("store_id", storeId)
           .eq("payment_status", "paid")
@@ -165,13 +203,14 @@ export async function getMoneyOverview(
       }),
       loadPayments("customer_payments", storeId, fromDate, toDate, branchId ?? null, withBranches),
       loadPayments("vendor_payments", storeId, fromDate, toDate, branchId ?? null, withBranches),
-      getCustomersWithDue(storeId, branchId ?? null, withBranches),
-      getUnsettledCodOrders(storeId, null, branchId ?? null),
+      // The dashboard's own "Pending Amount" figures, so the two pages always agree.
+      getPendingBalanceParts(storeId, branchId ?? null),
       getVendorsOverviewStats(storeId, branchId ?? null),
       // Before the withdrawals table exists, or if it can't be read, the rest of the page still works.
       includeWithdrawals
         ? getOwnerWithdrawals(storeId, fromDate, toDate, branchId ?? null).catch(() => [])
         : Promise.resolve([]),
+      getSalesSummary(storeId, fromDate, toDate, null, null, branchId ?? null),
     ]);
 
     // Orders with customer payments pinned to them: their money is counted
@@ -182,7 +221,7 @@ export async function getMoneyOverview(
     const rowFor = (method: MoneyMethodKey): MoneyMethodRow => {
       let row = rows.get(method);
       if (!row) {
-        row = { method, fromOrders: 0, fromDues: 0, fromVendors: 0, total: 0, withdrawn: 0, left: 0 };
+        row = { method, fromOrders: 0, fromDues: 0, fromVendors: 0, total: 0, withdrawn: 0, movedOut: 0, movedIn: 0, left: 0 };
         rows.set(method, row);
       }
       return row;
@@ -199,6 +238,8 @@ export async function getMoneyOverview(
       branchTotals.set(key, entry);
     };
 
+    const sources: MoneySources = { ordersThisPeriod: 0, ordersEarlier: 0, dueCollections: 0, vendorPayments: 0 };
+
     for (const order of orders) {
       if (ledgerOrderIds.has(order.id)) continue;
       const amount =
@@ -206,39 +247,75 @@ export async function getMoneyOverview(
       if (amount <= 0) continue;
       rowFor(normalizeMethod(order.payment_method)).fromOrders += amount;
       addToBranch(order.branch_id, "received", amount);
+      // Placed before the period but paid in it (e.g. last month's COD): it is money now, not this period's sales.
+      if (order.order_date && order.order_date < fromDate) sources.ordersEarlier += amount;
+      else sources.ordersThisPeriod += amount;
     }
     for (const p of duePayments) {
       rowFor(normalizeMethod(p.payment_method)).fromDues += Number(p.amount);
       addToBranch(p.branch_id, "received", Number(p.amount));
+      sources.dueCollections += Number(p.amount);
     }
     for (const p of vendorPayments) {
+      // Vendor money is kept apart from the shop's: it counts on the method it arrived by, but not in the shop totals.
       rowFor(normalizeMethod(p.payment_method)).fromVendors += Number(p.amount);
-      addToBranch(p.branch_id, "received", Number(p.amount));
+      sources.vendorPayments += Number(p.amount);
     }
 
     for (const w of withdrawals) {
+      if (w.kind === "transfer") {
+        // Money changing method stays in the business: it moves between rows and changes no total.
+        rowFor(normalizeMethod(w.payment_method)).movedOut += w.amount;
+        rowFor(normalizeMethod(w.to_method)).movedIn += w.amount;
+        continue;
+      }
       rowFor(normalizeMethod(w.payment_method)).withdrawn += w.amount;
       addToBranch(w.branch_id, "withdrawn", w.amount);
     }
 
     const byMethod = [...rows.values()]
       .map((row) => {
-        const total = row.fromOrders + row.fromDues + row.fromVendors;
-        return { ...row, total, left: total - row.withdrawn };
+        const total = row.fromOrders + row.fromDues;
+        return { ...row, total, left: total + row.fromVendors - row.withdrawn - row.movedOut + row.movedIn };
       })
-      .filter((row) => row.total > 0.005 || row.withdrawn > 0.005)
+      .filter(
+        (row) =>
+          row.total > 0.005 ||
+          row.fromVendors > 0.005 ||
+          row.withdrawn > 0.005 ||
+          row.movedOut > 0.005 ||
+          row.movedIn > 0.005,
+      )
       .sort((a, b) => b.total - a.total);
     const receivedTotal = byMethod.reduce((sum, row) => sum + row.total, 0);
+    const vendorReceivedTotal = byMethod.reduce((sum, row) => sum + row.fromVendors, 0);
     const withdrawnTotal = byMethod.reduce((sum, row) => sum + row.withdrawn, 0);
 
-    const customerDue = customerDues.reduce((sum, c) => sum + Number(c.total_due), 0);
-    const codWithCourier = codOrders.reduce((sum, o) => sum + o.expected_from_courier, 0);
+    let customerDue: number;
+    let codWithCourier: number;
+    if (pendingParts) {
+      customerDue = pendingParts.customerDue;
+      codWithCourier = pendingParts.codPending;
+    } else {
+      // The database function isn't there yet: work it out from the same lists the Customer Dues and COD Payouts pages use.
+      const [customerDues, codOrders] = await Promise.all([
+        getCustomersWithDue(storeId, branchId ?? null, withBranches),
+        getUnsettledCodOrders(storeId, null, branchId ?? null),
+      ]);
+      customerDue = customerDues.reduce((sum, c) => sum + Number(c.total_due), 0);
+      codWithCourier = codOrders.reduce((sum, o) => sum + o.expected_from_courier, 0);
+    }
     const vendorDue = Math.max(vendorStats.total_due, 0);
 
     return {
       receivedTotal,
+      vendorReceivedTotal,
+      sources,
+      salesComparison: salesSummary
+        ? { sales: salesSummary.sales, received: salesSummary.received, unpaid: salesSummary.toCollect }
+        : null,
       withdrawnTotal,
-      leftTotal: receivedTotal - withdrawnTotal,
+      leftTotal: receivedTotal + vendorReceivedTotal - withdrawnTotal,
       byBranch: [...branchTotals.entries()]
         .map(([id, t]) => ({ branchId: id, received: t.received, withdrawn: t.withdrawn, left: t.received - t.withdrawn }))
         .filter((b) => b.received > 0.005 || b.withdrawn > 0.005)
@@ -248,7 +325,7 @@ export async function getMoneyOverview(
         customerDue,
         codWithCourier,
         vendorDue,
-        total: customerDue + codWithCourier + vendorDue,
+        total: customerDue + codWithCourier,
       },
     };
   } catch (error) {

@@ -9,6 +9,7 @@ import { ProductStatus } from "@/lib/types/enums";
 import { stockLevelPct } from "./StockTable";
 import StockHistoryPopover from "./StockHistoryPopover";
 import { QuickAddStock } from "./QuickAddStock";
+import { ClipboardList } from "lucide-react";
 import { StockSellingCell } from "./StockSellingCell";
 import { skuInsightKey, type StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -34,6 +35,10 @@ interface StockTableMobileProps {
   insights?: StockInsightLookup | null;
   /** "Stock arrived": adds units to a product or variant. Without it the quick-add button is hidden. */
   onQuickAdd?: (productId: string, variantId: string | null, quantity: number) => Promise<void>;
+  /** Product id → supplier name, shown as a chip under the product name. */
+  supplierNames?: Readonly<Record<string, string>>;
+  /** Put one product or variant on the reorder list. Without it the button is hidden. */
+  onAddToReorder?: (productId: string, variantId: string | null) => void;
 }
 
 const StatusBadge = ({
@@ -174,6 +179,8 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
   bulkActive = false,
   insights = null,
   onQuickAdd,
+  supplierNames = {},
+  onAddToReorder,
 }) => {
   const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
   const symbol = currencyLoading ? "৳" : ((currencyIcon as string) ?? "৳");
@@ -316,6 +323,12 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                   )}
                 </div>
 
+                {supplierNames[product.id] && (
+                  <span className="inline-flex w-fit items-center rounded-md bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                    {supplierNames[product.id]}
+                  </span>
+                )}
+
                 {insights && (
                   <StockSellingCell compact info={insights.byProduct.get(product.id) ?? null} />
                 )}
@@ -348,6 +361,16 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                 <StockHistoryPopover productId={product.id} variantId={null} />
                 {onQuickAdd && (
                   <QuickAddStock onAdd={(quantity) => onQuickAdd(product.id, null, quantity)} />
+                )}
+                {onAddToReorder && (
+                  <button
+                    type="button"
+                    onClick={() => onAddToReorder(product.id, null)}
+                    aria-label="Reorder"
+                    className="inline-flex items-center rounded-md border border-border p-1 text-muted-foreground hover:text-indigo-700"
+                  >
+                    <ClipboardList size={12} aria-hidden="true" />
+                  </button>
                 )}
                 {product.id in editedStocks && !bulkActive && (
                   <SheiButton
@@ -460,6 +483,16 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                         />
                         {onQuickAdd && (
                           <QuickAddStock onAdd={(quantity) => onQuickAdd(product.id, variant.id, quantity)} />
+                        )}
+                        {onAddToReorder && (
+                          <button
+                            type="button"
+                            onClick={() => onAddToReorder(product.id, variant.id)}
+                            aria-label="Reorder"
+                            className="inline-flex items-center rounded-md border border-border p-1 text-muted-foreground hover:text-indigo-700"
+                          >
+                            <ClipboardList size={12} aria-hidden="true" />
+                          </button>
                         )}
                         {variant.id in editedStocks && !bulkActive && (
                           <SheiButton

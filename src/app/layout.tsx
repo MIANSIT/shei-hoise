@@ -17,7 +17,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Without a base URL, share images (the default opengraph/twitter images) on
+// every page that doesn't set its own would point at localhost.
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "Shei Hoise",
   description: "Shei Hoise is an e-commerce powered by MIANS",
   verification: {

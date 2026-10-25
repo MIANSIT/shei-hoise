@@ -12,6 +12,14 @@ export interface RecordOwnerWithdrawalInput {
   notes?: string;
   /** Stores with branches: the branch the money was taken from. */
   branchId?: string | null;
+  /**
+   * "withdrawal" (default): the money leaves the business.
+   * "transfer": the money stays, but moves from `paymentMethod` to `toMethod`
+   * (e.g. cashing out bKash to cash).
+   */
+  kind?: "withdrawal" | "transfer";
+  /** Transfers only: the method the money moved to. */
+  toMethod?: string;
 }
 
 export interface OwnerWithdrawalResult {
@@ -36,6 +44,16 @@ export async function recordOwnerWithdrawal(input: RecordOwnerWithdrawalInput): 
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.withdrawalDate)) {
       return { success: false, error: "Choose a valid date" };
+    }
+
+    const isTransfer = input.kind === "transfer";
+    if (isTransfer) {
+      if (!input.toMethod || !(WITHDRAWAL_METHODS as readonly string[]).includes(input.toMethod)) {
+        return { success: false, error: "Choose where the money moved to" };
+      }
+      if (input.toMethod === input.paymentMethod) {
+        return { success: false, error: "Choose two different methods" };
+      }
     }
 
     // A store with branches keeps its money branch by branch, so every
@@ -69,6 +87,9 @@ export async function recordOwnerWithdrawal(input: RecordOwnerWithdrawalInput): 
         withdrawal_date: input.withdrawalDate,
         notes: input.notes?.trim() || null,
         created_by: auth.actor.userId,
+        // Only sent for a transfer, so plain withdrawals keep working on a database
+        // that hasn't had the transfers migration yet.
+        ...(isTransfer ? { kind: "transfer", to_method: input.toMethod } : {}),
       })
       .select("id")
       .single();
@@ -76,12 +97,14 @@ export async function recordOwnerWithdrawal(input: RecordOwnerWithdrawalInput): 
     if (error) return { success: false, error: error.message };
 
     await logActivity(auth.actor, {
-      action: "money.withdraw",
+      action: isTransfer ? "money.transfer" : "money.withdraw",
       branchId: input.branchId ?? null,
       entityType: "owner_withdrawal",
       entityId: data?.id ?? null,
-      summary: `Withdrew ৳${input.amount} (${input.paymentMethod})`,
-      details: { withdrawal_date: input.withdrawalDate, notes: input.notes ?? null },
+      summary: isTransfer
+        ? `Moved ৳${input.amount} from ${input.paymentMethod} to ${input.toMethod}`
+        : `Withdrew ৳${input.amount} (${input.paymentMethod})`,
+      details: { withdrawal_date: input.withdrawalDate, notes: input.notes ?? null, to_method: input.toMethod ?? null },
     });
 
     return { success: true };

@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import { useBranches } from "@/lib/context/BranchContext";
 import { getVendorOrders } from "@/lib/queries/vendorOrder/getVendorOrders";
 import type { VendorOrder, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
@@ -27,6 +28,9 @@ export default function VendorOrdersPage() {
   const { storeId, loading: userLoading } = useCurrentUser();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const router = useRouter();
+  // Stores with branches: the list follows the branch picked in the header; "All branches" shows every branch with its name.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branchName } = useBranches();
+  const listBranchId = branchesOn ? selectedBranchId : null;
 
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [total, setTotal] = useState(0);
@@ -36,13 +40,14 @@ export default function VendorOrdersPage() {
   const [page, setPage] = useState(1);
 
   const fetchOrders = useCallback(async () => {
-    if (!storeId) return;
+    if (!storeId || branchesLoading) return;
     setLoading(true);
     try {
       const result = await getVendorOrders({
         storeId,
         search: search || undefined,
         status,
+        branchId: listBranchId,
         page,
         pageSize: PAGE_SIZE,
       });
@@ -51,7 +56,12 @@ export default function VendorOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [storeId, search, status, page]);
+  }, [storeId, search, status, page, listBranchId, branchesLoading]);
+
+  // A different branch is a different list: start from its first page.
+  useEffect(() => {
+    setPage(1);
+  }, [listBranchId]);
 
   useEffect(() => {
     fetchOrders();
@@ -64,6 +74,16 @@ export default function VendorOrdersPage() {
       key: "vendor",
       render: (_, record) => record.vendor?.name ?? "—",
     },
+    ...(branchesOn && !selectedBranchId
+      ? [
+          {
+            title: "Branch",
+            key: "branch",
+            width: 140,
+            render: (_: unknown, record: VendorOrder) => (record.branch_id ? branchName(record.branch_id) : "—"),
+          },
+        ]
+      : []),
     {
       title: "Order Date",
       dataIndex: "order_date",

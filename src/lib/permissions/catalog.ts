@@ -134,6 +134,11 @@ export const PERMISSION_AREAS: readonly PermissionArea[] = [
         label: "Sales speed, slow stock & reorder list",
         labelBn: "বিক্রির গতি, ধীর স্টক ও রিঅর্ডার তালিকা",
       },
+      {
+        key: "supplier_money",
+        label: "Supplier bills & payments",
+        labelBn: "সাপ্লায়ারের বিল ও পেমেন্ট",
+      },
     ],
   },
   {

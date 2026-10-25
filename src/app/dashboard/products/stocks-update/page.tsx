@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Button, Pagination, Popover } from "antd";
+import { Button, Pagination, Popover, Select } from "antd";
 import { SearchOutlined, LockOutlined } from "@ant-design/icons";
 import { Percent, Activity, ClipboardList } from "lucide-react";
 import FeatureUpsell from "@/app/components/admin/common/FeatureUpsell";
@@ -20,7 +20,10 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useReorderListStore } from "@/lib/store/reorderListStore";
 import { getStockInsights } from "@/lib/queries/stock/getStockInsights";
+import { getProductSupplierMap, getSuppliers } from "@/lib/queries/supplier/suppliers";
+import type { Supplier } from "@/lib/queries/supplier/supplierTypes";
 import {
   buildInsightLookup,
   productIdsWithHealth,
@@ -93,6 +96,8 @@ const StockPage = () => {
   };
 
   const [searchText, setSearchText] = useUrlSync<string>("search", "");
+  // "" = every supplier, "none" = products without one, otherwise a supplier id.
+  const [supplierFilter, setSupplierFilter] = useUrlSync<string>("supplier", "");
   const [stockFilter, setStockFilter] = useUrlSync<StockFilter>(
     "filter",
     StockFilter.ALL,
@@ -142,13 +147,46 @@ const StockPage = () => {
     loadInsights();
   }, [loadInsights]);
 
+  // Suppliers and which product uses which, for the chips, the bulk assign bar and the supplier filter.
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierByProduct, setSupplierByProduct] = useState<Record<string, string>>({});
+  const loadSuppliers = useCallback(async () => {
+    if (!storeId) return;
+    const [list, map] = await Promise.all([getSuppliers(storeId), getProductSupplierMap(storeId)]);
+    setSuppliers(list);
+    setSupplierByProduct(map);
+  }, [storeId]);
+  useEffect(() => {
+    loadSuppliers();
+  }, [loadSuppliers]);
+
+  // How many items are waiting on the reorder list. Read after mount, because this count lives in the browser.
+  const reorderCount = useReorderListStore((s) => (storeId ? (s.itemsByStore[storeId]?.length ?? 0) : 0));
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const insightLookup = useMemo(() => (insightRows ? buildInsightLookup(insightRows) : null), [insightRows]);
   const activeHealth = FILTER_HEALTH[stockFilter] ?? null;
   // A sales filter shows nothing until the sales figures arrive, rather than briefly listing everything.
   const onlyProductIds = useMemo(() => {
-    if (!activeHealth) return null;
-    return insightRows ? productIdsWithHealth(insightRows, activeHealth) : new Set<string>();
-  }, [activeHealth, insightRows]);
+    let ids: Set<string> | null = null;
+    if (activeHealth) {
+      ids = insightRows ? productIdsWithHealth(insightRows, activeHealth) : new Set<string>();
+    }
+    if (supplierFilter && supplierFilter !== "none") {
+      const ofSupplier = new Set(
+        Object.entries(supplierByProduct)
+          .filter(([, supplierId]) => supplierId === supplierFilter)
+          .map(([productId]) => productId),
+      );
+      ids = ids ? new Set([...ids].filter((id) => ofSupplier.has(id))) : ofSupplier;
+    }
+    return ids;
+  }, [activeHealth, insightRows, supplierFilter, supplierByProduct]);
+  const excludeProductIds = useMemo(
+    () => (supplierFilter === "none" ? new Set(Object.keys(supplierByProduct)) : null),
+    [supplierFilter, supplierByProduct],
+  );
   const healthProductCount = useCallback(
     (health: StockHealth) => (insightRows ? productIdsWithHealth(insightRows, health).size : null),
     [insightRows],
@@ -236,6 +274,9 @@ const StockPage = () => {
               >
                 <ClipboardList size={14} aria-hidden="true" />
                 <span className="hidden sm:inline">{t.admin.menuReorderList}</span>
+                {mounted && reorderCount > 0 && (
+                  <span className="rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white">{n(reorderCount)}</span>
+                )}
               </Link>
             </>
           )}
@@ -345,6 +386,24 @@ const StockPage = () => {
           )}
         </div>
 
+        {/* Supplier filter */}
+        {(suppliers.length > 0 || supplierFilter) && (
+          <Select
+            value={supplierFilter || ""}
+            onChange={(value) => {
+              setSupplierFilter(value);
+              setCurrentPage(1);
+            }}
+            className="w-full sm:w-52"
+            size="large"
+            options={[
+              { value: "", label: t.admin.spAllSuppliers },
+              { value: "none", label: t.admin.spNoSupplier },
+              ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+            ]}
+          />
+        )}
+
         {/* Desktop filter pills */}
         <div className="hidden md:flex items-center gap-1.5 flex-wrap">
           {FILTER_CONFIG.map(({ value, label, color }) => {
@@ -422,7 +481,13 @@ const StockPage = () => {
         onStatsChange={setStats}
         insights={insightLookup}
         onlyProductIds={onlyProductIds}
+        excludeProductIds={excludeProductIds}
         onStockChanged={loadInsights}
+        suppliers={suppliers}
+        supplierByProduct={supplierByProduct}
+        canAssignSupplier={can("stock.edit")}
+        canReorder={canInsights}
+        onSuppliersChanged={loadSuppliers}
       />
 
       {/* ── Pagination ── */}
