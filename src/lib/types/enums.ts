@@ -36,6 +36,12 @@ export enum StockFilter {
   LOW = "low",
   IN = "in",
   OUT = "out",
+  /** Sells fast and is about to run out (or already sold out). Needs sales data — see getStockInsights. */
+  RESTOCK = "restock",
+  /** Hasn't sold in 30 days, or far more stock than it sells. */
+  SLOW = "slow",
+  /** In stock but nothing sold in 90 days. */
+  DEAD = "dead",
 }
 
 export enum ProductStatus {

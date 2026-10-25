@@ -128,7 +128,13 @@ export const PERMISSION_AREAS: readonly PermissionArea[] = [
     hint: "Stock counts and adjustments",
     hintBn: "স্টকের পরিমাণ ও পরিবর্তন",
     actions: ["view", "edit"],
-    extras: [],
+    extras: [
+      {
+        key: "insights",
+        label: "Sales speed, slow stock & reorder list",
+        labelBn: "বিক্রির গতি, ধীর স্টক ও রিঅর্ডার তালিকা",
+      },
+    ],
   },
   {
     key: "transfers",
@@ -431,6 +437,12 @@ export const SYSTEM_ROLE_TEMPLATES: readonly SystemRoleTemplate[] = [
       "transfers.receive",
     ],
     limits: { max_stock_adjustment: 50 },
+  },
+  {
+    name: "Stock Analyst",
+    description: "Checks what sells slowly and what to reorder. Cannot change stock.",
+    permissions: ["products.view", "stock.view", "stock.insights"],
+    limits: {},
   },
   {
     name: "Order Handler",

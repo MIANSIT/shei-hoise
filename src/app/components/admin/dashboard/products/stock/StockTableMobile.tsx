@@ -8,6 +8,9 @@ import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { ProductStatus } from "@/lib/types/enums";
 import { stockLevelPct } from "./StockTable";
 import StockHistoryPopover from "./StockHistoryPopover";
+import { QuickAddStock } from "./QuickAddStock";
+import { StockSellingCell } from "./StockSellingCell";
+import { skuInsightKey, type StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { BranchStockLine } from "@/app/components/admin/branches/BranchStockLine";
 
@@ -27,6 +30,10 @@ interface StockTableMobileProps {
   selectedRowKeys: React.Key[];
   onSelectChange: (keys: React.Key[]) => void;
   bulkActive?: boolean;
+  /** Sales speed per product and variant; when given, each card shows it. */
+  insights?: StockInsightLookup | null;
+  /** "Stock arrived": adds units to a product or variant. Without it the quick-add button is hidden. */
+  onQuickAdd?: (productId: string, variantId: string | null, quantity: number) => Promise<void>;
 }
 
 const StatusBadge = ({
@@ -165,6 +172,8 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
   selectedRowKeys,
   onSelectChange,
   bulkActive = false,
+  insights = null,
+  onQuickAdd,
 }) => {
   const { icon: currencyIcon, loading: currencyLoading } = useUserCurrencyIcon();
   const symbol = currencyLoading ? "৳" : ((currencyIcon as string) ?? "৳");
@@ -306,6 +315,10 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                     </StatusBadge>
                   )}
                 </div>
+
+                {insights && (
+                  <StockSellingCell compact info={insights.byProduct.get(product.id) ?? null} />
+                )}
               </div>
             </div>
 
@@ -333,6 +346,9 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                   tooltip="Held by orders not yet delivered or cancelled — not sellable until then."
                 />
                 <StockHistoryPopover productId={product.id} variantId={null} />
+                {onQuickAdd && (
+                  <QuickAddStock onAdd={(quantity) => onQuickAdd(product.id, null, quantity)} />
+                )}
                 {product.id in editedStocks && !bulkActive && (
                   <SheiButton
                     size="small"
@@ -394,6 +410,12 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                             </div>
                           )}
                           <BranchStockLine branchStock={variant.branchStock} />
+                          {insights && (
+                            <StockSellingCell
+                              compact
+                              info={insights.bySku.get(skuInsightKey(product.id, variant.id)) ?? null}
+                            />
+                          )}
                           <div className="flex gap-1 flex-wrap">
                             {!variant.isActive && (
                               <StatusBadge variant="inactive">
@@ -436,6 +458,9 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           productId={product.id}
                           variantId={variant.id}
                         />
+                        {onQuickAdd && (
+                          <QuickAddStock onAdd={(quantity) => onQuickAdd(product.id, variant.id, quantity)} />
+                        )}
                         {variant.id in editedStocks && !bulkActive && (
                           <SheiButton
                             size="small"

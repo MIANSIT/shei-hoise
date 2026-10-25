@@ -23,6 +23,8 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import type { TableRowSelection } from "antd/es/table/interface";
 import { App } from "antd";
 import { StockFilter } from "@/lib/types/enums";
+import type { StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface StockChangeTableProps {
   searchText: string;
@@ -37,6 +39,12 @@ interface StockChangeTableProps {
   branchId?: string | null;
   /** "All branches" view: numbers only, no editing (a change needs a branch). */
   readOnly?: boolean;
+  /** Sales speed per product and variant, for the "Selling" column. */
+  insights?: StockInsightLookup | null;
+  /** Show only these products (the Restock / Slow / Not selling filters). */
+  onlyProductIds?: ReadonlySet<string> | null;
+  /** Called after stock was added or changed, so figures built from sales and stock can refresh. */
+  onStockChanged?: () => void;
 }
 
 const StockChangeTable: React.FC<StockChangeTableProps> = ({
@@ -50,7 +58,11 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   onSortChange,
   branchId = null,
   readOnly = false,
+  insights = null,
+  onlyProductIds = null,
+  onStockChanged,
 }) => {
+  const t = useTranslation();
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [editedStocks, setEditedStocks] = useState<Record<string, number>>({});
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -78,6 +90,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
           pageSize,
           stockSort,
           branchId,
+          onlyProductIds ? [...onlyProductIds] : null,
         );
 
         if (stale) return;
@@ -108,6 +121,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     pageSize,
     stockSort,
     branchId,
+    onlyProductIds,
     onTotalChange,
     onStatsChange,
   ]);
@@ -123,6 +137,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         pageSize,
         stockSort,
         branchId,
+        onlyProductIds ? [...onlyProductIds] : null,
       );
       setProducts(mapProductsForModernTable(result.data));
       if (onTotalChange) onTotalChange(result.total);
@@ -187,11 +202,32 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
 
       notify.success("Stock updated successfully");
       await refreshProducts();
+      onStockChanged?.();
     } catch (err) {
       console.error(err);
       notify.error(
         err instanceof Error ? err.message : "Failed to update stock",
       );
+    }
+  };
+
+  // --- "Stock arrived": add units on top of what is there ---
+  const handleQuickAdd = async (productId: string, variantId: string | null, quantity: number) => {
+    try {
+      await adjustInventory({
+        product_id: productId,
+        ...(variantId ? { variant_id: variantId } : {}),
+        branch_id: branchId,
+        delta: quantity,
+        reason: "restock",
+        created_by: user?.id ?? null,
+      });
+      notify.success(t.admin.shAddStockDone);
+      await refreshProducts();
+      onStockChanged?.();
+    } catch (err) {
+      console.error(err);
+      notify.error(err instanceof Error ? err.message : t.admin.shAddStockFailed);
     }
   };
 
@@ -369,6 +405,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
                 selectedRowKeys={selectedRowKeys}
                 onSelectChange={setSelectedRowKeys}
                 bulkActive={bulkActive}
+                insights={insights}
+                onQuickAdd={handleQuickAdd}
               />
             </div>
           </fieldset>
@@ -384,6 +422,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               readOnly={readOnly}
               stockSort={stockSort}
               onSortChange={onSortChange}
+              insights={insights}
+              onQuickAdd={handleQuickAdd}
             />
           </div>
         </>

@@ -1,13 +1,15 @@
 "use client";
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Button, Pagination, Popover } from "antd";
 import { SearchOutlined, LockOutlined } from "@ant-design/icons";
-import { Percent } from "lucide-react";
+import { Percent, Activity, ClipboardList } from "lucide-react";
 import FeatureUpsell from "@/app/components/admin/common/FeatureUpsell";
 import StockChangeTable from "@/app/components/admin/dashboard/products/stock/StockChangeTable";
 import StockExportButton from "@/app/components/admin/dashboard/products/stock/StockExportButton";
 import TraderPriceExportModal from "@/app/components/admin/dashboard/products/trader/TraderPriceExportModal";
 import StockStats from "@/app/components/admin/dashboard/products/stock/StockStats";
+import { StockHealthCard } from "@/app/components/admin/dashboard/products/stock/StockHealthCard";
 import { StockFilter } from "@/lib/types/enums";
 import { useUrlSync } from "@/lib/hook/filterWithUrl/useUrlSync";
 import MobileFilter from "@/app/components/admin/common/MobileFilter";
@@ -17,6 +19,14 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import { getStockInsights } from "@/lib/queries/stock/getStockInsights";
+import {
+  buildInsightLookup,
+  productIdsWithHealth,
+  type StockHealth,
+  type StockInsightRow,
+} from "@/lib/queries/stock/stockInsightTypes";
 import {
   getProductWithStock,
   type StockAggregateStats,
@@ -42,6 +52,9 @@ const StockPage = () => {
   const { enabled: branchesOn, selectedBranchId, selectedBranch, branches, canSeeAllBranches } = useBranches();
   const stockBranchId = branchesOn ? selectedBranchId : null;
   const stockReadOnly = branchesOn && !selectedBranchId;
+  const { can } = usePermissions();
+  // Sales speed is its own permission, so a role can change stock without seeing it (and the reverse).
+  const canInsights = can("stock.insights");
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
   // Its own flag, separate from stock export ("export_data") and the
   // Products page's "product_csv_export" — each export surface is gated
@@ -64,7 +77,20 @@ const StockPage = () => {
     { value: StockFilter.IN, label: t.admin.stockInStock, color: "green" },
     { value: StockFilter.LOW, label: t.admin.stockLowStock, color: "amber" },
     { value: StockFilter.OUT, label: t.admin.stockOutOfStock, color: "red" },
+    ...(canInsights
+      ? [
+          { value: StockFilter.RESTOCK, label: t.admin.shHealthRestock, color: "red" },
+          { value: StockFilter.SLOW, label: t.admin.shHealthSlow, color: "amber" },
+          { value: StockFilter.DEAD, label: t.admin.shHealthDead, color: "gray" },
+        ]
+      : []),
   ];
+
+  const FILTER_HEALTH: Partial<Record<StockFilter, StockHealth>> = {
+    [StockFilter.RESTOCK]: "restock",
+    [StockFilter.SLOW]: "slow",
+    [StockFilter.DEAD]: "dead",
+  };
 
   const [searchText, setSearchText] = useUrlSync<string>("search", "");
   const [stockFilter, setStockFilter] = useUrlSync<StockFilter>(
@@ -92,6 +118,41 @@ const StockPage = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [traderModalOpen, setTraderModalOpen] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Sales speed for every product, fetched once and reused by the list, the
+  // health card and the Restock / Slow / Not selling filters.
+  const [insightRows, setInsightRows] = useState<StockInsightRow[] | null>(null);
+  const [insightSummary, setInsightSummary] = useState<Parameters<typeof StockHealthCard>[0]["summary"] | null>(null);
+  const loadInsights = useCallback(async () => {
+    if (!storeId || !canInsights) {
+      setInsightRows(null);
+      setInsightSummary(null);
+      return;
+    }
+    const result = await getStockInsights(storeId, stockBranchId);
+    if (result.ok) {
+      setInsightRows(result.data.rows);
+      setInsightSummary(result.data.summary);
+    } else {
+      setInsightRows(null);
+      setInsightSummary(null);
+    }
+  }, [storeId, canInsights, stockBranchId]);
+  useEffect(() => {
+    loadInsights();
+  }, [loadInsights]);
+
+  const insightLookup = useMemo(() => (insightRows ? buildInsightLookup(insightRows) : null), [insightRows]);
+  const activeHealth = FILTER_HEALTH[stockFilter] ?? null;
+  // A sales filter shows nothing until the sales figures arrive, rather than briefly listing everything.
+  const onlyProductIds = useMemo(() => {
+    if (!activeHealth) return null;
+    return insightRows ? productIdsWithHealth(insightRows, activeHealth) : new Set<string>();
+  }, [activeHealth, insightRows]);
+  const healthProductCount = useCallback(
+    (health: StockHealth) => (insightRows ? productIdsWithHealth(insightRows, health).size : null),
+    [insightRows],
+  );
 
   // The box keeps its own text so typing is instant; the URL (and the fetch
   // it triggers) only updates once typing pauses. Binding the input straight
@@ -160,6 +221,24 @@ const StockPage = () => {
               {n(totalProducts)} {t.admin.stockProducts}
             </span>
           )}
+          {canInsights && (
+            <>
+              <Link
+                href="/dashboard/stock/health"
+                className="inline-flex items-center gap-1.5 rounded-xl h-9 px-3 border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <Activity size={14} aria-hidden="true" />
+                <span className="hidden sm:inline">{t.admin.menuStockHealth}</span>
+              </Link>
+              <Link
+                href="/dashboard/stock/reorder"
+                className="inline-flex items-center gap-1.5 rounded-xl h-9 px-3 border border-border bg-card text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <ClipboardList size={14} aria-hidden="true" />
+                <span className="hidden sm:inline">{t.admin.menuReorderList}</span>
+              </Link>
+            </>
+          )}
           <StockExportButton
             storeSlug={storeSlug ?? undefined}
             branches={branchesOn ? branches : undefined}
@@ -207,6 +286,26 @@ const StockPage = () => {
       {/* ── KPI stats ── */}
       <StockStats stats={stats} currencySymbol={currencySymbol} />
 
+      {canInsights && insightSummary && (
+        <StockHealthCard
+          summary={insightSummary}
+          formatMoney={(amount) => `${currencySymbol}${n(Math.round(amount).toLocaleString())}`}
+          activeHealth={activeHealth}
+          onSelect={(health) => {
+            const target =
+              health === "restock"
+                ? StockFilter.RESTOCK
+                : health === "slow"
+                  ? StockFilter.SLOW
+                  : health === "dead"
+                    ? StockFilter.DEAD
+                    : StockFilter.ALL;
+            setStockFilter(stockFilter === target ? StockFilter.ALL : target);
+            setCurrentPage(1);
+          }}
+        />
+      )}
+
       {/* ── Search + Filters ── */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
@@ -250,15 +349,18 @@ const StockPage = () => {
         <div className="hidden md:flex items-center gap-1.5 flex-wrap">
           {FILTER_CONFIG.map(({ value, label, color }) => {
             const isActive = stockFilter === value;
-            const count = stats
-              ? value === StockFilter.ALL
-                ? stats.counts.all
-                : value === StockFilter.IN
-                  ? stats.counts.in
-                  : value === StockFilter.LOW
-                    ? stats.counts.low
-                    : stats.counts.out
-              : null;
+            const filterHealth = FILTER_HEALTH[value];
+            const count = filterHealth
+              ? healthProductCount(filterHealth)
+              : stats
+                ? value === StockFilter.ALL
+                  ? stats.counts.all
+                  : value === StockFilter.IN
+                    ? stats.counts.in
+                    : value === StockFilter.LOW
+                      ? stats.counts.low
+                      : stats.counts.out
+                : null;
             return (
               <button
                 key={value}
@@ -318,6 +420,9 @@ const StockPage = () => {
         onSortChange={setStockSort}
         onTotalChange={setTotalProducts}
         onStatsChange={setStats}
+        insights={insightLookup}
+        onlyProductIds={onlyProductIds}
+        onStockChanged={loadInsights}
       />
 
       {/* ── Pagination ── */}

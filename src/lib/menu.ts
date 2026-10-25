@@ -45,6 +45,8 @@ import {
   Building2,
   Award,
   PiggyBank,
+  Activity,
+  ClipboardList,
 } from "lucide-react";
 import React from "react";
 import type { translations } from "@/lib/i18n/translations";
@@ -115,15 +117,7 @@ export const sideMenu: MenuItem[] = [
     children: [
       { title: "Add Product", labelKey: "menuAddProduct", href: "/dashboard/products/add-product", icon: PlusCircle },
       { title: "All Products", labelKey: "menuAllProducts", href: "/dashboard/products", icon: List },
-      { title: "Stock Update", labelKey: "menuStockUpdate", href: "/dashboard/products/stocks-update", icon: Edit },
       { title: "Bundles", labelKey: "menuBundles", href: "/dashboard/products/bundles", icon: Boxes },
-      {
-        title: "Stock Transfers",
-        labelKey: "menuStockTransfers",
-        href: "/dashboard/stock-transfers",
-        icon: ArrowLeftRight,
-        requiredFeature: "multi_branch",
-      },
       { title: "All Categories", labelKey: "menuAllCategories", href: "/dashboard/products/category", icon: FolderPlus },
       {
         title: "Brands",
@@ -131,6 +125,25 @@ export const sideMenu: MenuItem[] = [
         href: "/dashboard/products/brands",
         icon: Award,
         requiredFeature: "brands",
+      },
+    ],
+  },
+  {
+    // Everything about the units on the shelf: counting and changing them,
+    // moving them between branches, and seeing what sells and what doesn't.
+    title: "Stock",
+    labelKey: "menuStock",
+    icon: Warehouse,
+    children: [
+      { title: "Stock List", labelKey: "menuStockUpdate", href: "/dashboard/products/stocks-update", icon: Edit },
+      { title: "Stock Health", labelKey: "menuStockHealth", href: "/dashboard/stock/health", icon: Activity },
+      { title: "Reorder List", labelKey: "menuReorderList", href: "/dashboard/stock/reorder", icon: ClipboardList },
+      {
+        title: "Stock Transfers",
+        labelKey: "menuStockTransfers",
+        href: "/dashboard/stock-transfers",
+        icon: ArrowLeftRight,
+        requiredFeature: "multi_branch",
       },
     ],
   },

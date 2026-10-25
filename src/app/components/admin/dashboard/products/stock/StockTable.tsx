@@ -18,6 +18,9 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import type { StockSort } from "@/lib/queries/products/getProductWithStock";
 import { CaretDownOutlined } from "@ant-design/icons";
 import StockHistoryPopover from "./StockHistoryPopover";
+import { QuickAddStock } from "./QuickAddStock";
+import { StockSellingCell } from "./StockSellingCell";
+import { skuInsightKey, type StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
 import { BranchStockLine } from "@/app/components/admin/branches/BranchStockLine";
 
 interface StockTableProps {
@@ -40,6 +43,10 @@ interface StockTableProps {
   readOnly?: boolean;
   stockSort?: StockSort;
   onSortChange?: (sort: StockSort) => void;
+  /** Sales speed per product and variant; when given, a "Selling" column shows it. */
+  insights?: StockInsightLookup | null;
+  /** "Stock arrived": adds units to a product or variant. Without it the quick-add button is hidden. */
+  onQuickAdd?: (productId: string, variantId: string | null, quantity: number) => Promise<void>;
 }
 
 /** Fraction of a "healthy" reference level (3x the low-stock threshold), capped at 100%. */
@@ -85,6 +92,8 @@ const StockTable: React.FC<StockTableProps> = ({
   readOnly = false,
   stockSort = null,
   onSortChange,
+  insights = null,
+  onQuickAdd,
 }) => {
   const t = useTranslation();
   const n = useLocalNum();
@@ -393,6 +402,13 @@ const StockTable: React.FC<StockTableProps> = ({
 
             <StockHistoryPopover productId={parentId} variantId={variantId} />
 
+            {onQuickAdd && (
+              <QuickAddStock
+                disabled={readOnly}
+                onAdd={(quantity) => onQuickAdd(parentId, variantId, quantity)}
+              />
+            )}
+
             {showSave && (
               <SheiButton
                 size="small"
@@ -410,6 +426,22 @@ const StockTable: React.FC<StockTableProps> = ({
         );
       },
     },
+    /* ── Selling (sales speed) ── */
+    ...(insights
+      ? [
+          {
+            title: t.admin.shColSelling,
+            key: "selling",
+            render: (_v: unknown, record: ProductRow | VariantRow) => {
+              const info =
+                "variants" in record
+                  ? (insights.byProduct.get(record.id) ?? null)
+                  : (insights.bySku.get(skuInsightKey((record as VariantRow).productId, record.id)) ?? null);
+              return <StockSellingCell info={info} />;
+            },
+          },
+        ]
+      : []),
   ];
 
   return (

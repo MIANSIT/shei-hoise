@@ -108,6 +108,12 @@ export async function getProductWithStock(
   stockSort: StockSort = null,
   /** Show (and filter/sort by) one branch's stock instead of the store total. */
   branchId: string | null = null,
+  /**
+   * Narrow the list to these products after the counts are worked out (used by
+   * the Restock / Slow / Dead filters, which are decided by sales, not by the
+   * stock table). The tiles and filter counts still cover every product.
+   */
+  onlyProductIds: ReadonlySet<string> | readonly string[] | null = null,
 ): Promise<{ data: ProductWithStock[]; total: number; stats: StockAggregateStats }> {
   let query = supabaseAdmin
     .from("products")
@@ -312,7 +318,10 @@ export async function getProductWithStock(
   };
 
   // --- Stock filtering ---
-  const filtered = mapped.filter((product) => matchesFilter(product, stockFilter));
+  const idSet = onlyProductIds ? new Set(onlyProductIds) : null;
+  const filtered = mapped.filter(
+    (product) => matchesFilter(product, stockFilter) && (!idSet || idSet.has(product.id)),
+  );
 
   // --- Optional sort by stock level — variant products sort by their worst
   // (lowest) variant, so a product needing attention surfaces even though it
