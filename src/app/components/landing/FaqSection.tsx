@@ -22,6 +22,11 @@ export function FaqSection({ faqs }: FaqSectionProps) {
 
   if (faqs.length === 0) return null;
 
+  // Reading order runs down the left column, then the right.
+  const half = Math.ceil(faqs.length / 2);
+  const firstColumn = faqs.slice(0, half);
+  const secondColumn = faqs.slice(half);
+
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -33,37 +38,43 @@ export function FaqSection({ faqs }: FaqSectionProps) {
   };
 
   return (
-    <section className="py-16 md:py-20 px-6">
+    <section className="py-8 md:py-10 px-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
-      <div className="container mx-auto text-center mb-10 md:mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">{t.landing.faqTitle}</h2>
-        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+      <div className="container mx-auto text-center mb-5 md:mb-6">
+        <h2 className="text-2xl md:text-3xl font-bold mb-2">{t.landing.faqTitle}</h2>
+        <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
           {t.landing.faqSubtitle}
         </p>
       </div>
 
-      <div className="mx-auto max-w-3xl space-y-3">
-        {faqs.map((faq) => (
-          <details
-            key={faq.id}
-            className="group rounded-xl border border-border bg-card px-5 py-4 shadow-sm"
-          >
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left [&::-webkit-details-marker]:hidden">
-              <h3 className="text-base md:text-lg font-semibold">
-                {lang === "bn" ? faq.question_bn : faq.question_en}
-              </h3>
-              <ChevronDown
-                aria-hidden="true"
-                className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-              />
-            </summary>
-            <p className="mt-3 text-muted-foreground leading-relaxed">
-              {lang === "bn" ? faq.answer_bn : faq.answer_en}
-            </p>
-          </details>
+      {/* Two independent stacks (not one grid), so opening an answer only
+          moves the boxes below it in its own column. On a phone they stack. */}
+      <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-x-4 gap-y-2 md:grid-cols-2">
+        {[firstColumn, secondColumn].map((column, index) => (
+          <div key={index} className="space-y-2">
+            {column.map((faq) => (
+              <details
+                key={faq.id}
+                className="group rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left [&::-webkit-details-marker]:hidden">
+                  <h3 className="text-sm md:text-base font-semibold">
+                    {lang === "bn" ? faq.question_bn : faq.question_en}
+                  </h3>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                  />
+                </summary>
+                <p className="mt-2 text-sm md:text-base text-muted-foreground leading-relaxed">
+                  {lang === "bn" ? faq.answer_bn : faq.answer_en}
+                </p>
+              </details>
+            ))}
+          </div>
         ))}
       </div>
     </section>
