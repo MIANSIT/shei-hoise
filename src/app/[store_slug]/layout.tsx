@@ -15,6 +15,7 @@ import { getActiveAnnouncements } from "@/lib/queries/storefront/announcements/g
 import { getStoreAccessStateAdmin } from "@/lib/utils/getStoreAccessStateAdmin";
 import { buildStoreThemeCss, deriveStoreThemeVars, isBrandPalette } from "@/lib/utils/storeTheme";
 import { AnnouncementBar } from "@/app/components/common/AnnouncementBar";
+import { safeJsonLd } from "@/lib/utils/safeJsonLd";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
@@ -162,7 +163,7 @@ export default async function StoreLayout({
     >
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(storeJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(storeJsonLd) }}
       />
       {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
       {storeData.facebook_pixel_id && (

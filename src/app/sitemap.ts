@@ -11,6 +11,9 @@ function getSitemapClient() {
   );
 }
 
+// Rebuilt at most once an hour, so new stores and products reach Google without waiting for a deploy.
+export const revalidate = 3600;
+
 const baseUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");

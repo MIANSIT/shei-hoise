@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLanguageStore } from "@/lib/store/languageStore";
 import type { Faq } from "@/lib/types/faq";
+import { safeJsonLd } from "@/lib/utils/safeJsonLd";
 
 interface FaqSectionProps {
   faqs: readonly Faq[];
@@ -35,7 +36,7 @@ export function FaqSection({ faqs }: FaqSectionProps) {
     <section className="py-16 md:py-20 px-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
       <div className="container mx-auto text-center mb-10 md:mb-12">
         <h2 className="text-3xl md:text-4xl font-bold mb-4">{t.landing.faqTitle}</h2>

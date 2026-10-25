@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { createNormalClient } from "@/lib/supabase/client";
+import { safeJsonLd } from "@/lib/utils/safeJsonLd";
 
 export const revalidate = 300; // cache for 5 minutes on Vercel CDN
 
@@ -165,11 +166,11 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
       <meta property="product:retailer_item_id" content={product.id as string} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(productJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
       />
       {children}
     </>

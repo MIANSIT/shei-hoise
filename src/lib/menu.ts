@@ -44,6 +44,7 @@ import {
   ArrowLeftRight,
   Building2,
   Award,
+  PiggyBank,
 } from "lucide-react";
 import React from "react";
 import type { translations } from "@/lib/i18n/translations";
@@ -160,6 +161,7 @@ export const sideMenu: MenuItem[] = [
     labelKey: "menuFinancial",
     icon: DollarSign,
     children: [
+      { title: "Money Overview", labelKey: "menuMoneyOverview", href: "/dashboard/financial/money", icon: PiggyBank },
       { title: "Customer Dues", labelKey: "menuCustomerDues", href: "/dashboard/customers/dues", icon: Wallet },
       { title: "COD Settlements", labelKey: "menuCodSettlements", href: "/dashboard/cod-settlements", icon: HandCoins },
       { title: "Expense", labelKey: "menuExpense", href: "/dashboard/expense", icon: CreditCard },
