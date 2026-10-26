@@ -18,6 +18,7 @@ export interface UpdateExpenseInput {
   expense_date?: string;
   vendor_name?: string;
   payment_method?: string;
+  paid_from?: "shop" | "outside";
   platform?: string;
   notes?: string;
   branch_id?: string;

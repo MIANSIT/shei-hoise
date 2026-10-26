@@ -9,6 +9,8 @@ export interface RecordCustomerRefundInput {
   amount: number; // positive; stored as a negative ledger entry
   notes?: string;
   createdBy?: string | null;
+  /** The method the money first came in by, so the refund comes out of the same cash/bKash balance. Defaults to "refund". */
+  paymentMethod?: string;
 }
 
 export interface RecordCustomerRefundResult {
@@ -45,7 +47,7 @@ export async function recordCustomerRefund(
       order_id: input.orderId,
       amount: -input.amount,
       payment_date: new Date().toISOString().slice(0, 10),
-      payment_method: "refund",
+      payment_method: input.paymentMethod || "refund",
       notes: input.notes || "Refund for returned order",
       created_by: input.createdBy || null,
     });

@@ -47,6 +47,8 @@ export interface Expense {
   expense_date: string;
   vendor_name?: string;
   payment_method?: string;
+  /** "shop" = paid from the shop's own money (counted in Money Overview); "outside" = investor or the owner's pocket. */
+  paid_from?: "shop" | "outside" | null;
   platform?: string;
   notes?: string;
   /** Stores with branches: the branch that carries this expense. */
@@ -65,6 +67,7 @@ export interface ExpenseFormValues {
   category_id?: string;
   description?: string;
   payment_method?: string;
+  paid_from?: "shop" | "outside";
   platform?: string;
   vendor_name?: string;
   notes?: string;

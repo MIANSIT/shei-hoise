@@ -86,7 +86,12 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
     }
   };
 
-  const storeName = (storeData.store_name ?? store_slug.replace(/-/g, " ")).toUpperCase();
+  // Kept in its original case (alt text, headings); the visual all-caps look is CSS.
+  const storeName = storeData.store_name ?? store_slug.replace(/-/g, " ");
+  const aboutParagraphs = (storeData.description ?? "")
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   const hasBanner = !!storeData.banner_url;
 
   const showFreeDelivery =
@@ -110,8 +115,13 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
       ══════════════════════════════════════════ */}
       {/* The slider's headlines are marketing copy that changes per slide, so
           the page's single H1 (the store's name) lives here, visually hidden. */}
-      {heroSlides.length > 0 && <h1 className="sr-only">{storeData.store_name}</h1>}
-      {heroSlides.length > 0 && <HeroSlider slides={heroSlides} />}
+      {heroSlides.length > 0 && (
+        <h1 className="sr-only">
+          {storeName}
+          {storeData.short_description ? ` – ${storeData.short_description}` : ""}
+        </h1>
+      )}
+      {heroSlides.length > 0 && <HeroSlider slides={heroSlides} storeName={storeName} />}
 
       {heroSlides.length === 0 && (
       <>
@@ -150,7 +160,7 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h1 className="text-sm sm:text-2xl font-black tracking-widest leading-none text-white drop-shadow-md truncate">
+                  <h1 className="text-sm sm:text-2xl font-black tracking-widest leading-none text-white drop-shadow-md truncate uppercase">
                     {storeName}
                   </h1>
                   {storeRatingSummary.total > 0 && (
@@ -222,7 +232,7 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.42, delay: 0.06 }}
-              className="mt-5 sm:mt-7 text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.05] text-stone-900 dark:text-white"
+              className="mt-5 sm:mt-7 text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.05] text-stone-900 dark:text-white uppercase"
             >
               {storeName}
             </m.h1>
@@ -317,7 +327,7 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
         </section>
       )}
 
-      <PromoBannerSplit banners={promoBanners} />
+      <PromoBannerSplit banners={promoBanners} storeName={storeName} />
 
       {/* ══════════════════════════════════════════
           FLASH SALE — time-boxed discounts (discounted_price +
@@ -481,6 +491,24 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
       </section>
 
       {storeData.id && <CustomerReviewsTeaser storeId={storeData.id} storeSlug={store_slug} />}
+
+      {/* Plain, server-rendered text from the store's own description — gives
+          search engines real copy to read on a page that is otherwise only
+          product grids and images. Skipped when the store has no description. */}
+      {aboutParagraphs.length > 0 && (
+        <section className="border-t border-stone-100 dark:border-gray-800/60 py-10 sm:py-12">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 className="text-lg sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight">
+              {t.home.aboutStore} {storeName}
+            </h2>
+            {aboutParagraphs.map((paragraph, i) => (
+              <p key={i} className="mt-3 text-sm sm:text-base text-stone-500 dark:text-gray-400 leading-relaxed">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -869,7 +897,7 @@ function CategoryAvatar({ category, store_slug, index }: CategoryAvatarProps) {
       className="shrink-0 w-18 sm:w-24"
     >
       <Link
-        href={`/${store_slug}/shop?category=${encodeURIComponent(category.slug)}`}
+        href={`/${store_slug}/category/${encodeURIComponent(category.slug)}`}
         className="group flex flex-col items-center text-center gap-2"
       >
         <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full overflow-hidden border-2 border-border p-1 group-hover:border-primary transition-colors duration-300">

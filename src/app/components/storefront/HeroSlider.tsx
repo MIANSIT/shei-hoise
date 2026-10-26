@@ -8,6 +8,8 @@ import type { HeroButtonPosition, HeroSlide } from "@/lib/types/heroSlide";
 
 interface HeroSliderProps {
   slides: HeroSlide[];
+  /** Used as the image alt when a slide has no headline of its own. */
+  storeName: string;
 }
 
 const AUTOPLAY_MS = 5000;
@@ -52,7 +54,7 @@ function HeroButton({ slide, className = "" }: { slide: HeroSlide; className?: s
 }
 
 /** Admin-managed marketing carousel. Callers must only pass slides that already have an image_url — a slide with no image is never valid to render. */
-export function HeroSlider({ slides }: HeroSliderProps) {
+export function HeroSlider({ slides, storeName }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
   // Natural width/height per slide so phones can show the whole image instead of a cropped 16:5 strip.
   const [ratios, setRatios] = useState<Record<string, number>>({});
@@ -102,7 +104,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
         >
           <Image
             src={slide.image_url}
-            alt={slide.headline ?? ""}
+            alt={slide.headline || `${storeName} – featured offer ${i + 1}`}
             fill
             priority={i === 0}
             className="object-cover object-center"
@@ -122,7 +124,7 @@ export function HeroSlider({ slides }: HeroSliderProps) {
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
                 <div className="max-w-lg text-white">
                   {slide.headline && (
-                    <h2 className="text-2xl sm:text-4xl font-black leading-tight drop-shadow-md">{slide.headline}</h2>
+                    <p className="text-2xl sm:text-4xl font-black leading-tight drop-shadow-md">{slide.headline}</p>
                   )}
                   {slide.subtext && (
                     <p className="mt-3 text-sm sm:text-base text-white/85 drop-shadow-sm">{slide.subtext}</p>

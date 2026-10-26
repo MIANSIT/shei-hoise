@@ -49,6 +49,10 @@ export interface SupplierEntryInput {
   amount: number;
   date: string;
   paymentMethod?: string;
+  /** Payments only: "shop" = paid from the shop's own money, "outside" = investor or the owner's pocket. */
+  paidFrom?: "shop" | "outside";
+  /** Payments from the shop's money, stores with branches: the branch it was paid from. */
+  branchId?: string | null;
   note?: string;
 }
 

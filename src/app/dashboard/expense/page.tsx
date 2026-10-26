@@ -265,6 +265,7 @@ export default function ExpensesPage() {
             ...(values.payment_method && {
               payment_method: values.payment_method,
             }),
+            ...(values.paid_from && { paid_from: values.paid_from }),
             ...(values.platform && { platform: values.platform }),
             ...(values.vendor_name && { vendor_name: values.vendor_name }),
             ...(values.notes && { notes: values.notes }),
@@ -287,6 +288,7 @@ export default function ExpensesPage() {
             category_id: values.category_id ?? undefined,
             description: values.description ?? undefined,
             payment_method: values.payment_method ?? undefined,
+            paid_from: values.paid_from ?? undefined,
             platform: values.platform ?? undefined,
             vendor_name: values.vendor_name ?? undefined,
             notes: values.notes ?? undefined,

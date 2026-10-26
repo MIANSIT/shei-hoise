@@ -21,6 +21,8 @@ const entrySchema = z.object({
   amount: z.number().positive("Enter an amount above zero").max(1_000_000_000, "Amount is too large"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date"),
   paymentMethod: z.enum(PAYMENT_METHODS).optional(),
+  paidFrom: z.enum(["shop", "outside"]).optional(),
+  branchId: z.string().uuid().nullable().optional(),
   note: z.string().trim().max(300, "Note is too long").optional(),
 });
 
@@ -124,6 +126,30 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
       .maybeSingle();
     if (!supplier) return { success: false, error: "Supplier not found" };
 
+    // Only a payment from the shop's own money moves a branch's cash or bKash balance.
+    const isPayment = v.kind === "payment";
+    const paidFrom = isPayment ? (v.paidFrom ?? "shop") : null;
+    let branchId: string | null = null;
+    if (isPayment && paidFrom === "shop") {
+      if (v.branchId) {
+        // branchId comes from the browser — it must be one of this store's own branches.
+        const { data: branch } = await supabaseAdmin
+          .from("store_branches")
+          .select("id")
+          .eq("id", v.branchId)
+          .eq("store_id", storeId)
+          .maybeSingle();
+        if (!branch) return { success: false, error: "Branch not found" };
+        branchId = branch.id;
+      } else {
+        const { count } = await supabaseAdmin
+          .from("store_branches")
+          .select("id", { count: "exact", head: true })
+          .eq("store_id", storeId);
+        if ((count ?? 0) > 0) return { success: false, error: "Choose which branch the money was paid from" };
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from("supplier_ledger")
       .insert({
@@ -132,9 +158,11 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
         kind: v.kind,
         amount: v.amount,
         entry_date: v.date,
-        payment_method: v.kind === "payment" ? (v.paymentMethod ?? "cash") : null,
+        payment_method: isPayment ? (v.paymentMethod ?? "cash") : null,
         note: v.note || null,
         created_by: auth.actor.userId,
+        // Only sent for a payment, so bills keep working on a database without the paid-from migration.
+        ...(isPayment ? { paid_from: paidFrom, branch_id: branchId } : {}),
       })
       .select("id")
       .single();

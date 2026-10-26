@@ -5,6 +5,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { DatePicker, Empty, Input, InputNumber, Modal, Popconfirm, Select, Spin } from "antd";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { useBranches } from "@/lib/context/BranchContext";
 import type { SupplierEntryKind, SupplierLedgerEntry } from "@/lib/queries/supplier/supplierTypes";
 
 const PAY_METHODS = ["cash", "mobile_banking", "card", "bank_transfer", "online", "other"] as const;
@@ -13,6 +14,10 @@ export interface SupplierEntryValues {
   amount: number;
   date: string;
   paymentMethod: string;
+  /** Payments only: the shop's own money, or an investor / the owner's pocket. */
+  paidFrom: "shop" | "outside";
+  /** Payments from the shop's money in a store with branches. */
+  branchId: string | null;
   note: string;
 }
 
@@ -38,9 +43,12 @@ export function SupplierEntryModal({
   onCancel,
 }: SupplierEntryModalProps) {
   const t = useTranslation();
+  const { enabled: branchesOn, activeBranches, workBranchId } = useBranches();
   const [amount, setAmount] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [method, setMethod] = useState<string>("cash");
+  const [paidFrom, setPaidFrom] = useState<"shop" | "outside">("shop");
+  const [branchId, setBranchId] = useState<string | null>(null);
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -48,9 +56,15 @@ export function SupplierEntryModal({
       setAmount(defaultAmount);
       setDate(dayjs());
       setMethod("cash");
+      setPaidFrom("shop");
+      setBranchId(workBranchId ?? activeBranches[0]?.id ?? null);
       setNote("");
     }
+    // The branch is only a starting value; it shouldn't reset while the form is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultAmount]);
+
+  const needsBranch = kind === "payment" && paidFrom === "shop" && branchesOn;
 
   const methodLabel: Record<string, string> = {
     cash: t.admin.moCash,
@@ -65,11 +79,22 @@ export function SupplierEntryModal({
     <Modal
       open={open}
       onCancel={saving ? undefined : onCancel}
-      onOk={() => amount && amount > 0 && onSubmit({ amount, date: date.format("YYYY-MM-DD"), paymentMethod: method, note })}
+      onOk={() =>
+        amount &&
+        amount > 0 &&
+        onSubmit({
+          amount,
+          date: date.format("YYYY-MM-DD"),
+          paymentMethod: method,
+          paidFrom: kind === "payment" ? paidFrom : "shop",
+          branchId: needsBranch ? branchId : null,
+          note,
+        })
+      }
       okText={t.admin.spSave}
       cancelText={t.admin.spCancel}
       confirmLoading={saving}
-      okButtonProps={{ disabled: !amount || amount <= 0 }}
+      okButtonProps={{ disabled: !amount || amount <= 0 || (needsBranch && !branchId) }}
       title={`${kind === "bill" ? t.admin.slBillTitle : t.admin.slPaymentTitle} — ${supplierName}`}
       destroyOnHidden
     >
@@ -105,6 +130,33 @@ export function SupplierEntryModal({
             </div>
           )}
         </div>
+        {kind === "payment" && (
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.moPaidFrom}</label>
+            <Select
+              value={paidFrom}
+              onChange={setPaidFrom}
+              className="w-full mt-1"
+              options={[
+                { value: "shop", label: t.admin.moPaidFromShop },
+                { value: "outside", label: t.admin.moPaidFromOutside },
+              ]}
+            />
+            <p className="m-0 mt-1 text-[11px] text-muted-foreground">{t.admin.moPaidFromHint}</p>
+          </div>
+        )}
+        {needsBranch && (
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.moBranch}</label>
+            <Select
+              value={branchId ?? undefined}
+              onChange={setBranchId}
+              className="w-full mt-1"
+              placeholder={t.admin.moChooseBranch}
+              options={activeBranches.map((b) => ({ value: b.id, label: b.name }))}
+            />
+          </div>
+        )}
         <div>
           <label className="text-xs font-semibold text-muted-foreground">{t.admin.moNote}</label>
           <Input.TextArea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={300} className="mt-1" />

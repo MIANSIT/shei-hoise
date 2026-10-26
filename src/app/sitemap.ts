@@ -82,6 +82,12 @@ interface ProductRow {
   stores: ProductStore | ProductStore[] | null;
 }
 
+interface CategoryRow {
+  slug: string;
+  created_at: string | null;
+  stores: ProductStore | ProductStore[] | null;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = getSitemapClient();
 
@@ -145,5 +151,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   );
 
-  return [...staticRoutes, ...storeRoutes, ...productRoutes];
+  // Active categories, which each have their own /category/[slug] page.
+  const { data: categories, error: categoriesError } = await supabase
+    .from("categories")
+    .select("slug, created_at, stores!inner(store_slug, is_active, status)")
+    .eq("is_active", true);
+
+  if (categoriesError) {
+    console.error("[sitemap] Failed to fetch categories:", categoriesError.message);
+  }
+
+  const categoryRoutes: MetadataRoute.Sitemap = ((categories ?? []) as unknown as CategoryRow[]).flatMap(
+    (category) => {
+      const store = Array.isArray(category.stores) ? category.stores[0] : category.stores;
+      if (!store?.is_active || (store.status !== "approved" && store.status !== "trial")) {
+        return [];
+      }
+      return [
+        {
+          url: `${baseUrl}/${store.store_slug}/category/${encodeURIComponent(category.slug)}`,
+          lastModified: category.created_at ? new Date(category.created_at) : new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.75,
+        },
+      ];
+    },
+  );
+
+  return [...staticRoutes, ...storeRoutes, ...categoryRoutes, ...productRoutes];
 }

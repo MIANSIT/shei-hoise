@@ -18,6 +18,7 @@ import {
   ArrowRight,
   Trash2,
   ArrowRightLeft,
+  Undo2,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -33,6 +34,8 @@ import {
 } from "@/lib/queries/financial/getMoneyOverview";
 import { getOwnerWithdrawals, type OwnerWithdrawal } from "@/lib/queries/financial/getOwnerWithdrawals";
 import { deleteOwnerWithdrawal, recordOwnerWithdrawal } from "@/lib/queries/financial/ownerWithdrawals";
+import { getCustomerRefunds, type CustomerRefund } from "@/lib/queries/financial/getCustomerRefunds";
+import { deleteCustomerRefundEntry, recordCustomerRefundEntry } from "@/lib/queries/financial/customerRefunds";
 
 const EMPTY: MoneyOverviewData = {
   receivedTotal: 0,
@@ -40,6 +43,9 @@ const EMPTY: MoneyOverviewData = {
   sources: { ordersThisPeriod: 0, ordersEarlier: 0, dueCollections: 0, vendorPayments: 0 },
   salesComparison: null,
   withdrawnTotal: 0,
+  refundedTotal: 0,
+  spentTotal: 0,
+  spentBreakdown: { expenses: 0, suppliers: 0 },
   leftTotal: 0,
   byBranch: [],
   byMethod: [],
@@ -48,6 +54,13 @@ const EMPTY: MoneyOverviewData = {
 
 type WithdrawMethod = Exclude<MoneyMethodKey, "cod">;
 const WITHDRAW_METHODS: readonly WithdrawMethod[] = ["cash", "mobile_banking", "card", "bank_transfer", "online", "other"];
+
+const REFUND_METHODS: readonly MoneyMethodKey[] = ["cash", "mobile_banking", "card", "bank_transfer", "online", "cod", "other"];
+
+/** A stored refund method as a known key (anything unexpected reads as "other"). */
+function normalizeRefundMethod(raw: string): MoneyMethodKey {
+  return (REFUND_METHODS as readonly string[]).includes(raw) ? (raw as MoneyMethodKey) : "other";
+}
 
 /** A stored withdrawal method as a known key (anything unexpected reads as "other"). */
 function withdrawalMethod(raw: string): MoneyMethodKey {
@@ -94,6 +107,13 @@ export default function MoneyOverview() {
   const [range, setRange] = useState<[Dayjs, Dayjs]>([dayjs().subtract(29, "day"), dayjs()]);
   const [data, setData] = useState<MoneyOverviewData>(EMPTY);
   const [withdrawals, setWithdrawals] = useState<OwnerWithdrawal[]>([]);
+  const [refunds, setRefunds] = useState<CustomerRefund[]>([]);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [rAmount, setRAmount] = useState<number | null>(null);
+  const [rMethod, setRMethod] = useState<MoneyMethodKey>("cash");
+  const [rDate, setRDate] = useState<Dayjs>(dayjs());
+  const [rNotes, setRNotes] = useState("");
+  const [rBranch, setRBranch] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -113,14 +133,16 @@ export default function MoneyOverview() {
     if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const [overview, withdrawalList] = await Promise.all([
+      const [overview, withdrawalList, refundList] = await Promise.all([
         getMoneyOverview(user.store_id, fromDate, toDate, reportBranchId, branchesOn, isOwner),
         isOwner
           ? getOwnerWithdrawals(user.store_id, fromDate, toDate, reportBranchId).catch(() => [])
           : Promise.resolve([]),
+        getCustomerRefunds(user.store_id, fromDate, toDate, reportBranchId),
       ]);
       setData(overview);
       setWithdrawals(withdrawalList);
+      setRefunds(refundList);
     } finally {
       setLoading(false);
     }
@@ -180,6 +202,58 @@ export default function MoneyOverview() {
     }
   };
 
+  const openRefund = () => {
+    setRAmount(null);
+    setRMethod("cash");
+    setRDate(dayjs());
+    setRNotes("");
+    setRBranch(reportBranchId ?? workBranchId ?? activeBranches[0]?.id ?? null);
+    setRefundOpen(true);
+  };
+
+  const handleRefund = async () => {
+    if (!user?.store_id) return;
+    if (!rAmount || rAmount <= 0) {
+      showError(t.admin.moRefundAmountError);
+      return;
+    }
+    if (branchesOn && !rBranch) {
+      showError(t.admin.moChooseBranch);
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await recordCustomerRefundEntry({
+        storeId: user.store_id,
+        amount: rAmount,
+        paymentMethod: rMethod,
+        refundDate: rDate.format("YYYY-MM-DD"),
+        notes: rNotes,
+        branchId: branchesOn ? rBranch : null,
+      });
+      if (!result.success) {
+        showError(result.error ?? t.admin.moRefundFailed);
+        return;
+      }
+      success(t.admin.moRefundSaved);
+      setRefundOpen(false);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteRefund = async (id: string) => {
+    if (!user?.store_id) return;
+    const result = await deleteCustomerRefundEntry(user.store_id, id);
+    if (!result.success) {
+      showError(result.error ?? t.admin.moRefundFailed);
+      return;
+    }
+    success(t.admin.moRefundDeleted);
+    await load();
+  };
+
   const handleDeleteWithdrawal = async (id: string) => {
     if (!user?.store_id) return;
     const result = await deleteOwnerWithdrawal(user.store_id, id);
@@ -214,7 +288,7 @@ export default function MoneyOverview() {
   const cashFromVendors = cashRow?.fromVendors ?? 0;
   const digitalFromVendors = digitalRows.reduce((sum, r) => sum + r.fromVendors, 0);
   const shownMethods = data.byMethod.filter(
-    (r) => r.total > 0.005 || r.withdrawn > 0.005 || r.movedOut > 0.005 || r.movedIn > 0.005,
+    (r) => r.total > 0.005 || r.withdrawn > 0.005 || r.refunded > 0.005 || r.spent > 0.005 || r.movedOut > 0.005 || r.movedIn > 0.005,
   );
   const vendorMethods = data.byMethod.filter((r) => r.fromVendors > 0.005);
   const cashedIntoCash = cashRow?.movedIn ?? 0;
@@ -272,6 +346,14 @@ export default function MoneyOverview() {
               allowClear={false}
               disabledDate={(d) => d.isAfter(dayjs(), "day")}
             />
+            <button
+              type="button"
+              onClick={openRefund}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-1.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+            >
+              <Undo2 size={15} aria-hidden="true" />
+              {t.admin.moRecordRefund}
+            </button>
             {isOwner && (
               <>
                 <button
@@ -350,8 +432,23 @@ export default function MoneyOverview() {
               </div>
             </div>
 
-            {isOwner && (Math.abs(otherLeft) > 0.005 || data.withdrawnTotal > 0.005) && (
+            {isOwner && (Math.abs(otherLeft) > 0.005 || data.withdrawnTotal > 0.005 || data.refundedTotal > 0.005 || data.spentTotal > 0.005) && (
               <p className="m-0 -mt-2 text-xs text-muted-foreground">
+                {data.spentTotal > 0.005 && (
+                  <span className="mr-3">
+                    {t.admin.moSpentLine}: <span className="font-semibold text-foreground tabular-nums">−{money(data.spentTotal)}</span>{" "}
+                    (
+                    {t.admin.moSpentBreakdown
+                      .replace("{e}", money(data.spentBreakdown.expenses))
+                      .replace("{s}", money(data.spentBreakdown.suppliers))}
+                    )
+                  </span>
+                )}
+                {data.refundedTotal > 0.005 && (
+                  <span className="mr-3">
+                    {t.admin.moRefundedLine}: <span className="font-semibold text-foreground tabular-nums">−{money(data.refundedTotal)}</span>
+                  </span>
+                )}
                 {Math.abs(otherLeft) > 0.005 && (
                   <span className="mr-3">
                     {t.admin.moOtherLine}: <span className="font-semibold text-foreground tabular-nums">{money(otherLeft)}</span>
@@ -397,9 +494,11 @@ export default function MoneyOverview() {
                           </div>
                           <div className="text-right shrink-0">
                             <div className="text-sm font-bold tabular-nums text-foreground">{money(row.total)}</div>
-                            {isOwner && (row.withdrawn > 0.005 || row.movedOut > 0.005 || row.movedIn > 0.005) ? (
+                            {isOwner && (row.withdrawn > 0.005 || row.refunded > 0.005 || row.spent > 0.005 || row.movedOut > 0.005 || row.movedIn > 0.005) ? (
                               <div className="text-[11px] text-muted-foreground tabular-nums">
                                 {row.withdrawn > 0.005 && <>−{money(row.withdrawn)} · </>}
+                                {row.refunded > 0.005 && <>{t.admin.moRefundsTitle} −{money(row.refunded)} · </>}
+                                {row.spent > 0.005 && <>{t.admin.moSpentLine} −{money(row.spent)} · </>}
                                 {row.movedOut > 0.005 && <>{t.admin.moMovedOut} {money(row.movedOut)} · </>}
                                 {row.movedIn > 0.005 && <>{t.admin.moMovedIn} {money(row.movedIn)} · </>}
                                 {t.admin.moLeftShort} {money(row.left)}
@@ -496,9 +595,9 @@ export default function MoneyOverview() {
                         </span>
                         <span className="text-right shrink-0">
                           <span className="block text-sm font-bold tabular-nums text-foreground">{money(b.received)}</span>
-                          {isOwner && b.withdrawn > 0.005 && (
+                          {isOwner && (b.withdrawn > 0.005 || b.refunded > 0.005 || b.spent > 0.005) && (
                             <span className="block text-[11px] text-muted-foreground tabular-nums">
-                              −{money(b.withdrawn)} · {t.admin.moLeftShort} {money(b.left)}
+                              −{money(b.withdrawn + b.refunded + b.spent)} · {t.admin.moLeftShort} {money(b.left)}
                             </span>
                           )}
                         </span>
@@ -508,6 +607,51 @@ export default function MoneyOverview() {
                 </ul>
               </section>
             )}
+
+            <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
+              <h2 className="text-sm font-bold text-foreground m-0">{t.admin.moRefundsTitle}</h2>
+              <p className="text-xs text-muted-foreground m-0 mt-0.5 mb-4">{t.admin.moRefundsSub}</p>
+              {refunds.length === 0 ? (
+                <p className="text-sm text-muted-foreground m-0 py-4 text-center">{t.admin.moNoRefunds}</p>
+              ) : (
+                <ul className="m-0 p-0 list-none divide-y divide-border">
+                  {refunds.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-foreground">
+                          {methodLabel[normalizeRefundMethod(r.payment_method)]}
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            {dayjs(r.refund_date).format("DD-MM-YYYY")}
+                            {branchesOn && r.branch_id ? ` · ${branchName(r.branch_id)}` : ""}
+                            {r.order_id ? ` · ${t.admin.moReturnedOrder}` : ""}
+                          </span>
+                        </div>
+                        {r.notes && <div className="text-[11px] text-muted-foreground break-words">{r.notes}</div>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-bold tabular-nums text-foreground">−{money(r.refund_amount)}</span>
+                        {isOwner && (
+                          <Popconfirm
+                            title={t.admin.moDeleteRefundConfirm}
+                            okText={t.admin.moDelete}
+                            cancelText={t.admin.moCancel}
+                            onConfirm={() => handleDeleteRefund(r.id)}
+                          >
+                            <button
+                              type="button"
+                              aria-label={t.admin.moDelete}
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-muted transition-colors"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </Popconfirm>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
             {isOwner && (
               <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
@@ -699,6 +843,63 @@ export default function MoneyOverview() {
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moNote}</label>
             <Input.TextArea value={wNotes} onChange={(e) => setWNotes(e.target.value)} rows={2} className="mt-1" />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={refundOpen}
+        onCancel={saving ? undefined : () => setRefundOpen(false)}
+        onOk={handleRefund}
+        okText={t.admin.moSaveRefund}
+        cancelText={t.admin.moCancel}
+        confirmLoading={saving}
+        title={t.admin.moRecordRefund}
+        destroyOnHidden
+      >
+        <p className="text-xs text-muted-foreground mt-0 mb-4">{t.admin.moRefundExplain}</p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.moRefundAmount}</label>
+            <InputNumber min={0} value={rAmount} onChange={(v) => setRAmount(v)} className="w-full mt-1" autoFocus />
+          </div>
+          {branchesOn && (
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">{t.admin.moBranch}</label>
+              <Select
+                value={rBranch ?? undefined}
+                onChange={setRBranch}
+                className="w-full mt-1"
+                placeholder={t.admin.moChooseBranch}
+                options={activeBranches.map((b) => ({ value: b.id, label: b.name }))}
+              />
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">{t.admin.moRefundFrom}</label>
+              <Select
+                value={rMethod}
+                onChange={setRMethod}
+                className="w-full mt-1"
+                options={REFUND_METHODS.map((m) => ({ value: m, label: methodLabel[m] }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">{t.admin.moDate}</label>
+              <DatePicker
+                format="DD-MM-YYYY"
+                value={rDate}
+                onChange={(d) => d && setRDate(d)}
+                allowClear={false}
+                disabledDate={(d) => d.isAfter(dayjs(), "day")}
+                className="w-full mt-1"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.moNote}</label>
+            <Input.TextArea value={rNotes} onChange={(e) => setRNotes(e.target.value)} rows={2} className="mt-1" />
           </div>
         </div>
       </Modal>

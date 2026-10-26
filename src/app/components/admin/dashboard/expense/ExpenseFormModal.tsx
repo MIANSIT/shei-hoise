@@ -90,6 +90,7 @@ function ExpenseFormModal({
         category_id: editingExpense.category_id || undefined,
         description: editingExpense.description || undefined,
         payment_method: editingExpense.payment_method || undefined,
+        paid_from: editingExpense.paid_from || undefined,
         platform: editingExpense.platform || undefined,
         vendor_name: editingExpense.vendor_name || undefined,
         notes: editingExpense.notes || undefined,
@@ -97,6 +98,7 @@ function ExpenseFormModal({
       });
     } else {
       form.resetFields();
+      form.setFieldsValue({ paid_from: "shop" });
       if (branchesOn && workBranchId) form.setFieldsValue({ branch_id: workBranchId });
     }
     // workBranchId is only the starting value; changing it mid-form shouldn't reset the form.
@@ -227,6 +229,21 @@ function ExpenseFormModal({
               />
             </Form.Item>
           </div>
+
+          <Form.Item
+            name="paid_from"
+            label={<FieldLabel>{t.admin.moPaidFrom}</FieldLabel>}
+            extra={<span className="text-xs text-muted-foreground">{t.admin.moPaidFromHint}</span>}
+          >
+            <Select
+              allowClear
+              options={[
+                { value: "shop", label: t.admin.moPaidFromShop },
+                { value: "outside", label: t.admin.moPaidFromOutside },
+              ]}
+              className="rounded-lg"
+            />
+          </Form.Item>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item

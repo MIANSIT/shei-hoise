@@ -151,6 +151,8 @@ export default function SuppliersPage() {
         amount: values.amount,
         date: values.date,
         paymentMethod: values.paymentMethod,
+        paidFrom: values.paidFrom,
+        branchId: values.branchId,
         note: values.note,
       });
       if (!result.success) {

@@ -25,8 +25,9 @@ const EMPTY: VendorsOverviewStats = {
 //
 // Stores with branches, one branch picked: what moved through that branch —
 // money it collected and margin on goods it sent out. Stock with vendors and
-// the amount due stay vendor-wide: a vendor has one account with the store,
-// whichever branch sent the goods.
+// total_due stay vendor-wide: a vendor has one account with the store,
+// whichever branch sent the goods. branch_due is the separate per-branch view
+// (see below), for pages that report one branch at a time.
 export async function getVendorsOverviewStats(
   storeId: string,
   branchId?: string | null,
@@ -37,7 +38,7 @@ export async function getVendorsOverviewStats(
   const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
   const slowMovingCutoff = dayjs().subtract(SLOW_MOVING_DAYS, "day");
 
-  const [vendorCountRes, stockRes, settlementsRes, paymentsRes, orderItemsRes, deliveryCostRes] =
+  const [vendorCountRes, stockRes, settlementsRes, paymentsRes, orderItemsRes, deliveryCostRes, returnsRes] =
     await Promise.all([
       supabase
         .from("vendors")
@@ -74,9 +75,17 @@ export async function getVendorsOverviewStats(
             .eq("order.status", "confirmed"),
       supabase
         .from("vendor_orders")
-        .select("delivery_cost")
+        .select(branchId ? "delivery_cost, branch_id" : "delivery_cost")
         .eq("store_id", storeId)
         .eq("status", "confirmed"),
+      // Goods a vendor handed back at this branch's settlements (only needed for branch_due).
+      branchId
+        ? supabase
+            .from("vendor_settlement_items")
+            .select("returned_quantity, unit_price, settlement:vendor_settlements!inner(store_id, branch_id)")
+            .eq("settlement.store_id", storeId)
+            .eq("settlement.branch_id", branchId)
+        : Promise.resolve({ data: null }),
     ]);
 
   const stockRows = stockRes.data ?? [];
@@ -109,10 +118,36 @@ export async function getVendorsOverviewStats(
     (sum, r) => sum + r.quantity * (Number(r.vendor_tp) - Number(r.original_tp)),
     0,
   );
-  const totalDeliveryCostInvoiced = (deliveryCostRes.data ?? []).reduce(
+  type DeliveryRow = { delivery_cost: number | null; branch_id?: string | null };
+  const deliveryRows = (deliveryCostRes.data ?? []) as unknown as DeliveryRow[];
+  const totalDeliveryCostInvoiced = deliveryRows.reduce(
     (sum, r) => sum + Number(r.delivery_cost ?? 0),
     0,
   );
+
+  // What vendors owe for this branch's own dealings: goods and delivery its
+  // orders sent out, less what came back through its settlements and what was
+  // paid in at it. Built only from rows that carry a branch, so it can differ
+  // from total_due — a vendor may pay at a different branch than sent the goods.
+  let branchDue: number | undefined;
+  if (branchId) {
+    type ReturnRow = { returned_quantity: number; unit_price: number };
+    const dispatched = ((orderItemsRes.data ?? []) as unknown as ItemRow[]).reduce(
+      (sum, r) => sum + r.quantity * Number(r.vendor_tp),
+      0,
+    );
+    const branchDelivery = deliveryRows
+      .filter((r) => r.branch_id === branchId)
+      .reduce((sum, r) => sum + Number(r.delivery_cost ?? 0), 0);
+    const returned = ((returnsRes.data ?? []) as unknown as ReturnRow[]).reduce(
+      (sum, r) => sum + r.returned_quantity * Number(r.unit_price),
+      0,
+    );
+    const branchPaid = payments
+      .filter((p) => p.branch_id === branchId)
+      .reduce((sum, r) => sum + Number(r.amount), 0);
+    branchDue = dispatched + branchDelivery - returned - branchPaid;
+  }
 
   return {
     total_vendors: vendorCountRes.count ?? 0,
@@ -129,5 +164,6 @@ export async function getVendorsOverviewStats(
     collected_this_month: collectedThisMonth,
     total_margin_dispatched: totalMarginDispatched,
     slow_moving_stock_value: slowMovingStockValue,
+    ...(branchDue !== undefined ? { branch_due: branchDue } : {}),
   };
 }

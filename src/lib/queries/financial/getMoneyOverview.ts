@@ -6,6 +6,8 @@ import { getPendingBalanceParts } from "@/lib/queries/dashboard/getPendingBalanc
 import { getSalesSummary } from "@/lib/queries/dashboard/getSalesSummary";
 import { getVendorsOverviewStats } from "@/lib/queries/vendor/getVendorsOverviewStats";
 import { getOwnerWithdrawals } from "./getOwnerWithdrawals";
+import { getCustomerRefunds } from "./getCustomerRefunds";
+import { getMoneySpending } from "./getMoneySpending";
 
 export type MoneyMethodKey =
   | "cash"
@@ -42,7 +44,11 @@ export interface MoneyMethodRow {
   movedOut: number;
   /** Moved into this method from another. */
   movedIn: number;
-  /** What is on this method now: total + fromVendors − withdrawn − movedOut + movedIn. */
+  /** Given back to customers on this method (returns and other refunds). */
+  refunded: number;
+  /** Expenses and supplier payments paid from the shop's money by this method. */
+  spent: number;
+  /** What is on this method now: total + fromVendors − withdrawn − refunded − spent − movedOut + movedIn. */
   left: number;
 }
 
@@ -51,6 +57,8 @@ export interface MoneyBranchRow {
   branchId: string | null;
   received: number;
   withdrawn: number;
+  refunded: number;
+  spent: number;
   left: number;
 }
 
@@ -86,7 +94,13 @@ export interface MoneyOverview {
   salesComparison: SalesComparison | null;
   /** What the owner took out for themselves in the period (0 unless withdrawals were requested). */
   withdrawnTotal: number;
-  /** receivedTotal − withdrawnTotal. */
+  /** What was given back to customers in the period (returns and other refunds). Already out of the balances; not taken off receivedTotal. */
+  refundedTotal: number;
+  /** Expenses and supplier payments paid from the shop's own money in the period (not investor or owner-pocket ones). */
+  spentTotal: number;
+  /** The part of spentTotal that was expenses, and the part that was supplier payments. */
+  spentBreakdown: { expenses: number; suppliers: number };
+  /** receivedTotal + vendor payments − withdrawnTotal − refundedTotal − spentTotal. */
   leftTotal: number;
   /** "All branches" on a store with branches: each branch's received, withdrawn and left. Empty otherwise. */
   byBranch: MoneyBranchRow[];
@@ -97,7 +111,7 @@ export interface MoneyOverview {
     customerDue: number;
     /** Delivered COD orders whose cash the courier hasn't handed over yet, at the full order total (as the dashboard counts it). */
     codWithCourier: number;
-    /** What vendors owe the store. A vendor has one account for the whole store, so this is never split by branch. */
+    /** What vendors owe the store: store-wide, or for the picked branch's own vendor sales, returns and payments. */
     vendorDue: number;
     /** customerDue + codWithCourier, the same as the dashboard's Pending Amount. What vendors owe is kept apart. */
     total: number;
@@ -110,6 +124,9 @@ const EMPTY: MoneyOverview = {
   sources: { ordersThisPeriod: 0, ordersEarlier: 0, dueCollections: 0, vendorPayments: 0 },
   salesComparison: null,
   withdrawnTotal: 0,
+  refundedTotal: 0,
+  spentTotal: 0,
+  spentBreakdown: { expenses: 0, suppliers: 0 },
   leftTotal: 0,
   byBranch: [],
   byMethod: [],
@@ -133,6 +150,8 @@ interface PaidOrderRow {
 
 interface PaymentRow {
   amount: number;
+  /** Set on customer payments recorded against one order. */
+  order_id?: string | null;
   branch_id?: string | null;
   payment_method: string | null;
 }
@@ -151,7 +170,8 @@ function dayEndIso(date: string): string {
  *
  * Received counts each taka once, on the day it arrived:
  *  - orders paid in full (by `paid_at`), at the same per-order amount as the
- *    dashboard's "Received" (items − discount + extra charges);
+ *    dashboard's "Received" (items − discount + extra charges; delivery and
+ *    tax are not the shop's money);
  *  - customer-due collections (by `payment_date`), and
  *  - payments from vendors (by `payment_date`).
  * An order that has customer payments recorded against it is left out of the
@@ -179,7 +199,7 @@ export async function getMoneyOverview(
     const paidFrom = dayStartIso(fromDate);
     const paidTo = dayEndIso(toDate);
 
-    const [orders, duePayments, vendorPayments, pendingParts, vendorStats, withdrawals, salesSummary] = await Promise.all([
+    const [orders, duePayments, vendorPayments, pendingParts, vendorStats, withdrawals, salesSummary, refundsGiven, returnedSales, spending] = await Promise.all([
       fetchAllPaged<PaidOrderRow>((from, to) => {
         let query = supabase
           .from("orders")
@@ -211,29 +231,40 @@ export async function getMoneyOverview(
         ? getOwnerWithdrawals(storeId, fromDate, toDate, branchId ?? null).catch(() => [])
         : Promise.resolve([]),
       getSalesSummary(storeId, fromDate, toDate, null, null, branchId ?? null),
+      // Refunds paid out in the period, and the returned sales that were received in it
+      // (returned orders are left out of the orders above, so their money is put back here).
+      getCustomerRefunds(storeId, fromDate, toDate, branchId ?? null),
+      getCustomerRefunds(storeId, fromDate, toDate, branchId ?? null, "received_date"),
+      // Expenses and supplier payments paid from the shop's own money.
+      getMoneySpending(storeId, fromDate, toDate, branchId ?? null),
     ]);
 
     // Orders with customer payments pinned to them: their money is counted
     // under due collections, not here.
     const ledgerOrderIds = await loadOrdersWithCustomerPayments(storeId, orders.map((o) => o.id));
+    // Each due payment counts only for the product part of its order.
+    const shopShare = await loadShopShareByOrder(
+      storeId,
+      duePayments.map((p) => p.order_id).filter((id): id is string => !!id),
+    );
 
     const rows = new Map<MoneyMethodKey, MoneyMethodRow>();
     const rowFor = (method: MoneyMethodKey): MoneyMethodRow => {
       let row = rows.get(method);
       if (!row) {
-        row = { method, fromOrders: 0, fromDues: 0, fromVendors: 0, total: 0, withdrawn: 0, movedOut: 0, movedIn: 0, left: 0 };
+        row = { method, fromOrders: 0, fromDues: 0, fromVendors: 0, total: 0, withdrawn: 0, refunded: 0, spent: 0, movedOut: 0, movedIn: 0, left: 0 };
         rows.set(method, row);
       }
       return row;
     };
 
     // Per-branch totals, only for the "All branches" view of a store with branches.
-    const branchTotals = new Map<string | null, { received: number; withdrawn: number }>();
+    const branchTotals = new Map<string | null, { received: number; withdrawn: number; refunded: number; spent: number }>();
     const trackBranch = withBranches && !branchId;
-    const addToBranch = (id: string | null | undefined, field: "received" | "withdrawn", amount: number) => {
+    const addToBranch = (id: string | null | undefined, field: "received" | "withdrawn" | "refunded" | "spent", amount: number) => {
       if (!trackBranch) return;
       const key = id ?? null;
-      const entry = branchTotals.get(key) ?? { received: 0, withdrawn: 0 };
+      const entry = branchTotals.get(key) ?? { received: 0, withdrawn: 0, refunded: 0, spent: 0 };
       entry[field] += amount;
       branchTotals.set(key, entry);
     };
@@ -251,15 +282,38 @@ export async function getMoneyOverview(
       if (order.order_date && order.order_date < fromDate) sources.ordersEarlier += amount;
       else sources.ordersThisPeriod += amount;
     }
+    for (const r of returnedSales) {
+      if (r.received_amount <= 0) continue;
+      rowFor(normalizeMethod(r.payment_method)).fromOrders += r.received_amount;
+      addToBranch(r.branch_id, "received", r.received_amount);
+      sources.ordersThisPeriod += r.received_amount;
+    }
     for (const p of duePayments) {
-      rowFor(normalizeMethod(p.payment_method)).fromDues += Number(p.amount);
-      addToBranch(p.branch_id, "received", Number(p.amount));
-      sources.dueCollections += Number(p.amount);
+      // Delivery and tax paid on the order are not the shop's money, so only its product share counts.
+      const amount = Number(p.amount) * (p.order_id ? (shopShare.get(p.order_id) ?? 1) : 1);
+      rowFor(normalizeMethod(p.payment_method)).fromDues += amount;
+      addToBranch(p.branch_id, "received", amount);
+      sources.dueCollections += amount;
     }
     for (const p of vendorPayments) {
       // Vendor money is kept apart from the shop's: it counts on the method it arrived by, but not in the shop totals.
       rowFor(normalizeMethod(p.payment_method)).fromVendors += Number(p.amount);
       sources.vendorPayments += Number(p.amount);
+    }
+
+    for (const r of refundsGiven) {
+      rowFor(normalizeMethod(r.payment_method)).refunded += r.refund_amount;
+      addToBranch(r.branch_id, "refunded", r.refund_amount);
+    }
+
+    const spentBreakdown = { expenses: 0, suppliers: 0 };
+    for (const sp of spending) {
+      if (!(sp.amount > 0)) continue;
+      // No method recorded counts as cash.
+      rowFor(normalizeMethod(sp.payment_method || "cash")).spent += sp.amount;
+      addToBranch(sp.branch_id, "spent", sp.amount);
+      if (sp.source === "expense") spentBreakdown.expenses += sp.amount;
+      else spentBreakdown.suppliers += sp.amount;
     }
 
     for (const w of withdrawals) {
@@ -276,13 +330,19 @@ export async function getMoneyOverview(
     const byMethod = [...rows.values()]
       .map((row) => {
         const total = row.fromOrders + row.fromDues;
-        return { ...row, total, left: total + row.fromVendors - row.withdrawn - row.movedOut + row.movedIn };
+        return {
+          ...row,
+          total,
+          left: total + row.fromVendors - row.withdrawn - row.refunded - row.spent - row.movedOut + row.movedIn,
+        };
       })
       .filter(
         (row) =>
           row.total > 0.005 ||
           row.fromVendors > 0.005 ||
           row.withdrawn > 0.005 ||
+          row.refunded > 0.005 ||
+          row.spent > 0.005 ||
           row.movedOut > 0.005 ||
           row.movedIn > 0.005,
       )
@@ -290,6 +350,8 @@ export async function getMoneyOverview(
     const receivedTotal = byMethod.reduce((sum, row) => sum + row.total, 0);
     const vendorReceivedTotal = byMethod.reduce((sum, row) => sum + row.fromVendors, 0);
     const withdrawnTotal = byMethod.reduce((sum, row) => sum + row.withdrawn, 0);
+    const refundedTotal = byMethod.reduce((sum, row) => sum + row.refunded, 0);
+    const spentTotal = byMethod.reduce((sum, row) => sum + row.spent, 0);
 
     let customerDue: number;
     let codWithCourier: number;
@@ -305,7 +367,7 @@ export async function getMoneyOverview(
       customerDue = customerDues.reduce((sum, c) => sum + Number(c.total_due), 0);
       codWithCourier = codOrders.reduce((sum, o) => sum + o.expected_from_courier, 0);
     }
-    const vendorDue = Math.max(vendorStats.total_due, 0);
+    const vendorDue = Math.max(vendorStats.branch_due ?? vendorStats.total_due, 0);
 
     return {
       receivedTotal,
@@ -315,10 +377,20 @@ export async function getMoneyOverview(
         ? { sales: salesSummary.sales, received: salesSummary.received, unpaid: salesSummary.toCollect }
         : null,
       withdrawnTotal,
-      leftTotal: receivedTotal + vendorReceivedTotal - withdrawnTotal,
+      refundedTotal,
+      spentTotal,
+      spentBreakdown,
+      leftTotal: receivedTotal + vendorReceivedTotal - withdrawnTotal - refundedTotal - spentTotal,
       byBranch: [...branchTotals.entries()]
-        .map(([id, t]) => ({ branchId: id, received: t.received, withdrawn: t.withdrawn, left: t.received - t.withdrawn }))
-        .filter((b) => b.received > 0.005 || b.withdrawn > 0.005)
+        .map(([id, t]) => ({
+          branchId: id,
+          received: t.received,
+          withdrawn: t.withdrawn,
+          refunded: t.refunded,
+          spent: t.spent,
+          left: t.received - t.withdrawn - t.refunded - t.spent,
+        }))
+        .filter((b) => b.received > 0.005 || b.withdrawn > 0.005 || b.refunded > 0.005 || b.spent > 0.005)
         .sort((a, b) => b.received - a.received),
       byMethod,
       pending: {
@@ -345,9 +417,15 @@ function loadPayments(
   withBranches = false,
 ): Promise<PaymentRow[]> {
   return fetchAllPaged<PaymentRow>((from, to) => {
+    const columns = [
+      "amount",
+      "payment_method",
+      ...(table === "customer_payments" ? ["order_id"] : []),
+      ...(withBranches ? ["branch_id"] : []),
+    ].join(", ");
     let query = supabase
       .from(table)
-      .select(withBranches ? "amount, payment_method, branch_id" : "amount, payment_method")
+      .select(columns)
       .eq("store_id", storeId)
       .gte("payment_date", fromDate)
       .lte("payment_date", toDate);
@@ -360,6 +438,45 @@ function loadPayments(
 }
 
 const ID_CHUNK = 100;
+
+/**
+ * For each order, the part of what the customer pays that is the shop's money:
+ * (items − discount + extra charges) ÷ order total. Delivery and tax make up the
+ * rest. 1 when the order can't be read, so nothing is dropped by mistake.
+ */
+async function loadShopShareByOrder(storeId: string, orderIds: string[]): Promise<Map<string, number>> {
+  const unique = [...new Set(orderIds)];
+  const chunks: string[][] = [];
+  for (let i = 0; i < unique.length; i += ID_CHUNK) chunks.push(unique.slice(i, i + ID_CHUNK));
+
+  const results = await Promise.all(
+    chunks.map(async (chunk) => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, subtotal, discount_amount, additional_charges, total_amount")
+        .eq("store_id", storeId)
+        .in("id", chunk);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as {
+        id: string;
+        subtotal: number | null;
+        discount_amount: number | null;
+        additional_charges: number | null;
+        total_amount: number | null;
+      }[];
+    }),
+  );
+
+  const share = new Map<string, number>();
+  for (const rows of results) {
+    for (const o of rows) {
+      const total = Number(o.total_amount ?? 0);
+      const product = Number(o.subtotal ?? 0) - Number(o.discount_amount ?? 0) + Number(o.additional_charges ?? 0);
+      if (total > 0 && product > 0) share.set(o.id, Math.min(product / total, 1));
+    }
+  }
+  return share;
+}
 
 async function loadOrdersWithCustomerPayments(storeId: string, orderIds: string[]): Promise<Set<string>> {
   const chunks: string[][] = [];

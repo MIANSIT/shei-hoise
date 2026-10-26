@@ -287,6 +287,7 @@ CREATE TABLE IF NOT EXISTS "public"."expenses" (
     "expense_date" "date" DEFAULT CURRENT_DATE NOT NULL,
     "vendor_name" character varying,
     "payment_method" character varying,
+    "paid_from" text,
     "platform" character varying,
     "notes" "text",
     "created_at" timestamp with time zone DEFAULT "now"(),
@@ -505,6 +506,23 @@ CREATE TABLE IF NOT EXISTS "public"."owner_withdrawals" (
     CONSTRAINT "owner_withdrawals_amount_check" CHECK ("amount" > 0)
 );
 
+CREATE TABLE IF NOT EXISTS "public"."customer_refunds" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "branch_id" uuid REFERENCES "public"."store_branches"("id") ON DELETE SET NULL,
+    "order_id" uuid REFERENCES "public"."orders"("id") ON DELETE SET NULL,
+    "refund_amount" numeric(12,2) NOT NULL,
+    "payment_method" text DEFAULT 'cash' NOT NULL,
+    "refund_date" date NOT NULL,
+    "received_amount" numeric(12,2) DEFAULT 0 NOT NULL,
+    "received_date" date,
+    "notes" text,
+    "created_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "customer_refunds_amount_check" CHECK ("refund_amount" > 0),
+    CONSTRAINT "customer_refunds_received_check" CHECK ("received_amount" >= 0)
+);
+
 CREATE TABLE IF NOT EXISTS "public"."suppliers" (
     "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
     "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
@@ -527,6 +545,8 @@ CREATE TABLE IF NOT EXISTS "public"."supplier_ledger" (
     "entry_date" date NOT NULL,
     "payment_method" text,
     "note" text,
+    "paid_from" text,
+    "branch_id" uuid REFERENCES "public"."store_branches"("id") ON DELETE SET NULL,
     "created_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT "supplier_ledger_kind_check" CHECK ("kind" IN ('bill', 'payment')),

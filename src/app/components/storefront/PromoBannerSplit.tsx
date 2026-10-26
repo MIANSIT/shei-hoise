@@ -4,6 +4,8 @@ import type { PromoBanner } from "@/lib/types/promoBanner";
 
 interface PromoBannerSplitProps {
   banners: PromoBanner[];
+  /** Used as the image alt when a banner has no headline of its own. */
+  storeName: string;
 }
 
 /**
@@ -14,7 +16,7 @@ interface PromoBannerSplitProps {
  * ordered by sort_order — a single banner still gets a full-width treatment
  * rather than an awkward half-empty row.
  */
-export function PromoBannerSplit({ banners }: PromoBannerSplitProps) {
+export function PromoBannerSplit({ banners, storeName }: PromoBannerSplitProps) {
   const shown = banners.slice(0, 2);
   if (shown.length === 0) return null;
 
@@ -33,7 +35,7 @@ export function PromoBannerSplit({ banners }: PromoBannerSplitProps) {
         <div
           className={`grid gap-4 sm:gap-5 max-w-3xl ${shown.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:max-w-sm"}`}
         >
-          {shown.map((banner) => (
+          {shown.map((banner, i) => (
             <div
               key={banner.id}
               className="rounded-2xl overflow-hidden border border-border bg-card hover:shadow-md transition-shadow duration-300"
@@ -41,7 +43,7 @@ export function PromoBannerSplit({ banners }: PromoBannerSplitProps) {
               <div className="relative aspect-4/3">
                 <Image
                   src={banner.image_url}
-                  alt={banner.headline ?? ""}
+                  alt={banner.headline || `${storeName} – special offer ${i + 1}`}
                   fill
                   className="object-cover"
                   sizes="(max-width: 640px) 100vw, 380px"

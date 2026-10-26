@@ -300,6 +300,8 @@ export interface VendorsOverviewStats {
   collected_this_month: number;
   total_margin_dispatched: number;
   slow_moving_stock_value: number;
+  /** One branch picked only: what vendors owe for that branch's own orders, returns and payments. */
+  branch_due?: number;
 }
 
 /**

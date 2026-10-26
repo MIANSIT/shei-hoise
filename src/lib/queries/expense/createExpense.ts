@@ -18,6 +18,8 @@ export interface CreateExpenseInput {
   expense_date: string; // ISO date string e.g. "2026-02-25"
   vendor_name?: string;
   payment_method?: string;
+  /** "shop" (the shop's own money) or "outside" (investor / the owner's pocket). */
+  paid_from?: "shop" | "outside";
   platform?: string;
   notes?: string;
   /** Stores with branches: the branch that carries it (default branch when omitted). */

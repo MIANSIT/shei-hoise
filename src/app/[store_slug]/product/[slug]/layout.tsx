@@ -121,7 +121,7 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
   const breadcrumbItems = [
     { name: "Home", item: baseUrl },
     { name: store.store_name, item: storeUrl },
-    ...(category ? [{ name: category.name, item: `${storeUrl}/shop?category=${category.slug}` }] : []),
+    ...(category ? [{ name: category.name, item: `${storeUrl}/category/${encodeURIComponent(category.slug)}` }] : []),
     { name: product.name, item: productUrl },
   ];
   const breadcrumbJsonLd = {
