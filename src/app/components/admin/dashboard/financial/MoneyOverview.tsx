@@ -383,7 +383,7 @@ export default function MoneyOverview() {
                   <Wallet size={16} aria-hidden="true" />
                   {t.admin.moReceived}
                 </div>
-                <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(data.receivedTotal)}</div>
+                <div className="mt-2 text-3xl font-black tabular-nums wrap-break-word">{money(data.receivedTotal)}</div>
                 <div className="mt-1 text-xs text-white/85">
                   {range[0].format("DD-MM-YYYY")} – {range[1].format("DD-MM-YYYY")}
                 </div>
@@ -395,7 +395,7 @@ export default function MoneyOverview() {
                       <Banknote size={16} aria-hidden="true" />
                       {t.admin.moInCash}
                     </div>
-                    <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(cashLeft)}</div>
+                    <div className="mt-2 text-3xl font-black tabular-nums wrap-break-word">{money(cashLeft)}</div>
                     <div className="mt-1 text-xs text-white/85">
                       {[
                         cashedIntoCash > 0.005 ? t.admin.moCashIncludes.replace("{n}", money(cashedIntoCash)) : t.admin.moInCashSub,
@@ -410,7 +410,7 @@ export default function MoneyOverview() {
                       <Smartphone size={16} aria-hidden="true" />
                       {t.admin.moInDigital}
                     </div>
-                    <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(digitalLeft)}</div>
+                    <div className="mt-2 text-3xl font-black tabular-nums wrap-break-word">{money(digitalLeft)}</div>
                     <div className="mt-1 text-xs text-white/85">
                       {[
                         digitalCashedOut > 0.005 ? t.admin.moDigitalAfter.replace("{n}", money(digitalCashedOut)) : t.admin.moInDigitalSub,
@@ -427,7 +427,7 @@ export default function MoneyOverview() {
                   <CircleDollarSign size={16} aria-hidden="true" />
                   {t.admin.moPending}
                 </div>
-                <div className="mt-2 text-3xl font-black tabular-nums break-words">{money(pending.total)}</div>
+                <div className="mt-2 text-3xl font-black tabular-nums wrap-break-word">{money(pending.total)}</div>
                 <div className="mt-1 text-xs text-white/85">{t.admin.moPendingNow}</div>
               </div>
             </div>
@@ -488,7 +488,7 @@ export default function MoneyOverview() {
                             <div className="min-w-0">
                               <div className="text-sm font-semibold text-foreground">{methodLabel[row.method]}</div>
                               {sources.length > 0 && (
-                                <div className="text-[11px] text-muted-foreground break-words">{sources.join(" · ")}</div>
+                                <div className="text-[11px] text-muted-foreground wrap-break-word">{sources.join(" · ")}</div>
                               )}
                             </div>
                           </div>
@@ -626,7 +626,7 @@ export default function MoneyOverview() {
                             {r.order_id ? ` · ${t.admin.moReturnedOrder}` : ""}
                           </span>
                         </div>
-                        {r.notes && <div className="text-[11px] text-muted-foreground break-words">{r.notes}</div>}
+                        {r.notes && <div className="text-[11px] text-muted-foreground wrap-break-word">{r.notes}</div>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-sm font-bold tabular-nums text-foreground">−{money(r.refund_amount)}</span>
@@ -673,7 +673,7 @@ export default function MoneyOverview() {
                               {branchesOn && w.branch_id ? ` · ${branchName(w.branch_id)}` : ""}
                             </span>
                           </div>
-                          {w.notes && <div className="text-[11px] text-muted-foreground break-words">{w.notes}</div>}
+                          {w.notes && <div className="text-[11px] text-muted-foreground wrap-break-word">{w.notes}</div>}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-sm font-bold tabular-nums text-foreground">
