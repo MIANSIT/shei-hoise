@@ -141,11 +141,32 @@ function normalizeMethod(raw: string | null | undefined): MoneyMethodKey {
 interface PaidOrderRow {
   id: string;
   order_date: string | null;
+  created_at: string | null;
+  paid_at: string | null;
   branch_id?: string | null;
   payment_method: string | null;
   subtotal: number | null;
   discount_amount: number | null;
   additional_charges: number | null;
+}
+
+/** An order saved already paid has paid_at within this of created_at. */
+const PAID_AT_SALE_MS = 60_000;
+
+/**
+ * The day (Bangladesh time) an order's money counts as received. An order saved
+ * already paid counts on its order date, so a sale entered the next day and dated
+ * to the day it happened lands on that day, like the Cash Register. An order paid
+ * later (marked paid, COD settled) counts on the day it was marked paid.
+ */
+function receivedDay(order: PaidOrderRow): string | null {
+  if (!order.paid_at) return order.order_date;
+  const paidAt = new Date(order.paid_at).getTime();
+  const createdAt = order.created_at ? new Date(order.created_at).getTime() : NaN;
+  if (order.order_date && Number.isFinite(createdAt) && paidAt - createdAt <= PAID_AT_SALE_MS) {
+    return order.order_date;
+  }
+  return new Date(paidAt + 6 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 interface PaymentRow {
@@ -205,15 +226,16 @@ export async function getMoneyOverview(
           .from("orders")
           .select(
             withBranches
-              ? "id, order_date, branch_id, payment_method, subtotal, discount_amount, additional_charges"
-              : "id, order_date, payment_method, subtotal, discount_amount, additional_charges",
+              ? "id, order_date, created_at, paid_at, branch_id, payment_method, subtotal, discount_amount, additional_charges"
+              : "id, order_date, created_at, paid_at, payment_method, subtotal, discount_amount, additional_charges",
           )
           .eq("store_id", storeId)
           .eq("payment_status", "paid")
           .not("status", "in", "(cancelled,returned)")
-          // Paid before paid_at existed: fall back to the order date.
+          // Wide on purpose: paid in the period, or dated in it (paid at the sale, or before
+          // paid_at existed). receivedDay() below decides which day each one really counts on.
           .or(
-            `and(paid_at.gte.${paidFrom},paid_at.lte.${paidTo}),and(paid_at.is.null,order_date.gte.${fromDate},order_date.lte.${toDate})`,
+            `and(paid_at.gte.${paidFrom},paid_at.lte.${paidTo}),and(order_date.gte.${fromDate},order_date.lte.${toDate})`,
           );
         if (branchId) query = query.eq("branch_id", branchId);
         return query.order("id").range(from, to) as unknown as PromiseLike<{
@@ -273,6 +295,8 @@ export async function getMoneyOverview(
 
     for (const order of orders) {
       if (ledgerOrderIds.has(order.id)) continue;
+      const day = receivedDay(order);
+      if (!day || day < fromDate || day > toDate) continue;
       const amount =
         Number(order.subtotal ?? 0) - Number(order.discount_amount ?? 0) + Number(order.additional_charges ?? 0);
       if (amount <= 0) continue;
