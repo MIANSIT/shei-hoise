@@ -22,6 +22,8 @@ export interface ProductImage {
 export interface ProductStock {
   quantity_available: number;
   quantity_reserved: number;
+  /** At or below this many units the product counts as low on stock. */
+  low_stock_threshold?: number | null;
 }
 
 export interface ProductVariant {
@@ -182,12 +184,14 @@ export async function getProductsWithVariants({
         ),
         product_inventory (
           quantity_available,
-          quantity_reserved
+          quantity_reserved,
+          low_stock_threshold
         )
       ),
       product_inventory (
         quantity_available,
-        quantity_reserved
+        quantity_reserved,
+        low_stock_threshold
       )
       `,
       { count: "exact" },
@@ -394,15 +398,22 @@ async function overlayBranchStock(products: ProductWithVariants[], branchId: str
   }
   const key = (productId: string, variantId: string | null) => `${productId}:${variantId ?? ""}`;
   const byKey = new Map(rows.map((r) => [key(r.product_id, r.variant_id), r]));
-  const stockFor = (productId: string, variantId: string | null): ProductStock[] => {
+  // The branch's numbers replace the quantities; the low-stock level stays the product's own.
+  const stockFor = (productId: string, variantId: string | null, previous: ProductStock[]): ProductStock[] => {
     const row = byKey.get(key(productId, variantId));
-    return [{ quantity_available: row?.quantity_available ?? 0, quantity_reserved: row?.quantity_reserved ?? 0 }];
+    return [
+      {
+        quantity_available: row?.quantity_available ?? 0,
+        quantity_reserved: row?.quantity_reserved ?? 0,
+        low_stock_threshold: previous[0]?.low_stock_threshold ?? null,
+      },
+    ];
   };
   for (const product of products) {
     if (product.product_type === "bundle") continue;
-    product.product_inventory = stockFor(product.id, null);
+    product.product_inventory = stockFor(product.id, null, product.product_inventory);
     for (const variant of product.product_variants) {
-      variant.product_inventory = stockFor(product.id, variant.id);
+      variant.product_inventory = stockFor(product.id, variant.id, variant.product_inventory);
     }
   }
 }

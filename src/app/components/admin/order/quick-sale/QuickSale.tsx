@@ -84,6 +84,22 @@ function getAvailableQuantity(product: ProductWithVariants): number {
   if (!stock) return 0;
   return Math.max(0, stock.quantity_available);
 }
+// Same fallback as the Stock List when a product has no low-stock level set.
+const DEFAULT_LOW_STOCK_THRESHOLD = 10;
+// What the card shows: units on hand (a product with variants: all its active variants together)
+// and whether that is at or below the low-stock level.
+function getCardStock(product: ProductWithVariants): { total: number; low: boolean } {
+  const activeVariants = (product.product_variants || []).filter((v) => v.is_active);
+  const total =
+    activeVariants.length > 0
+      ? activeVariants.reduce((sum, v) => sum + getVariantAvailableQuantity(v), 0)
+      : getAvailableQuantity(product);
+  const threshold =
+    (activeVariants.length > 0 ? activeVariants[0].product_inventory[0]?.low_stock_threshold : null) ||
+    product.product_inventory[0]?.low_stock_threshold ||
+    DEFAULT_LOW_STOCK_THRESHOLD;
+  return { total, low: total > 0 && total <= threshold };
+}
 function getVariantEffectivePrice(variant: ProductVariant): number {
   return variant.discounted_price && variant.discounted_price > 0
     ? variant.discounted_price
@@ -804,6 +820,7 @@ export default function QuickSale() {
                 const available = getAvailableQuantity(product);
                 const hasVariants = (product.product_variants || []).some((v) => v.is_active);
                 const outOfStock = !hasVariants && available <= 0;
+                const cardStock = getCardStock(product);
                 return (
                   <button
                     key={product.id}
@@ -827,15 +844,22 @@ export default function QuickSale() {
                       {currencyIcon}
                       {getCardPrice(product).toFixed(2)}
                     </span>
-                    {hasVariants ? (
-                      <Tag color="blue" style={{ marginInlineEnd: 0 }}>
-                        variants
-                      </Tag>
-                    ) : outOfStock ? (
-                      <Tag color="red" style={{ marginInlineEnd: 0 }}>
-                        Out of stock
-                      </Tag>
-                    ) : null}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {hasVariants && (
+                        <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                          variants
+                        </Tag>
+                      )}
+                      {cardStock.total <= 0 ? (
+                        <Tag color="red" style={{ marginInlineEnd: 0 }}>
+                          Out of stock
+                        </Tag>
+                      ) : (
+                        <Tag color={cardStock.low ? "orange" : undefined} style={{ marginInlineEnd: 0 }}>
+                          {cardStock.total} left
+                        </Tag>
+                      )}
+                    </div>
                   </button>
                 );
               })}
