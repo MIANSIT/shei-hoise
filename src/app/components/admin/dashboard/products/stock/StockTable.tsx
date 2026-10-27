@@ -18,7 +18,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import type { StockSort } from "@/lib/queries/products/getProductWithStock";
 import { CaretDownOutlined } from "@ant-design/icons";
 import StockHistoryPopover from "./StockHistoryPopover";
-import { QuickAddStock } from "./QuickAddStock";
+import { QuickAddStock, type QuickAddBill } from "./QuickAddStock";
 import { ClipboardList } from "lucide-react";
 import { StockSellingCell } from "./StockSellingCell";
 import { skuInsightKey, type StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
@@ -47,7 +47,9 @@ interface StockTableProps {
   /** Sales speed per product and variant; when given, a "Selling" column shows it. */
   insights?: StockInsightLookup | null;
   /** "Stock arrived": adds units to a product or variant. Without it the quick-add button is hidden. */
-  onQuickAdd?: (productId: string, variantId: string | null, quantity: number) => Promise<void>;
+  onQuickAdd?: (productId: string, variantId: string | null, quantity: number, billAmount: number | null) => Promise<void>;
+  /** The supplier bill Add stock can add along with a delivery; null/omitted = no bill option. */
+  getQuickAddBill?: (productId: string, variantId: string | null) => QuickAddBill | null;
   /** Product id → supplier name, shown as a chip under the product name. */
   supplierNames?: Readonly<Record<string, string>>;
   /** Put one product or variant on the reorder list. Without it the button is hidden. */
@@ -99,6 +101,7 @@ const StockTable: React.FC<StockTableProps> = ({
   onSortChange,
   insights = null,
   onQuickAdd,
+  getQuickAddBill,
   supplierNames = {},
   onAddToReorder,
 }) => {
@@ -417,7 +420,8 @@ const StockTable: React.FC<StockTableProps> = ({
             {onQuickAdd && (
               <QuickAddStock
                 disabled={readOnly}
-                onAdd={(quantity) => onQuickAdd(parentId, variantId, quantity)}
+                bill={getQuickAddBill?.(parentId, variantId) ?? null}
+                onAdd={(quantity, billAmount) => onQuickAdd(parentId, variantId, quantity, billAmount)}
               />
             )}
 

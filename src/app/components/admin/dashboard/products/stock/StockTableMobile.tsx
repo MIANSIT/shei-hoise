@@ -8,7 +8,7 @@ import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
 import { ProductStatus } from "@/lib/types/enums";
 import { stockLevelPct } from "./StockTable";
 import StockHistoryPopover from "./StockHistoryPopover";
-import { QuickAddStock } from "./QuickAddStock";
+import { QuickAddStock, type QuickAddBill } from "./QuickAddStock";
 import { ClipboardList } from "lucide-react";
 import { StockSellingCell } from "./StockSellingCell";
 import { skuInsightKey, type StockInsightLookup } from "@/lib/queries/stock/stockInsightTypes";
@@ -34,7 +34,9 @@ interface StockTableMobileProps {
   /** Sales speed per product and variant; when given, each card shows it. */
   insights?: StockInsightLookup | null;
   /** "Stock arrived": adds units to a product or variant. Without it the quick-add button is hidden. */
-  onQuickAdd?: (productId: string, variantId: string | null, quantity: number) => Promise<void>;
+  onQuickAdd?: (productId: string, variantId: string | null, quantity: number, billAmount: number | null) => Promise<void>;
+  /** The supplier bill Add stock can add along with a delivery; null/omitted = no bill option. */
+  getQuickAddBill?: (productId: string, variantId: string | null) => QuickAddBill | null;
   /** Product id → supplier name, shown as a chip under the product name. */
   supplierNames?: Readonly<Record<string, string>>;
   /** Put one product or variant on the reorder list. Without it the button is hidden. */
@@ -179,6 +181,7 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
   bulkActive = false,
   insights = null,
   onQuickAdd,
+  getQuickAddBill,
   supplierNames = {},
   onAddToReorder,
 }) => {
@@ -360,7 +363,10 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                 />
                 <StockHistoryPopover productId={product.id} variantId={null} />
                 {onQuickAdd && (
-                  <QuickAddStock onAdd={(quantity) => onQuickAdd(product.id, null, quantity)} />
+                  <QuickAddStock
+                    bill={getQuickAddBill?.(product.id, null) ?? null}
+                    onAdd={(quantity, billAmount) => onQuickAdd(product.id, null, quantity, billAmount)}
+                  />
                 )}
                 {onAddToReorder && (
                   <button
@@ -482,7 +488,10 @@ const StockTableMobile: React.FC<StockTableMobileProps> = ({
                           variantId={variant.id}
                         />
                         {onQuickAdd && (
-                          <QuickAddStock onAdd={(quantity) => onQuickAdd(product.id, variant.id, quantity)} />
+                          <QuickAddStock
+                            bill={getQuickAddBill?.(product.id, variant.id) ?? null}
+                            onAdd={(quantity, billAmount) => onQuickAdd(product.id, variant.id, quantity, billAmount)}
+                          />
                         )}
                         {onAddToReorder && (
                           <button

@@ -159,7 +159,6 @@ function CouponFormModal({
                 { required: true, message: "Coupon code is required" },
                 { min: 3, message: "At least 3 characters" },
                 { max: 50, message: "Maximum 50 characters" },
-                { pattern: /^[A-Za-z0-9_-]+$/, message: "Letters, numbers, - and _ only" },
               ]}
               getValueFromEvent={(e) => e.target.value.toUpperCase()}
             >

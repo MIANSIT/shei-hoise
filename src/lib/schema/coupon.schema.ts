@@ -5,9 +5,9 @@ export const createCouponSchema = z
   .object({
     code: z
       .string()
+      .trim()
       .min(3, "Code must be at least 3 characters")
       .max(50, "Code must be at most 50 characters")
-      .regex(/^[A-Za-z0-9_-]+$/, "Code can only contain letters, numbers, - and _")
       .transform((val) => val.toUpperCase()),
     discount_type: z.nativeEnum(CouponDiscountType),
     discount_value: z.number().positive("Discount value must be positive"),

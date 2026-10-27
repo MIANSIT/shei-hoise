@@ -6,25 +6,42 @@ import {
   PlusOutlined,
   ThunderboltOutlined,
 } from "@ant-design/icons";
-import { InputNumber } from "antd";
+import { Checkbox, InputNumber } from "antd";
+import { useTranslation } from "@/lib/hook/useTranslation";
+import { useLocalNum } from "@/lib/hook/useLocalNum";
 // import SheiButton from "@/app/components/ui/SheiButton/SheiButton";
+
+/** One supplier bill a bulk add would create. */
+export interface BulkBillLine {
+  supplierName: string;
+  amount: number;
+}
 
 interface BulkStockUpdateProps {
   selectedCount: number;
-  onUpdate: (value: number) => Promise<void>;
+  /** `addBills`: also add a bill to each supplier for the units added (only true when bills were offered). */
+  onUpdate: (value: number, addBills: boolean) => Promise<void>;
+  /** The bills adding this many units to each ticked product would create; empty when none apply. */
+  getBillPreview?: (value: number) => BulkBillLine[];
   loading?: boolean;
 }
 
 const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
   selectedCount,
   onUpdate,
+  getBillPreview,
   loading = false,
 }) => {
+  const t = useTranslation();
+  const n = useLocalNum();
   const [bulkStock, setBulkStock] = useState<number>(0);
+  const [addBills, setAddBills] = useState(true);
+
+  const billLines = selectedCount > 0 && bulkStock > 0 ? (getBillPreview?.(bulkStock) ?? []) : [];
 
   const handleClick = async () => {
     if (selectedCount === 0) return;
-    await onUpdate(bulkStock);
+    await onUpdate(bulkStock, addBills && billLines.length > 0);
     setBulkStock(0);
   };
 
@@ -120,6 +137,20 @@ const BulkStockUpdate: React.FC<BulkStockUpdateProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Supplier bills for the units added (units × cost price, one per supplier) */}
+      {billLines.length > 0 && (
+        <div className="flex flex-col gap-0.5">
+          <Checkbox checked={addBills} onChange={(e) => setAddBills(e.target.checked)} disabled={loading}>
+            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{t.admin.shBulkBillCheck}</span>
+          </Checkbox>
+          {addBills && (
+            <span className="text-[11px] text-blue-600/80 dark:text-blue-400/80">
+              {billLines.map((l) => `${l.supplierName}: ${n(Math.round(l.amount).toLocaleString())}`).join(" · ")}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Right: action button */}
       <div className="sm:ml-auto">

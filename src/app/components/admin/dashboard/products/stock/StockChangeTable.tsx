@@ -13,7 +13,11 @@ import { BulkReorderAdd } from "./BulkReorderAdd";
 import { useReorderListStore } from "@/lib/store/reorderListStore";
 import { assignSupplierToProducts } from "@/lib/queries/supplier/suppliers";
 import type { Supplier } from "@/lib/queries/supplier/supplierTypes";
-import BulkStockUpdate from "./BulkStockUpdate";
+import { addSupplierEntry } from "@/lib/queries/supplier/supplierLedger";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+import dayjs from "dayjs";
+import type { QuickAddBill } from "./QuickAddStock";
+import BulkStockUpdate, { type BulkBillLine } from "./BulkStockUpdate";
 import {
   mapProductsForModernTable,
   ProductRow,
@@ -94,6 +98,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   const [assigning, setAssigning] = useState(false);
 
   const { user, storeSlug, loading: userLoading } = useCurrentUser();
+  const { can } = usePermissions();
+  const canSupplierMoney = can("stock.supplier_money");
   const notify = useSheiNotification();
   const { modal } = App.useApp();
 
@@ -239,7 +245,25 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   };
 
   // --- "Stock arrived": add units on top of what is there ---
-  const handleQuickAdd = async (productId: string, variantId: string | null, quantity: number) => {
+  // The bill Add stock can add to the product's supplier: only for people who may add supplier bills.
+  const getQuickAddBill = (productId: string, variantId: string | null): QuickAddBill | null => {
+    if (!canSupplierMoney) return null;
+    const supplierId = supplierByProduct[productId];
+    const supplier = supplierId ? suppliers.find((s) => s.id === supplierId) : undefined;
+    if (!supplier) return null;
+    const product = products.find((p) => p.id === productId);
+    const unitCost = variantId
+      ? (product?.variants?.find((v) => v.id === variantId)?.tpPrice ?? null)
+      : (product?.tpPrice ?? null);
+    return { supplierName: supplier.name, unitCost };
+  };
+
+  const handleQuickAdd = async (
+    productId: string,
+    variantId: string | null,
+    quantity: number,
+    billAmount: number | null,
+  ) => {
     try {
       await adjustInventory({
         product_id: productId,
@@ -249,7 +273,26 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         reason: "restock",
         created_by: user?.id ?? null,
       });
-      notify.success(t.admin.shAddStockDone);
+
+      // The stock is in; now add what is owed for it. A failed bill never undoes the stock.
+      let billFailed = false;
+      const supplierId = supplierByProduct[productId];
+      if (billAmount && supplierId && user?.store_id) {
+        const product = products.find((p) => p.id === productId);
+        const variant = variantId ? product?.variants?.find((v) => v.id === variantId) : undefined;
+        const name = variant ? `${product?.title ?? ""} ${variant.title}`.trim() : (product?.title ?? "");
+        const bill = await addSupplierEntry(user.store_id, {
+          supplierId,
+          kind: "bill",
+          amount: billAmount,
+          date: dayjs().format("YYYY-MM-DD"),
+          note: t.admin.shAddBillNote.replace("{product}", name).replace("{qty}", String(quantity)),
+        });
+        billFailed = !bill.success;
+      }
+
+      if (billFailed) notify.error(t.admin.shAddBillFailed);
+      else notify.success(billAmount ? t.admin.shAddBillDone : t.admin.shAddStockDone);
       await refreshProducts();
       onStockChanged?.();
     } catch (err) {
@@ -336,15 +379,13 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
   // selectedRowKeys can be:
   //   - product IDs (desktop: top-level products without variants, or products with variants)
   //   - variant IDs (mobile: individually selected variants)
-  const bulkUpdate = async (value: number) => {
-    setBulkActive(true);
+  type UpdateTarget = {
+    productId: string;
+    variantId: string | null;
+  };
 
-    // Build a flat list of { productId, variantId | null } to update
-    type UpdateTarget = {
-      productId: string;
-      variantId: string | null;
-    };
-
+  // A flat list of { productId, variantId | null } for the ticked rows.
+  const bulkTargets = (): UpdateTarget[] => {
     const targets: UpdateTarget[] = [];
 
     for (const key of selectedRowKeys) {
@@ -377,12 +418,45 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
 
     // Deduplicate (in case same variant ends up twice)
     const seen = new Set<string>();
-    const uniqueTargets = targets.filter((t) => {
+    return targets.filter((t) => {
       const k = `${t.productId}:${t.variantId ?? ""}`;
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
     });
+  };
+
+  /** What one unit of a product or variant costs the shop, or null when no cost price is set. */
+  const unitCostOf = (productId: string, variantId: string | null): number | null => {
+    const product = products.find((p) => p.id === productId);
+    return variantId ? (product?.variants?.find((v) => v.id === variantId)?.tpPrice ?? null) : (product?.tpPrice ?? null);
+  };
+
+  /** Supplier id → what is owed for adding `value` units to each of these (units × cost price). Suppliers with nothing to bill are left out. */
+  const billsBySupplier = (targets: readonly UpdateTarget[], value: number): Map<string, number> => {
+    const bills = new Map<string, number>();
+    if (!canSupplierMoney || value <= 0) return bills;
+    for (const { productId, variantId } of targets) {
+      const supplierId = supplierByProduct[productId];
+      const cost = unitCostOf(productId, variantId);
+      if (!supplierId || !cost || cost <= 0) continue;
+      bills.set(supplierId, (bills.get(supplierId) ?? 0) + value * cost);
+    }
+    for (const [supplierId, amount] of bills) bills.set(supplierId, Math.round(amount * 100) / 100);
+    return bills;
+  };
+
+  /** The bills a bulk add of `value` units would create, for the bar to show before it is applied. */
+  const getBulkBillPreview = (value: number): BulkBillLine[] =>
+    [...billsBySupplier(bulkTargets(), value)].map(([supplierId, amount]) => ({
+      supplierName: supplierNameById.get(supplierId) ?? "",
+      amount,
+    }));
+
+  const bulkUpdate = async (value: number, addBills: boolean) => {
+    setBulkActive(true);
+    const uniqueTargets = bulkTargets();
+    const succeeded: UpdateTarget[] = [];
 
     // Each target is written atomically server-side (row-locked +/- for
     // adjustments, row-locked absolute set for "set to 0") — no client-side
@@ -410,6 +484,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
             created_by: user?.id ?? null,
           });
         }
+        succeeded.push({ productId, variantId });
       } catch (err) {
         failures++;
         console.error(`Failed to update ${productId}/${variantId}:`, err);
@@ -422,13 +497,33 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       );
     }
 
+    // Bill each supplier for what really went in (items that failed are left out). A failed
+    // bill never undoes the stock.
+    if (addBills && user?.store_id) {
+      const storeId = user.store_id;
+      const lines = [...billsBySupplier(succeeded, value)];
+      const results = await Promise.all(
+        lines.map(([supplierId, amount]) =>
+          addSupplierEntry(storeId, {
+            supplierId,
+            kind: "bill",
+            amount,
+            date: dayjs().format("YYYY-MM-DD"),
+            note: t.admin.shBulkBillNote.replace("{qty}", String(value)),
+          }),
+        ),
+      );
+      if (results.some((r) => !r.success)) notify.error(t.admin.shAddBillFailed);
+      else if (lines.length > 0) notify.success(t.admin.shBulkBillDone.replace("{n}", String(lines.length)));
+    }
+
     setEditedStocks({});
     setSelectedRowKeys([]);
     setBulkActive(false);
     await refreshProducts();
   };
 
-  const handleBulkUpdate = async (value: number) => {
+  const handleBulkUpdate = async (value: number, addBills: boolean) => {
     if (selectedRowKeys.length === 0) return;
 
     if (value === 0) {
@@ -440,7 +535,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
           cancelText: "Cancel",
           okType: "danger",
           onOk: async () => {
-            await bulkUpdate(0);
+            await bulkUpdate(0, false);
             resolve();
           },
           onCancel: () => resolve(),
@@ -448,7 +543,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       });
     }
 
-    await bulkUpdate(value);
+    await bulkUpdate(value, addBills);
   };
 
   // --- Row selection (desktop table only) ---
@@ -489,6 +584,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
             <BulkStockUpdate
               selectedCount={selectedRowKeys.length}
               onUpdate={handleBulkUpdate}
+              getBillPreview={getBulkBillPreview}
               loading={bulkActive}
             />
           )}
@@ -525,6 +621,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
                 bulkActive={bulkActive}
                 insights={insights}
                 onQuickAdd={handleQuickAdd}
+                getQuickAddBill={getQuickAddBill}
                 supplierNames={supplierNames}
                 onAddToReorder={canReorder ? (productId, variantId) => handleAddToReorder([{ productId, variantId }]) : undefined}
               />
@@ -544,6 +641,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
               onSortChange={onSortChange}
               insights={insights}
               onQuickAdd={handleQuickAdd}
+              getQuickAddBill={getQuickAddBill}
               supplierNames={supplierNames}
               onAddToReorder={canReorder ? (productId, variantId) => handleAddToReorder([{ productId, variantId }]) : undefined}
             />
