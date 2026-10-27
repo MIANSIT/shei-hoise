@@ -783,7 +783,7 @@ export default function ProductPage() {
                     {t.product.couponPriceLabel}:{" "}
                     <span className="text-base font-extrabold">
                       {curr}
-                      {n(couponPreview.finalPrice.toFixed(2))}
+                      {n(Math.round(couponPreview.finalPrice).toFixed(2))}
                     </span>
                     {couponPreview.minOrder !== null && (
                       <span className="font-medium text-muted-foreground">
