@@ -136,9 +136,10 @@ export const sideMenu: MenuItem[] = [
     icon: Warehouse,
     children: [
       { title: "Stock List", labelKey: "menuStockUpdate", href: "/dashboard/products/stocks-update", icon: Edit },
-      { title: "Stock Health", labelKey: "menuStockHealth", href: "/dashboard/stock/health", icon: Activity },
-      { title: "Reorder List", labelKey: "menuReorderList", href: "/dashboard/stock/reorder", icon: ClipboardList },
-      { title: "Suppliers", labelKey: "menuSuppliers", href: "/dashboard/stock/suppliers", icon: Truck },
+      // Hidden from the sidebar (and locked on the page) unless the plan has stock_management.
+      { title: "Stock Health", labelKey: "menuStockHealth", href: "/dashboard/stock/health", icon: Activity, requiredFeature: "stock_management" },
+      { title: "Reorder List", labelKey: "menuReorderList", href: "/dashboard/stock/reorder", icon: ClipboardList, requiredFeature: "stock_management" },
+      { title: "Suppliers", labelKey: "menuSuppliers", href: "/dashboard/stock/suppliers", icon: Truck, requiredFeature: "stock_management" },
       {
         title: "Stock Transfers",
         labelKey: "menuStockTransfers",
@@ -175,7 +176,8 @@ export const sideMenu: MenuItem[] = [
     labelKey: "menuFinancial",
     icon: DollarSign,
     children: [
-      { title: "Money Overview", labelKey: "menuMoneyOverview", href: "/dashboard/financial/money", icon: PiggyBank },
+      // Hidden from the sidebar (and locked on the page) unless the plan has money_tracker.
+      { title: "Money Overview", labelKey: "menuMoneyOverview", href: "/dashboard/financial/money", icon: PiggyBank, requiredFeature: "money_tracker" },
       { title: "Customer Dues", labelKey: "menuCustomerDues", href: "/dashboard/customers/dues", icon: Wallet },
       { title: "COD Settlements", labelKey: "menuCodSettlements", href: "/dashboard/cod-settlements", icon: HandCoins },
       { title: "Expense", labelKey: "menuExpense", href: "/dashboard/expense", icon: CreditCard },

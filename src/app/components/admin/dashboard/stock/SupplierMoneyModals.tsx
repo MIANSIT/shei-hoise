@@ -6,6 +6,8 @@ import { DatePicker, Empty, Input, InputNumber, Modal, Popconfirm, Select, Spin 
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useBranches } from "@/lib/context/BranchContext";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type { SupplierEntryKind, SupplierLedgerEntry } from "@/lib/queries/supplier/supplierTypes";
 
 const PAY_METHODS = ["cash", "mobile_banking", "card", "bank_transfer", "online", "other"] as const;
@@ -44,6 +46,9 @@ export function SupplierEntryModal({
 }: SupplierEntryModalProps) {
   const t = useTranslation();
   const { enabled: branchesOn, activeBranches, workBranchId } = useBranches();
+  // "Whose money was used?" only exists on plans with investor_money; without it a payment comes from the shop.
+  const { storeId } = useCurrentUser();
+  const { allowed: investorAllowed } = useFeatureGate(storeId, "investor_money");
   const [amount, setAmount] = useState<number | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [method, setMethod] = useState<string>("cash");
@@ -64,7 +69,7 @@ export function SupplierEntryModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultAmount]);
 
-  const needsBranch = kind === "payment" && paidFrom === "shop" && branchesOn;
+  const needsBranch = kind === "payment" && (!investorAllowed || paidFrom === "shop") && branchesOn;
 
   const methodLabel: Record<string, string> = {
     cash: t.admin.moCash,
@@ -86,7 +91,7 @@ export function SupplierEntryModal({
           amount,
           date: date.format("YYYY-MM-DD"),
           paymentMethod: method,
-          paidFrom: kind === "payment" ? paidFrom : "shop",
+          paidFrom: kind === "payment" && investorAllowed ? paidFrom : "shop",
           branchId: needsBranch ? branchId : null,
           note,
         })
@@ -130,7 +135,7 @@ export function SupplierEntryModal({
             </div>
           )}
         </div>
-        {kind === "payment" && (
+        {kind === "payment" && investorAllowed && (
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moPaidFrom}</label>
             <Select

@@ -28,6 +28,8 @@ import {
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useBranches } from "@/lib/context/BranchContext";
+import { useCurrentUser } from "@/lib/hook/useCurrentUser";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 
 type ModalMode = "create" | "edit";
 
@@ -68,6 +70,9 @@ function ExpenseFormModal({
 }: ExpenseFormModalProps) {
   const t = useTranslation();
   const [form] = Form.useForm<ExpenseFormValues>();
+  // "Whose money was used?" only exists on plans with investor_money; without it every expense comes from the shop.
+  const { storeId } = useCurrentUser();
+  const { allowed: investorAllowed } = useFeatureGate(storeId, "investor_money");
   // Stores with branches: every expense belongs to exactly one branch.
   const { enabled: branchesOn, branches, workBranchId } = useBranches();
   const branchOptions = useMemo(
@@ -108,7 +113,8 @@ function ExpenseFormModal({
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
-      onSubmit(values);
+      // Field hidden: new expenses come from the shop; an edit leaves the saved value alone.
+      onSubmit(investorAllowed ? values : { ...values, paid_from: mode === "create" ? "shop" : undefined });
     } catch {
       /* inline errors shown by Ant Design */
     }
@@ -230,20 +236,22 @@ function ExpenseFormModal({
             </Form.Item>
           </div>
 
-          <Form.Item
-            name="paid_from"
-            label={<FieldLabel>{t.admin.moPaidFrom}</FieldLabel>}
-            extra={<span className="text-xs text-muted-foreground">{t.admin.moPaidFromHint}</span>}
-          >
-            <Select
-              allowClear
-              options={[
-                { value: "shop", label: t.admin.moPaidFromShop },
-                { value: "outside", label: t.admin.moPaidFromOutside },
-              ]}
-              className="rounded-lg"
-            />
-          </Form.Item>
+          {investorAllowed && (
+            <Form.Item
+              name="paid_from"
+              label={<FieldLabel>{t.admin.moPaidFrom}</FieldLabel>}
+              extra={<span className="text-xs text-muted-foreground">{t.admin.moPaidFromHint}</span>}
+            >
+              <Select
+                allowClear
+                options={[
+                  { value: "shop", label: t.admin.moPaidFromShop },
+                  { value: "outside", label: t.admin.moPaidFromOutside },
+                ]}
+                className="rounded-lg"
+              />
+            </Form.Item>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item

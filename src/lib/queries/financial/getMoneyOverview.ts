@@ -100,6 +100,10 @@ export interface MoneyOverview {
   spentTotal: number;
   /** The part of spentTotal that was expenses, and the part that was supplier payments. */
   spentBreakdown: { expenses: number; suppliers: number };
+  /** Expenses and supplier payments an investor or the owner's pocket paid in the period. Shown for reference only: never taken off any balance. */
+  outsideSpentTotal: number;
+  /** The part of outsideSpentTotal that was expenses, and the part that was supplier payments. */
+  outsideSpentBreakdown: { expenses: number; suppliers: number };
   /** receivedTotal + vendor payments − withdrawnTotal − refundedTotal − spentTotal. */
   leftTotal: number;
   /** "All branches" on a store with branches: each branch's received, withdrawn and left. Empty otherwise. */
@@ -127,6 +131,8 @@ const EMPTY: MoneyOverview = {
   refundedTotal: 0,
   spentTotal: 0,
   spentBreakdown: { expenses: 0, suppliers: 0 },
+  outsideSpentTotal: 0,
+  outsideSpentBreakdown: { expenses: 0, suppliers: 0 },
   leftTotal: 0,
   byBranch: [],
   byMethod: [],
@@ -331,8 +337,15 @@ export async function getMoneyOverview(
     }
 
     const spentBreakdown = { expenses: 0, suppliers: 0 };
+    const outsideSpentBreakdown = { expenses: 0, suppliers: 0 };
     for (const sp of spending) {
       if (!(sp.amount > 0)) continue;
+      // An investor's or the owner's own money never touches the shop's balances: kept apart.
+      if (sp.paid_from === "outside") {
+        if (sp.source === "expense") outsideSpentBreakdown.expenses += sp.amount;
+        else outsideSpentBreakdown.suppliers += sp.amount;
+        continue;
+      }
       // No method recorded counts as cash.
       rowFor(normalizeMethod(sp.payment_method || "cash")).spent += sp.amount;
       addToBranch(sp.branch_id, "spent", sp.amount);
@@ -404,6 +417,8 @@ export async function getMoneyOverview(
       refundedTotal,
       spentTotal,
       spentBreakdown,
+      outsideSpentTotal: outsideSpentBreakdown.expenses + outsideSpentBreakdown.suppliers,
+      outsideSpentBreakdown,
       leftTotal: receivedTotal + vendorReceivedTotal - withdrawnTotal - refundedTotal - spentTotal,
       byBranch: [...branchTotals.entries()]
         .map(([id, t]) => ({

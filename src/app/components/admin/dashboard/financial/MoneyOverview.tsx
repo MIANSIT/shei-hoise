@@ -46,6 +46,8 @@ const EMPTY: MoneyOverviewData = {
   refundedTotal: 0,
   spentTotal: 0,
   spentBreakdown: { expenses: 0, suppliers: 0 },
+  outsideSpentTotal: 0,
+  outsideSpentBreakdown: { expenses: 0, suppliers: 0 },
   leftTotal: 0,
   byBranch: [],
   byMethod: [],
@@ -432,7 +434,7 @@ export default function MoneyOverview() {
               </div>
             </div>
 
-            {isOwner && (Math.abs(otherLeft) > 0.005 || data.withdrawnTotal > 0.005 || data.refundedTotal > 0.005 || data.spentTotal > 0.005) && (
+            {isOwner && (Math.abs(otherLeft) > 0.005 || data.withdrawnTotal > 0.005 || data.refundedTotal > 0.005 || data.spentTotal > 0.005 || data.outsideSpentTotal > 0.005) && (
               <p className="m-0 -mt-2 text-xs text-muted-foreground">
                 {data.spentTotal > 0.005 && (
                   <span className="mr-3">
@@ -442,6 +444,16 @@ export default function MoneyOverview() {
                       .replace("{e}", money(data.spentBreakdown.expenses))
                       .replace("{s}", money(data.spentBreakdown.suppliers))}
                     )
+                  </span>
+                )}
+                {data.outsideSpentTotal > 0.005 && (
+                  <span className="mr-3">
+                    {t.admin.moOutsideSpentLine}: <span className="font-semibold text-foreground tabular-nums">{money(data.outsideSpentTotal)}</span>{" "}
+                    (
+                    {t.admin.moSpentBreakdown
+                      .replace("{e}", money(data.outsideSpentBreakdown.expenses))
+                      .replace("{s}", money(data.outsideSpentBreakdown.suppliers))}
+                    ) · {t.admin.moOutsideSpentNote}
                   </span>
                 )}
                 {data.refundedTotal > 0.005 && (

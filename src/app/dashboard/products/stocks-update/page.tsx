@@ -57,7 +57,9 @@ const StockPage = () => {
   const stockReadOnly = branchesOn && !selectedBranchId;
   const { can } = usePermissions();
   // Sales speed is its own permission, so a role can change stock without seeing it (and the reverse).
-  const canInsights = can("stock.insights");
+  // Stock Health, the reorder list and suppliers come with the stock_management plan feature; without it this page is just the stock list and its updates.
+  const { allowed: stockManagementAllowed } = useFeatureGate(storeId, "stock_management");
+  const canInsights = can("stock.insights") && stockManagementAllowed;
   const { allowed: exportAllowed } = useFeatureGate(storeId, "export_data");
   // Its own flag, separate from stock export ("export_data") and the
   // Products page's "product_csv_export" — each export surface is gated
@@ -152,10 +154,15 @@ const StockPage = () => {
   const [supplierByProduct, setSupplierByProduct] = useState<Record<string, string>>({});
   const loadSuppliers = useCallback(async () => {
     if (!storeId) return;
+    if (!stockManagementAllowed) {
+      setSuppliers([]);
+      setSupplierByProduct({});
+      return;
+    }
     const [list, map] = await Promise.all([getSuppliers(storeId), getProductSupplierMap(storeId)]);
     setSuppliers(list);
     setSupplierByProduct(map);
-  }, [storeId]);
+  }, [storeId, stockManagementAllowed]);
   useEffect(() => {
     loadSuppliers();
   }, [loadSuppliers]);
@@ -173,7 +180,7 @@ const StockPage = () => {
     if (activeHealth) {
       ids = insightRows ? productIdsWithHealth(insightRows, activeHealth) : new Set<string>();
     }
-    if (supplierFilter && supplierFilter !== "none") {
+    if (stockManagementAllowed && supplierFilter && supplierFilter !== "none") {
       const ofSupplier = new Set(
         Object.entries(supplierByProduct)
           .filter(([, supplierId]) => supplierId === supplierFilter)
@@ -182,10 +189,10 @@ const StockPage = () => {
       ids = ids ? new Set([...ids].filter((id) => ofSupplier.has(id))) : ofSupplier;
     }
     return ids;
-  }, [activeHealth, insightRows, supplierFilter, supplierByProduct]);
+  }, [activeHealth, insightRows, supplierFilter, supplierByProduct, stockManagementAllowed]);
   const excludeProductIds = useMemo(
-    () => (supplierFilter === "none" ? new Set(Object.keys(supplierByProduct)) : null),
-    [supplierFilter, supplierByProduct],
+    () => (stockManagementAllowed && supplierFilter === "none" ? new Set(Object.keys(supplierByProduct)) : null),
+    [supplierFilter, supplierByProduct, stockManagementAllowed],
   );
   const healthProductCount = useCallback(
     (health: StockHealth) => (insightRows ? productIdsWithHealth(insightRows, health).size : null),
@@ -387,7 +394,7 @@ const StockPage = () => {
         </div>
 
         {/* Supplier filter */}
-        {(suppliers.length > 0 || supplierFilter) && (
+        {stockManagementAllowed && (suppliers.length > 0 || supplierFilter) && (
           <Select
             value={supplierFilter || ""}
             onChange={(value) => {
@@ -485,7 +492,7 @@ const StockPage = () => {
         onStockChanged={loadInsights}
         suppliers={suppliers}
         supplierByProduct={supplierByProduct}
-        canAssignSupplier={can("stock.edit")}
+        canAssignSupplier={can("stock.edit") && stockManagementAllowed}
         canReorder={canInsights}
         onSuppliersChanged={loadSuppliers}
       />
