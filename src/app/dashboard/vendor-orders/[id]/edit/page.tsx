@@ -194,8 +194,8 @@ export default function EditVendorOrderPage() {
       const displayName = row.variant_name
         ? `${row.product_name} — ${row.variant_name}`
         : row.product_name;
+      // The newest product goes on top, where it is seen straight away.
       return [
-        ...prev,
         {
           key: `${row.product_id}::${row.variant_id ?? ""}`,
           product_id: row.product_id,
@@ -209,6 +209,7 @@ export default function EditVendorOrderPage() {
           mrp: row.base_price || null,
           warehouse_stock: row.warehouse_stock,
         },
+        ...prev,
       ];
     });
   };
@@ -218,10 +219,15 @@ export default function EditVendorOrderPage() {
       prev.map((item) => {
         if (item.key !== key) return item;
         const next = { ...item, ...patch };
+        // Vendor TP and the increase % always agree: typing a percentage works out the
+        // price, and typing a price works out the percentage.
         if (patch.increase_percent !== undefined) {
           next.vendor_tp = round2(
             next.original_tp + (next.original_tp * next.increase_percent) / 100,
           );
+        } else if (patch.vendor_tp !== undefined) {
+          next.increase_percent =
+            next.original_tp > 0 ? round2(((next.vendor_tp - next.original_tp) / next.original_tp) * 100) : 0;
         }
         return next;
       }),
@@ -294,7 +300,7 @@ export default function EditVendorOrderPage() {
       render: (_, record) => (
         <Space.Compact className="w-full">
           <InputNumber
-            min={0}
+            min={-100}
             value={record.increase_percent}
             onChange={(v) => updateItem(record.key, { increase_percent: v ?? 0 })}
             className="w-full"
