@@ -12,6 +12,7 @@ import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useBranches } from "@/lib/context/BranchContext";
 import { getVendorOrders } from "@/lib/queries/vendorOrder/getVendorOrders";
+import { getVendorInvoiceBalances } from "@/lib/queries/vendor/getVendorInvoiceBalances";
 import type { VendorOrder, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
@@ -34,6 +35,8 @@ export default function VendorOrdersPage() {
 
   const [orders, setOrders] = useState<VendorOrder[]>([]);
   const [total, setTotal] = useState(0);
+  // Order id → what is really still due on it, for confirmed orders.
+  const [liveDue, setLiveDue] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<VendorOrderStatus | null>(null);
@@ -53,6 +56,15 @@ export default function VendorOrdersPage() {
       });
       setOrders(result.data);
       setTotal(result.total);
+
+      // vendor_orders.due_amount is only written when the order is saved as a draft, so payments and
+      // settlements never reach it. A confirmed order's real due comes from the same paid/due
+      // waterfall the order page uses. If it can't be loaded, the stored due stays.
+      const vendorIds = [...new Set(result.data.filter((o) => o.status === "confirmed").map((o) => o.vendor_id))];
+      const balances = await Promise.all(vendorIds.map((id) => getVendorInvoiceBalances(id).catch(() => [])));
+      const due: Record<string, number> = {};
+      for (const list of balances) for (const b of list) due[b.order_id] = b.due_remaining;
+      setLiveDue(due);
     } finally {
       setLoading(false);
     }
@@ -101,14 +113,14 @@ export default function VendorOrdersPage() {
     },
     {
       title: "Due",
-      dataIndex: "due_amount",
       key: "due_amount",
       width: 100,
-      render: (v: number) => (
-        <span className={Number(v) > 0 ? "text-red-500 font-semibold" : "text-gray-400"}>
-          {Number(v).toFixed(2)}
-        </span>
-      ),
+      render: (_: unknown, record: VendorOrder) => {
+        const due = liveDue[record.id] ?? Number(record.due_amount);
+        return (
+          <span className={due > 0.005 ? "text-red-500 font-semibold" : "text-gray-400"}>{due.toFixed(2)}</span>
+        );
+      },
     },
     {
       title: "Status",
