@@ -49,11 +49,15 @@ export async function getVendorLedger(
     }[];
     const sold = items.reduce((sum, i) => sum + i.sold_quantity, 0);
     const returned = items.reduce((sum, i) => sum + i.returned_quantity, 0);
+    // A negative receivable is a return after sale (a normal settlement is never negative).
+    const isReturn = Number(settlement.total_receivable) < 0;
     entries.push({
-      type: "settlement",
+      type: isReturn ? "return" : "settlement",
       date: settlement.settlement_date,
       reference: settlement.id.slice(0, 8),
-      description: `Settled: ${sold} sold, ${returned} returned`,
+      description: isReturn
+        ? `Returned after sale: ${returned} unit(s) taken back, credited to vendor`
+        : `Settled: ${sold} sold, ${returned} returned`,
       quantity: sold + returned,
       receivable: settlement.total_receivable,
       id: settlement.id,

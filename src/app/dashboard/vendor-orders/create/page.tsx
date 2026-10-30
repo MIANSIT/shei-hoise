@@ -36,6 +36,8 @@ import type {
 } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface DraftLineItem extends VendorOrderItemInput {
   key: string;
@@ -48,6 +50,7 @@ function round2(n: number): number {
 
 export default function CreateVendorOrderPage() {
   const { storeId, user, loading: userLoading } = useCurrentUser();
+  const t = useTranslation();
   // Stores with branches: stock is shown for the branch you work at.
   const { enabled: branchesOn, workBranchId } = useBranches();
   const stockBranchId = branchesOn ? workBranchId : null;
@@ -438,6 +441,13 @@ export default function CreateVendorOrderPage() {
             <p className="text-xs text-muted-foreground m-0">
               Dispatch stock to a vendor — saved as a draft until confirmed
             </p>
+            <WorkBranchPicker
+              label={t.branches.vendorSendFromLabel}
+              // The lines' stock was checked against the old branch.
+              onBeforeChange={() => {
+                if (items.length > 0) setItems([]);
+              }}
+            />
           </div>
         </div>
       </div>

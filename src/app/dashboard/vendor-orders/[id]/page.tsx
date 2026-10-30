@@ -19,6 +19,7 @@ import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type { VendorOrder, VendorOrderItem, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { useBranches } from "@/lib/context/BranchContext";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
 import { useTranslation } from "@/lib/hook/useTranslation";
 
 const STATUS_COLORS: Record<VendorOrderStatus, string> = {
@@ -33,7 +34,7 @@ export default function VendorOrderDetailPage() {
   const router = useRouter();
   const { storeId, user } = useCurrentUser();
   // Stores with branches: goods are sent from the branch you work at.
-  const { enabled: branchesOn, workBranchId, workBranch } = useBranches();
+  const { enabled: branchesOn, workBranchId, workBranch, branchName } = useBranches();
   const t = useTranslation();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
@@ -315,6 +316,14 @@ export default function VendorOrderDetailPage() {
             <p className="text-xs text-muted-foreground m-0">
               {order.vendor?.name} · {dayjs(order.order_date).format("DD-MM-YYYY")}
             </p>
+            {/* A draft leaves from the branch picked here when it is confirmed. */}
+            {order.status === "draft" && <WorkBranchPicker label={t.branches.vendorSendFromLabel} />}
+            {order.status === "confirmed" && branchesOn && order.branch_id && (
+              <p className="text-xs text-muted-foreground m-0 mt-2">
+                {t.branches.vendorSendFromLabel}:{" "}
+                <span className="font-semibold text-teal-700 dark:text-teal-300">{branchName(order.branch_id)}</span>
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button

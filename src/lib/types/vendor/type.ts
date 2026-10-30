@@ -169,6 +169,40 @@ export interface RecordVendorSettlementInput {
   branch_id?: string | null;
 }
 
+/** One product the vendor brings back after it was already settled as sold. */
+export interface VendorReturnItemInput {
+  product_id: string;
+  variant_id: string | null;
+  quantity: number;
+  /** What the vendor paid per unit: the credit per unit. */
+  unit_price: number;
+}
+
+export interface RecordVendorReturnInput {
+  vendor_id: string;
+  return_date: string;
+  items: VendorReturnItemInput[];
+  /** Cash given back to the vendor now (0 = keep it as credit on their account). Not more than the goods are worth. */
+  refund_amount?: number;
+  refund_method?: VendorPaymentMethod;
+  notes?: string;
+  created_by?: string | null;
+  /** Stores with branches: the branch the goods come back into and any refund goes out of. */
+  branch_id?: string | null;
+}
+
+/** A product (or variant) the vendor bought and can still bring back. */
+export interface VendorReturnableItem {
+  product_id: string;
+  variant_id: string | null;
+  product_name: string;
+  variant_name: string | null;
+  /** Bought (settled as sold) minus already returned after sale. */
+  returnable: number;
+  /** What they paid per unit the last time it was settled. */
+  last_unit_price: number;
+}
+
 export interface VendorSettlementItem {
   id: string;
   settlement_id: string;
@@ -239,7 +273,7 @@ export interface VendorPayment {
 
 // ─── Ledger (unified dispatch / settlement / payment history) ────────────
 
-export type VendorLedgerEntryType = "dispatch" | "settlement" | "payment";
+export type VendorLedgerEntryType = "dispatch" | "settlement" | "return" | "payment";
 
 export interface VendorLedgerEntry {
   type: VendorLedgerEntryType;

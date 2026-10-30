@@ -15,6 +15,7 @@ import { getVendorOrders } from "@/lib/queries/vendorOrder/getVendorOrders";
 import { getVendorInvoiceBalances } from "@/lib/queries/vendor/getVendorInvoiceBalances";
 import type { VendorOrder, VendorOrderStatus } from "@/lib/types/vendor/type";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
+import { BranchSwitcher } from "@/app/components/admin/branches/BranchSwitcher";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 
 const PAGE_SIZE = 10;
@@ -179,6 +180,8 @@ export default function VendorOrdersPage() {
 
       <div className="px-4 sm:px-8 py-6 space-y-4">
         <div className="flex flex-wrap gap-3">
+          {/* Stores with branches: look at one branch's orders or all of them (same choice as the top bar). */}
+          <BranchSwitcher />
           <Input
             placeholder="Search by invoice number"
             prefix={<SearchOutlined className="text-gray-400" />}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, Tag, Table, Spin, Segmented, Modal, Popconfirm } from "antd";
-import { HandCoins, ArrowLeft, Package, Wallet, TrendingUp, TrendingDown, AlertTriangle, FileText, Trash2 } from "lucide-react";
+import { HandCoins, ArrowLeft, Package, Wallet, TrendingUp, TrendingDown, AlertTriangle, FileText, Trash2, Undo2 } from "lucide-react";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 
@@ -22,11 +22,15 @@ import {
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
 import { recordVendorSettlement } from "@/lib/queries/vendorSettlement/recordVendorSettlement";
 import { deleteVendorSettlement } from "@/lib/queries/vendorSettlement/deleteVendorSettlement";
+import { recordVendorReturn } from "@/lib/queries/vendorSettlement/recordVendorReturn";
+import { getVendorReturnableItems } from "@/lib/queries/vendorSettlement/getVendorReturnableItems";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { createVendorPayment } from "@/lib/queries/vendor/createVendorPayment";
 import { deleteVendorPayment } from "@/lib/queries/vendor/deleteVendorPayment";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import VendorSettlementModal from "@/app/components/admin/dashboard/vendors/VendorSettlementModal";
 import VendorQuickPaymentModal from "@/app/components/admin/dashboard/vendors/VendorQuickPaymentModal";
+import VendorReturnModal from "@/app/components/admin/dashboard/vendors/VendorReturnModal";
 import { VendorStatCard } from "@/app/components/admin/dashboard/vendors/VendorStatCard";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import type {
@@ -36,6 +40,8 @@ import type {
   VendorLedgerEntry,
   VendorSettlementItemInput,
   VendorPaymentMethod,
+  VendorReturnableItem,
+  VendorReturnItemInput,
 } from "@/lib/types/vendor/type";
 import { toWhatsAppNumber } from "@/lib/utils/phoneNumber";
 import { useBranches } from "@/lib/context/BranchContext";
@@ -43,6 +49,7 @@ import { useBranches } from "@/lib/context/BranchContext";
 const LEDGER_TAG_COLOR: Record<VendorLedgerEntry["type"], string> = {
   dispatch: "blue",
   settlement: "purple",
+  return: "orange",
   payment: "green",
 };
 
@@ -68,6 +75,7 @@ export default function VendorDetailPage() {
   const vendorId = params.id as string;
   const router = useRouter();
   const { storeId, user } = useCurrentUser();
+  const t = useTranslation();
   // Stores with branches: vendor money is credited to the branch you work at.
   const { workBranchId } = useBranches();
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
@@ -87,6 +95,10 @@ export default function VendorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [settlementOpen, setSettlementOpen] = useState(false);
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnItems, setReturnItems] = useState<VendorReturnableItem[]>([]);
+  const [returnLoading, setReturnLoading] = useState(false);
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [quickPaymentSubmitting, setQuickPaymentSubmitting] = useState(false);
   const [deletingLedgerId, setDeletingLedgerId] = useState<string | null>(null);
@@ -178,6 +190,49 @@ export default function VendorDetailPage() {
     }
   };
 
+  const openReturn = async () => {
+    setReturnOpen(true);
+    setReturnLoading(true);
+    try {
+      setReturnItems(await getVendorReturnableItems(vendorId));
+    } finally {
+      setReturnLoading(false);
+    }
+  };
+
+  const handleReturnSubmit = async (payload: {
+    returnDate: string;
+    items: VendorReturnItemInput[];
+    refundAmount: number;
+    refundMethod: VendorPaymentMethod;
+    notes?: string;
+  }) => {
+    if (payload.items.length === 0) {
+      error(t.admin.vrPickOne);
+      return;
+    }
+    setReturnSubmitting(true);
+    try {
+      await recordVendorReturn({
+        vendor_id: vendorId,
+        return_date: payload.returnDate,
+        items: payload.items,
+        refund_amount: payload.refundAmount,
+        refund_method: payload.refundMethod,
+        notes: payload.notes,
+        created_by: user?.id ?? null,
+        branch_id: workBranchId,
+      });
+      success(t.admin.vrDone);
+      setReturnOpen(false);
+      fetchAll();
+    } catch (err) {
+      error(err instanceof Error ? err.message : t.admin.vrFailed);
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
   const handleQuickPaymentSubmit = async (payload: {
     paymentDate: string;
     amount: number;
@@ -214,9 +269,9 @@ export default function VendorDetailPage() {
     if (!storeId || !entry.id) return;
     setDeletingLedgerId(entry.id);
     try {
-      if (entry.type === "settlement") {
+      if (entry.type === "settlement" || entry.type === "return") {
         await deleteVendorSettlement(entry.id, storeId, user?.id ?? null);
-        success("Settlement deleted and stock reversed");
+        success(entry.type === "return" ? t.admin.vrDeleted : "Settlement deleted and stock reversed");
       } else if (entry.type === "payment") {
         const ok = await deleteVendorPayment(entry.id, storeId);
         if (!ok) throw new Error("Payment could not be deleted");
@@ -472,9 +527,11 @@ export default function VendorDetailPage() {
         record.deletable && record.id ? (
           <Popconfirm
             title={
-              record.type === "settlement"
-                ? "Delete this settlement? Stock it moved will be reversed."
-                : "Delete this payment?"
+              record.type === "return"
+                ? t.admin.vrDeleteConfirm
+                : record.type === "settlement"
+                  ? "Delete this settlement? Stock it moved will be reversed."
+                  : "Delete this payment?"
             }
             okText="Delete"
             okButtonProps={{ danger: true }}
@@ -557,6 +614,13 @@ export default function VendorDetailPage() {
               }}
             >
               Record Payment
+            </Button>
+            <Button
+              icon={<Undo2 size={16} />}
+              onClick={openReturn}
+              className="rounded-xl h-9 font-medium"
+            >
+              {t.admin.vrButton}
             </Button>
             <Button
               type="primary"
@@ -752,6 +816,17 @@ export default function VendorDetailPage() {
         deliveryBilled={invoiceBalances.reduce((sum, b) => sum + b.delivery_cost, 0)}
         onSubmit={handleSettlementSubmit}
         onCancel={() => setSettlementOpen(false)}
+      />
+
+      <VendorReturnModal
+        open={returnOpen}
+        items={returnItems}
+        loading={returnLoading}
+        submitting={returnSubmitting}
+        currentDue={stats?.current_due ?? 0}
+        money={fmtMoney}
+        onSubmit={handleReturnSubmit}
+        onCancel={() => setReturnOpen(false)}
       />
 
       <VendorQuickPaymentModal

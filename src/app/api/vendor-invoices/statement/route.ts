@@ -7,7 +7,7 @@ import { loadBengaliFontServer } from "@/lib/pdf/bengaliFontServer";
 
 interface VendorStatementEntry {
   date: string;
-  type: "dispatch" | "settlement" | "payment";
+  type: "dispatch" | "settlement" | "return" | "payment";
   reference: string;
   description: string;
   receivable?: number;
@@ -43,6 +43,7 @@ interface VendorStatementRequest {
 const TYPE_LABEL: Record<VendorStatementEntry["type"], string> = {
   dispatch: "Dispatch",
   settlement: "Settlement",
+  return: "Return",
   payment: "Payment",
 };
 

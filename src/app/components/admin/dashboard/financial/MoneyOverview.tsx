@@ -576,7 +576,7 @@ export default function MoneyOverview() {
                       <dt className="font-semibold text-foreground">{t.admin.moReceived}</dt>
                       <dd className="m-0 font-bold tabular-nums text-foreground">{money(data.receivedTotal)}</dd>
                     </div>
-                    {data.sources.vendorPayments > 0.005 && (
+                    {Math.abs(data.sources.vendorPayments) > 0.005 && (
                       <div className="flex justify-between gap-3 text-xs">
                         <dt className="text-muted-foreground">{t.admin.moVendorLine}</dt>
                         <dd className="m-0 tabular-nums text-muted-foreground">{money(data.sources.vendorPayments)}</dd>

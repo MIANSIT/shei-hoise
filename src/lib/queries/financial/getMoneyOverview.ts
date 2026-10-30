@@ -376,7 +376,8 @@ export async function getMoneyOverview(
       .filter(
         (row) =>
           row.total > 0.005 ||
-          row.fromVendors > 0.005 ||
+          // A refund paid back to a vendor is a negative vendor payment, so this can be below zero.
+          Math.abs(row.fromVendors) > 0.005 ||
           row.withdrawn > 0.005 ||
           row.refunded > 0.005 ||
           row.spent > 0.005 ||

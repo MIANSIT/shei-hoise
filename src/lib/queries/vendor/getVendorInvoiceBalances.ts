@@ -38,7 +38,7 @@ export async function getVendorInvoiceBalances(
 ): Promise<VendorInvoiceBalance[]> {
   if (!vendorId) return [];
 
-  const [ordersRes, paymentsRes] = await Promise.all([
+  const [ordersRes, paymentsRes, returnsRes] = await Promise.all([
     supabase
       .from("vendor_orders")
       .select(
@@ -54,13 +54,22 @@ export async function getVendorInvoiceBalances(
       .from("vendor_payments")
       .select("amount, vendor_order_id")
       .eq("vendor_id", vendorId),
+    // Goods the vendor brought back after a settlement (negative receivable) are a credit
+    // on their account, so they pay down the oldest invoices just like a payment would.
+    supabase
+      .from("vendor_settlements")
+      .select("total_receivable")
+      .eq("vendor_id", vendorId)
+      .lt("total_receivable", 0),
   ]);
 
   const orders = ordersRes.data ?? [];
   const payments = paymentsRes.data ?? [];
+  const returnCredit = (returnsRes.data ?? []).reduce((sum, r) => sum - Number(r.total_receivable), 0);
 
   const pinnedByOrder = new Map<string, number>();
-  let pool = 0;
+  // A refund is a negative payment, so it takes back from the pool what it paid out.
+  let pool = returnCredit;
   for (const payment of payments) {
     const amount = Number(payment.amount);
     if (payment.vendor_order_id) {
