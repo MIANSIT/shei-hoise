@@ -109,7 +109,7 @@ function PlanCard({
         )}
       </div>
 
-      {isCustomCycle ? (
+      {isCustomCycle && isCurrent ? (
         <div className="rounded-xl bg-muted/60 border border-border px-4 py-3">
           <p className="text-sm font-semibold text-foreground mb-2">{t.admin.subCustomPlanTitle}</p>
           <p className="text-xs text-muted-foreground mb-3">{t.admin.subCustomPlanDesc}</p>
@@ -177,7 +177,7 @@ function PlanCard({
         </div>
       )}
 
-      {showAction && !isCustomCycle && (
+      {showAction && !(isCustomCycle && isCurrent) && (
         <button
           type="button"
           onClick={() => onSelect(plan)}
@@ -243,7 +243,7 @@ export default function SubscriptionPlansPage() {
 
     modal.confirm({
       title: `${t.admin.subSubscribeTo} ${plan.name}`,
-      content: `${t.admin.subConfirmContentStart} ${cycleLabel} ${t.admin.subConfirmContentFor} ${currency}${price.toLocaleString("en-BD")}${perLabel}. ${t.admin.subConfirmContentEnd}`,
+      content: `${t.admin.subConfirmContentStart} ${cycleLabel} ${t.admin.subConfirmContentFor} ${currency}${price.toLocaleString("en-BD")}${perLabel}. ${isCustomCycle ? `${t.admin.subCustomSwitchWarning} ` : ""}${t.admin.subConfirmContentEnd}`,
       okText: t.admin.subContinue,
       cancelText: t.admin.subBtnCancel,
       okButtonProps: { style: { backgroundColor: "#7c3aed", borderColor: "#7c3aed" } },

@@ -1796,6 +1796,7 @@ export const translations = {
       subContinue: "Continue",
       subCustomPlanTitle: "Custom Plan",
       subCustomPlanDesc: "This plan is custom-priced for your store. Contact us to renew or make changes:",
+      subCustomSwitchWarning: "Your store is on a custom-priced plan. Switching ends that arrangement and moves you to standard pricing, and any days left on your current period won't carry over.",
 
       // Subscription — checkout & pay invoice pages
       subPlanNotFound: "Plan not found.",
@@ -5169,6 +5170,7 @@ export const translations = {
       subContinue: "চালিয়ে যান",
       subCustomPlanTitle: "কাস্টম প্ল্যান",
       subCustomPlanDesc: "এই প্ল্যানটি আপনার স্টোরের জন্য কাস্টম মূল্যে নির্ধারিত। নবায়ন বা পরিবর্তনের জন্য যোগাযোগ করুন:",
+      subCustomSwitchWarning: "আপনার স্টোর বর্তমানে কাস্টম মূল্যের প্ল্যানে আছে। প্ল্যান পরিবর্তন করলে সেই ব্যবস্থা শেষ হয়ে স্ট্যান্ডার্ড মূল্য প্রযোজ্য হবে এবং বর্তমান মেয়াদের বাকি দিনগুলো যোগ হবে না।",
 
       // সাবস্ক্রিপশন — চেকআউট এবং ইনভয়েস পেমেন্ট পেজ
       subPlanNotFound: "প্ল্যান পাওয়া যায়নি।",

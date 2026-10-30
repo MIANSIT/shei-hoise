@@ -58,9 +58,10 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     // Custom-cycle subscriptions are priced and scheduled manually by the
-    // super admin — self-checkout must never overwrite that arrangement with
-    // a standard monthly/yearly price.
-    if (existingSub?.billing_cycle === "custom") {
+    // super admin — renewing the custom plan itself stays manual. Switching to
+    // a different plan is allowed: it only creates a pending invoice, and the
+    // subscription moves to the standard cycle once the payment is approved.
+    if (existingSub?.billing_cycle === "custom" && existingSub.plan_id === plan_id) {
       return Response.json(
         { error: "Your plan is custom-priced. Contact us to renew or make changes." },
         { status: 400 },
