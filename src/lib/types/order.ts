@@ -97,6 +97,9 @@ export interface StoreOrder {
   discount_amount?: number;
   coupon_id?: string | null;
   coupon_code?: string | null;
+  /** The membership that gave part of this order's discount, and how much of discount_amount that was. */
+  membership_id?: string | null;
+  membership_discount?: number;
   additional_charges?: number;
   shipping_fee: number;
   total_amount: number;
@@ -186,6 +189,8 @@ export interface CreateOrderData {
   orderDate?: string;
   /** Stores with branches: the branch that fulfils the order. Omitted/null = picked automatically. */
   branchId?: string | null;
+  /** The part of `discount` that comes from the customer's membership; the server checks it against the membership. */
+  membershipDiscount?: number;
 }
 
 // ===== CUSTOMER ORDER TYPES =====
@@ -206,6 +211,8 @@ export interface CustomerOrderData {
   taxAmount: number;
   discount: number;
   couponCode?: string;
+  /** A membership number the shopper typed at checkout; only counts when the phone number matches (see memberStorefrontCore). */
+  membershipNumber?: string;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;

@@ -25,7 +25,12 @@ interface Category extends FilterCategory {
   description?: string;
   parent_id?: string;
   is_active: boolean;
+  /** false = kept off the storefront's category filter. Missing counts as shown. */
+  show_in_store?: boolean;
 }
+
+/** A category customers can browse: switched on, and not kept for the shop's own use. */
+const isBrowsable = (c: Category) => c.is_active && c.show_in_store !== false;
 
 interface ShopFilterCommonProps {
   categories: Category[];
@@ -78,8 +83,8 @@ export function ShopFilterSidebar({
   return (
     <div>
       {/* Same height and padding as the toolbar row beside it, so both divider lines sit level. */}
-      <div className="mb-4 flex h-[54px] items-start justify-between border-b border-gray-100 dark:border-gray-800">
-        <h2 className="flex h-[38px] items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-50">
+      <div className="mb-4 flex h-13.5 items-start justify-between border-b border-gray-100 dark:border-gray-800">
+        <h2 className="flex h-9.5 items-center gap-2 text-base font-bold text-gray-900 dark:text-gray-50">
           <SlidersHorizontal className="h-4 w-4" />
           {t.filter.filter}
           {count > 0 && (
@@ -92,14 +97,14 @@ export function ShopFilterSidebar({
           <button
             type="button"
             onClick={() => onFiltersChange(EMPTY_SHOP_FILTERS)}
-            className="flex h-[38px] items-center text-xs font-semibold text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
+            className="flex h-9.5 items-center text-xs font-semibold text-gray-500 underline-offset-2 transition-colors hover:text-gray-900 hover:underline dark:text-gray-400 dark:hover:text-gray-100"
           >
             {t.filter.clearAll}
           </button>
         )}
       </div>
       <ShopFilterPanel
-        categories={categories.filter((c) => c.is_active)}
+        categories={categories.filter(isBrowsable)}
         brands={brands}
         values={values}
         onChange={onFiltersChange}
@@ -128,7 +133,7 @@ export default function ProductFilterSection({
   const t = useTranslation();
   const n = useLocalNum();
 
-  const activeCategories = categories.filter((c) => c.is_active);
+  const activeCategories = categories.filter(isBrowsable);
   const activeFilterCount = countShopFilters(values);
 
   // A slug still loading (or from an old link) falls back to itself, so a chip is never blank.

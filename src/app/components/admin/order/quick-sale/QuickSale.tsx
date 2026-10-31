@@ -45,6 +45,8 @@ import { unlockBeepAudio, playBeep } from "@/lib/utils/beep";
 import { useHardwareBarcodeScanner } from "@/lib/hook/useHardwareBarcodeScanner";
 import { getStorePublicUrl, extractProductSlugFromScannedText } from "@/lib/utils/productQr";
 import { getOrCreateCustomerByPhone } from "@/lib/queries/customers/getOrCreateCustomerByPhone";
+import { findMemberByNumber, previewMemberDiscount } from "@/lib/queries/membership/memberDiscount";
+import type { MemberDiscountResult } from "@/lib/queries/membership/membershipTypes";
 import { recordCustomerPayment } from "@/lib/queries/customers/recordCustomerPayment";
 import VariantPickerModal from "./VariantPickerModal";
 import ReceiptPreviewModal from "./ReceiptPreviewModal";
@@ -161,6 +163,11 @@ export default function QuickSale() {
   const [matchedCustomerId, setMatchedCustomerId] = useState<string | null>(null);
   // What this customer already owes at this store (this branch, with branches).
   const [previousDue, setPreviousDue] = useState(0);
+  // The matched customer's membership and what it takes off this cart (null = not a member).
+  const [memberInfo, setMemberInfo] = useState<MemberDiscountResult | null>(null);
+  const [memberNumber, setMemberNumber] = useState("");
+  const [memberLooking, setMemberLooking] = useState(false);
+  const [memberMessage, setMemberMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [cashReceived, setCashReceived] = useState<number | null>(null);
   const [isDueSale, setIsDueSale] = useState(false);
   const [amountReceivedNow, setAmountReceivedNow] = useState<number | null>(null);
@@ -189,6 +196,8 @@ export default function QuickSale() {
   // A known phone number fills in that customer's saved name; a new one
   // leaves the name for the cashier to type.
   const storeIdForLookup = user?.store_id;
+  // Memberships are a plan feature: stores without it see no member box and get no member discount.
+  const { allowed: membershipAllowed } = useFeatureGate(user?.store_id, "customer_membership");
   useEffect(() => {
     const digits = normalizePhone(walkInPhone);
     if (!storeIdForLookup || !digits || digits.length < 10) {
@@ -253,6 +262,28 @@ export default function QuickSale() {
       cancelled = true;
     };
   }, [storeIdForLookup, matchedCustomerId, saleBranchId, branchesOn]);
+  // The member discount for the matched customer, worked out on the server and
+  // refreshed as the cart changes. The sale checks it again when it is saved.
+  useEffect(() => {
+    if (!storeIdForLookup || !matchedCustomerId || !membershipAllowed) {
+      setMemberInfo(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await previewMemberDiscount(
+        storeIdForLookup,
+        matchedCustomerId,
+        cart.map((it) => ({ productId: it.product_id, quantity: it.quantity, unitPrice: it.unit_price })),
+      );
+      if (!cancelled) setMemberInfo(result.membership ? result : null);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [storeIdForLookup, matchedCustomerId, membershipAllowed, cart]);
+
   useEffect(() => {
     if (!flashKey) return;
     const t = setTimeout(() => setFlashKey(null), 900);
@@ -457,7 +488,33 @@ export default function QuickSale() {
   };
 
   const subtotal = cart.reduce((sum, it) => sum + it.total_price, 0);
-  const total = Math.max(0, subtotal - discount + additionalCharges);
+  const memberDiscount = Math.min(memberInfo?.discount ?? 0, subtotal);
+  const total = Math.max(0, subtotal - memberDiscount - discount + additionalCharges);
+
+  // Types a membership number (as printed on the card) to fill in who is buying:
+  // the member's phone goes into the customer field and the usual lookup does the rest.
+  const handleFindMember = async () => {
+    if (!user?.store_id || !memberNumber.trim()) return;
+    setMemberLooking(true);
+    setMemberMessage(null);
+    try {
+      const found = await findMemberByNumber(user.store_id, memberNumber);
+      if (!found) {
+        setMemberMessage({ text: t.admin.mbMemberNotFound, ok: false });
+      } else if (!found.customerPhone) {
+        setMemberMessage({ text: t.admin.mbMemberNoPhone, ok: false });
+      } else {
+        setWalkInPhone(found.customerPhone);
+        setMemberMessage(
+          found.status === "expired"
+            ? { text: t.admin.mbMemberExpired, ok: false }
+            : { text: `${found.customerName} · ${found.planName}`, ok: true },
+        );
+      }
+    } finally {
+      setMemberLooking(false);
+    }
+  };
 
   // Staff: the role's discount cap (amount and/or % of subtotal). The server
   // enforces the same cap; this just stops the cashier typing past it.
@@ -483,6 +540,7 @@ export default function QuickSale() {
     items: OrderProduct[];
     subtotal: number;
     discount: number;
+    memberDiscount: number;
     additionalCharges: number;
     total: number;
     paymentMethod: PaymentMethod;
@@ -492,6 +550,8 @@ export default function QuickSale() {
     due: number | null;
     customerName: string | null;
     customerPhone: string | null;
+    /** Printed under the order number: the member's number and whatever name and phone were entered. */
+    customerBlock: { name: string | null; phone: string | null; memberNumber: string | null };
     previousDue: number | null;
     date: Date;
   }) => {
@@ -525,6 +585,7 @@ export default function QuickSale() {
       })),
       subtotal: order.subtotal,
       discount: order.discount,
+      memberDiscount: order.memberDiscount,
       additionalCharges: order.additionalCharges,
       total: order.total,
       paymentLabel: PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod,
@@ -534,6 +595,7 @@ export default function QuickSale() {
       due: order.due,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
+      customerBlock: order.customerBlock,
       previousDue: order.previousDue,
       currencyIcon,
       shopQrUrl,
@@ -581,6 +643,22 @@ export default function QuickSale() {
         // it as a walk-in (raw name/phone text only), same as before.
       }
 
+      // The member discount on screen is checked once more with the customer the
+      // sale is really saved under; if it moved, show the new total and stop.
+      if (customerId) {
+        const fresh = await previewMemberDiscount(
+          user.store_id,
+          customerId,
+          cart.map((it) => ({ productId: it.product_id, quantity: it.quantity, unitPrice: it.unit_price })),
+        );
+        if (Math.abs(Math.min(fresh.discount, subtotal) - memberDiscount) > 0.01) {
+          setMemberInfo(fresh.membership ? fresh : null);
+          notification.warning({ message: t.admin.mbMemberChanged });
+          setSubmitting(false);
+          return;
+        }
+      }
+
       // Same order-number shape as the Create Order flow (see CreateOrder.tsx)
       // so Quick Sale numbers look at home next to every other order.
       const now = new Date();
@@ -617,7 +695,9 @@ export default function QuickSale() {
         orderProducts: cart,
         subtotal,
         taxAmount: 0,
-        discount,
+        // The order's whole discount: what the cashier gave plus the member discount.
+        discount: discount + memberDiscount,
+        ...(memberDiscount > 0 ? { membershipDiscount: memberDiscount } : {}),
         additionalCharges,
         deliveryCost: 0,
         totalAmount: total,
@@ -675,6 +755,7 @@ export default function QuickSale() {
           items: cart,
           subtotal,
           discount,
+          memberDiscount,
           additionalCharges,
           total,
           paymentMethod,
@@ -684,6 +765,11 @@ export default function QuickSale() {
           due: isDueSale ? dueAmount : null,
           customerName: isDueSale ? walkInName.trim() : null,
           customerPhone: isDueSale ? walkInPhone.trim() : null,
+          customerBlock: {
+            name: walkInName.trim() || null,
+            phone: walkInPhone.trim() || null,
+            memberNumber: memberInfo?.membership?.number ?? null,
+          },
           previousDue:
             customerMatch === "existing" && previousDue > 0.01 ? previousDue : null,
           // Prints the sale's own date (back-dated when the cashier changed
@@ -695,6 +781,8 @@ export default function QuickSale() {
         setAdditionalCharges(0);
         setWalkInName("");
         setWalkInPhone("");
+        setMemberNumber("");
+        setMemberMessage(null);
         setCashReceived(null);
         setIsDueSale(false);
         setAmountReceivedNow(null);
@@ -950,6 +1038,17 @@ export default function QuickSale() {
                 {subtotal.toFixed(2)}
               </Text>
             </div>
+            {memberDiscount > 0 && memberInfo?.membership && (
+              <div className="flex items-center justify-between text-sm">
+                <Text type="secondary">
+                  {t.admin.mbMemberDiscount} ({memberInfo.membership.number})
+                </Text>
+                <Text type="success">
+                  −{currencyIcon}
+                  {memberDiscount.toFixed(2)}
+                </Text>
+              </div>
+            )}
             <div className="flex items-center justify-between text-sm">
               <Text type="secondary">Discount</Text>
               <div className="flex flex-col items-end gap-0.5">
@@ -1012,9 +1111,30 @@ export default function QuickSale() {
               <Text type="secondary" className="text-xs">
                 Customer {isDueSale ? "" : "(optional)"}
               </Text>
+              {memberInfo?.membership && (
+                <Tag color="gold">
+                  {t.admin.mbMemberTag} · {memberInfo.membership.number} · {memberInfo.membership.planName}
+                </Tag>
+              )}
               {customerMatch === "existing" && <Tag color="green">Existing customer</Tag>}
               {customerMatch === "new" && <Tag color="blue">New customer</Tag>}
             </div>
+            {membershipAllowed && (
+            <Input.Search
+              placeholder={t.admin.mbMemberNumber}
+              value={memberNumber}
+              loading={memberLooking}
+              enterButton={t.admin.mbMemberFind}
+              onChange={(e) => setMemberNumber(e.target.value)}
+              onSearch={handleFindMember}
+              aria-label={t.admin.mbMemberNumber}
+            />
+            )}
+            {membershipAllowed && memberMessage && (
+              <Text type={memberMessage.ok ? "success" : "danger"} className="text-xs block">
+                {memberMessage.text}
+              </Text>
+            )}
             <Space.Compact block>
               <Input
                 placeholder={isDueSale ? "Phone *" : "Phone"}

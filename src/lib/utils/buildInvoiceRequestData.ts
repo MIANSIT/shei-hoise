@@ -15,6 +15,8 @@ export function buildInvoiceRequestData(
   customerPhone: string,
   customerAddress: string,
   paidAmount?: number,
+  /** The customer's membership number when they are a member. */
+  memberNumber?: string | null,
 ): InvoicePdfData {
   return {
     orderId: order.order_number,
@@ -32,7 +34,10 @@ export function buildInvoiceRequestData(
     subtotal: order.subtotal,
     deliveryCharge: order.shipping_fee,
     taxAmount: order.tax_amount,
-    discountAmount: order.discount_amount,
+    // discount_amount is the whole discount; the membership's part gets its own line.
+    discountAmount: Math.max(0, (order.discount_amount ?? 0) - (order.membership_discount ?? 0)),
+    memberDiscount: order.membership_discount ?? 0,
+    memberNumber: memberNumber ?? null,
     additionalCharges:
       order.additional_charges && order.additional_charges > 0
         ? [{ label: "Additional Charges", amount: order.additional_charges }]

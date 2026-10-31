@@ -24,6 +24,7 @@ const ROUTE_REQUIREMENTS: ReadonlyArray<readonly [string, RouteRequirement]> = [
   ["/dashboard/orders/edit-order", "orders.edit"],
   ["/dashboard/orders", "orders.view"],
 
+  ["/dashboard/memberships", "memberships.view"],
   ["/dashboard/customers/create-customer", "customers.add"],
   ["/dashboard/customers/dues", "customers.view"],
   ["/dashboard/customers", "customers.view"],

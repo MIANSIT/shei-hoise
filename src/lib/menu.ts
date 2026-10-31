@@ -47,6 +47,7 @@ import {
   PiggyBank,
   Activity,
   ClipboardList,
+  Crown,
 } from "lucide-react";
 import React from "react";
 import type { translations } from "@/lib/i18n/translations";
@@ -156,6 +157,8 @@ export const sideMenu: MenuItem[] = [
     children: [
       { title: "All Users", labelKey: "menuAllUsers", href: "/dashboard/customers", icon: User },
       { title: "Create Users", labelKey: "menuCreateUsers", href: "/dashboard/customers/create-customer", icon: UserPlus },
+      // Hidden from the sidebar (and not found on the page) unless the plan has customer_membership.
+      { title: "Memberships", labelKey: "menuMemberships", href: "/dashboard/memberships", icon: Crown, requiredFeature: "customer_membership" },
     ],
   },
   {

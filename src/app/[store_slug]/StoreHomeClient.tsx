@@ -293,7 +293,7 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
           right after the trust strip so browsing-by-category is the first
           choice a visitor makes, before any product listing.
       ══════════════════════════════════════════ */}
-      {categories.length > 0 && (
+      {categories.some((c) => c.is_active && c.show_in_store !== false) && (
         <section className="pt-6 sm:pt-10 pb-6 sm:pb-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <SectionHeader
@@ -303,7 +303,11 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
               ctaLabel={t.home.viewAll}
             />
 
-            <CategoryScrollRow categories={categories} store_slug={store_slug} />
+            {/* Inactive categories, and ones kept for the shop's own use (e.g. grouping products for member discounts), stay off the storefront. */}
+            <CategoryScrollRow
+              categories={categories.filter((c) => c.is_active && c.show_in_store !== false)}
+              store_slug={store_slug}
+            />
           </div>
         </section>
       )}

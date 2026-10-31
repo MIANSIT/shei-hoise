@@ -37,6 +37,8 @@ import type { DetailedCustomer } from "@/lib/types/users";
 import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import type { OrderWithItems } from "@/lib/queries/orders/getOrderByNumber";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums"; // ✅ ADDED: Import enums
+import { previewMemberDiscount } from "@/lib/queries/membership/memberDiscount";
+import type { MemberDiscountResult } from "@/lib/queries/membership/membershipTypes";
 import CustomerOrderHistoryTags from "@/app/components/admin/order/common/CustomerOrderHistoryTags";
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import dayjs, { Dayjs } from "dayjs";
@@ -98,6 +100,8 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
   const [subtotal, setSubtotal] = useState(0);
   const [taxAmount, setTaxAmount] = useState(0);
   const [discount, setDiscount] = useState(0);
+  // The membership of an order that already carries a member discount, and what it takes off the current items.
+  const [memberInfo, setMemberInfo] = useState<MemberDiscountResult | null>(null);
   const [additionalCharges, setAdditionalCharges] = useState(0);
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
@@ -402,7 +406,8 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
         // Set financial data - INCLUDING discount_amount AND additional_charges
         setSubtotal(Number(order.subtotal));
         setTaxAmount(Number(order.tax_amount));
-        setDiscount(Number(order.discount_amount || 0));
+        // The order's discount_amount holds the member's part too; the Discount box shows only the typed part.
+        setDiscount(Math.max(0, Number(order.discount_amount || 0) - Number(order.membership_discount || 0)));
         setAdditionalCharges(Number(order.additional_charges || 0));
         setDeliveryCost(Number(order.shipping_fee));
         setTotalAmount(Number(order.total_amount));
@@ -623,6 +628,43 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
     fetchCustomers,
   ]);
 
+  // Only an order that already carries a member discount keeps getting one when
+  // it is edited, so editing an old order never hands out a discount it never had.
+  // The amount is re-worked out for the current items on the server.
+  const memberStoreId = user?.store_id;
+  const memberCustomerId = customerInfo.customer_id || null;
+  const orderIsMemberOrder = !!originalOrder?.membership_id;
+  useEffect(() => {
+    if (!memberStoreId || !memberCustomerId || !orderIsMemberOrder) {
+      setMemberInfo(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await previewMemberDiscount(
+        memberStoreId,
+        memberCustomerId,
+        orderProducts.map((it) => ({ productId: it.product_id, quantity: it.quantity, unitPrice: it.unit_price })),
+      );
+      if (!cancelled) setMemberInfo(result.membership ? result : null);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [memberStoreId, memberCustomerId, orderIsMemberOrder, orderProducts]);
+
+  const subtotalNow = orderProducts.reduce((sum, item) => sum + item.total_price, 0);
+  let memberDiscount = 0;
+  if (orderIsMemberOrder) {
+    if (memberInfo?.membership) {
+      memberDiscount = Math.min(memberInfo.discount, subtotalNow);
+    } else if (Math.abs(subtotalNow - Number(originalOrder?.subtotal ?? 0)) < 0.01) {
+      // The membership has ended (or can't be read) but the items are unchanged: the saved discount stands.
+      memberDiscount = Number(originalOrder?.membership_discount ?? 0);
+    }
+  }
+
   // Calculate totals INCLUDING additional charges
   useEffect(() => {
     const newSubtotal = orderProducts.reduce(
@@ -633,10 +675,10 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
 
     // Calculate total amount with all components including additional charges
     const calculatedTotal =
-      newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
+      newSubtotal - discount - memberDiscount + additionalCharges + deliveryCost + taxAmount;
     setTotalAmount(calculatedTotal);
 
-  }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
+  }, [orderProducts, discount, memberDiscount, additionalCharges, deliveryCost, taxAmount]);
 
   const isFormValid =
     customerInfo.name &&
@@ -909,6 +951,14 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
                   courierOrderStatus={originalOrder?.courier_order_status}
                   shippingFees={shippingFees}
                   customerDeliveryOption={customerInfo.deliveryOption}
+                  memberDiscount={memberDiscount}
+                  memberLabel={
+                    memberInfo?.membership
+                      ? `${memberInfo.membership.number} · ${memberInfo.membership.planName}`
+                      : orderIsMemberOrder
+                        ? t.admin.mbMemberTag
+                        : null
+                  }
                 />
               </Col>
             </Row>
@@ -926,6 +976,7 @@ export default function EditOrder({ orderNumber, returnUrl }: EditOrderProps) {
                   subtotal={subtotal}
                   taxAmount={taxAmount}
                   discount={discount}
+                  memberDiscount={memberDiscount}
                   additionalCharges={additionalCharges}
                   deliveryCost={deliveryCost}
                   totalAmount={totalAmount}

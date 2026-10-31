@@ -24,7 +24,9 @@ export function useOrderProcess(store_slug: string) {
     calculations?: CartCalculations,
     taxAmount: number = 0,
     couponCode?: string,
-    discountAmount: number = 0
+    discountAmount: number = 0,
+    /** A membership number typed at checkout; only counts server-side when the phone number matches it. */
+    membershipNumber?: string
   ) => {
     setLoading(true);
     setError(null);
@@ -96,6 +98,7 @@ export function useOrderProcess(store_slug: string) {
         // customer saw on the checkout page's live coupon preview.
         discount: discountAmount,
         couponCode,
+        membershipNumber,
         additionalCharges: 0, // Default to 0 for customer orders
         deliveryCost: shippingFee,
         totalAmount: totalWithTax,

@@ -49,6 +49,7 @@ export default function AddCategoryCardForm({
     description: "",
     parent_id: null as any,
     is_active: true,
+    show_in_store: true,
   });
 
   const {
@@ -56,6 +57,7 @@ export default function AddCategoryCardForm({
   } = form;
   const nameValue = form.watch("name");
   const isActiveValue = form.watch("is_active");
+  const showInStoreValue = form.watch("show_in_store");
 
   // ── Populate form when editing ──────────────────────────────────
   useEffect(() => {
@@ -70,6 +72,7 @@ export default function AddCategoryCardForm({
           (editingCategory as any).parentId ??
           null,
         is_active: (editingCategory as any).is_active ?? true,
+        show_in_store: (editingCategory as any).show_in_store ?? true,
       });
     }
   }, [editingCategory, form]);
@@ -222,6 +225,38 @@ export default function AddCategoryCardForm({
               className={`inline-block h-4 w-4 transform rounded-full bg-white shadow
                           transition-transform duration-300
                           ${isActiveValue ? "translate-x-6" : "translate-x-1"}`}
+            />
+          </button>
+        </div>
+
+        {/* ── Show in store menu toggle ── */}
+        <div
+          className="flex items-center justify-between gap-3
+                        px-3 sm:px-4 py-2.5 sm:py-3
+                        rounded-xl border border-border
+                        bg-background"
+        >
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {t.admin.prodCatShowInMenu}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">{t.admin.prodCatShowInMenuHint}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showInStoreValue}
+            aria-label={t.admin.prodCatShowInMenu}
+            onClick={() => form.setValue("show_in_store", !showInStoreValue)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full
+                        transition-colors duration-300
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:ring-offset-1
+                        ${showInStoreValue ? "bg-emerald-500" : "bg-muted"}`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow
+                          transition-transform duration-300
+                          ${showInStoreValue ? "translate-x-6" : "translate-x-1"}`}
             />
           </button>
         </div>

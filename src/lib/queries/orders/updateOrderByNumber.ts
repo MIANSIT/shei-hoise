@@ -11,6 +11,8 @@ import {
   type OrderChange,
 } from "@/lib/permissions/server";
 import { adjustOrderLineStock, moveOrderStock } from "./orderStock";
+import { computeMemberDiscount } from "@/lib/queries/membership/memberDiscountCore";
+import { evaluateAutoMembership } from "@/lib/queries/membership/memberAutoAssign";
 
 export interface UpdateOrderByNumberData {
   orderId: string;
@@ -33,6 +35,8 @@ export interface UpdateOrderByNumberData {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  /** The part of `discount` that comes from the customer's membership; checked against the membership here. */
+  membershipDiscount?: number;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
@@ -111,6 +115,41 @@ export async function updateOrderByNumber(
       };
     }
 
+    // A member discount is re-worked out from the customer's membership and the
+    // order's items as saved here: what the screen sent can be at most what it is worth.
+    let memberDiscount = 0;
+    let membershipId: string | null = null;
+    if ((updateData.membershipDiscount ?? 0) > 0) {
+      const member = await computeMemberDiscount(
+        storeId,
+        customerInfo.customer_id,
+        orderProducts.map((p: any) => ({
+          productId: p.product_id,
+          quantity: Number(p.quantity),
+          unitPrice: Number(p.unit_price),
+        })),
+      );
+      // An order that already carries a member discount keeps it, as long as its items
+      // are unchanged, even if the membership has expired since the order was placed.
+      const keepsSavedDiscount =
+        !!existingOrder.membership_id &&
+        Math.abs(Number(subtotal) - Number(existingOrder.subtotal)) < 0.01 &&
+        (updateData.membershipDiscount ?? 0) <= Number(existingOrder.membership_discount ?? 0) + 0.01;
+      if (keepsSavedDiscount) {
+        memberDiscount = Math.min(updateData.membershipDiscount ?? 0, Number(discount) || 0);
+        membershipId = existingOrder.membership_id;
+      } else {
+        if (!member.membership || (updateData.membershipDiscount ?? 0) > member.discount + 0.01) {
+          return {
+            success: false,
+            error: "The member discount no longer matches this customer's membership. Reload the page and try again.",
+          };
+        }
+        memberDiscount = Math.min(updateData.membershipDiscount ?? 0, Number(discount) || 0);
+        membershipId = member.membership.id;
+      }
+    }
+
     const change: OrderChange = {
       fromStatus: existingOrder.status,
       branchId: existingOrder.branch_id ?? null,
@@ -118,7 +157,8 @@ export async function updateOrderByNumber(
       paymentStatusChanged: paymentStatus !== existingOrder.payment_status,
       toPaymentStatus: paymentStatus,
       otherFieldsChanged: true,
-      discount: Number(discount) || 0,
+      // Only the part the person chose to give is held to their discount limit.
+      discount: Math.max(0, (Number(discount) || 0) - memberDiscount),
       subtotal: Number(subtotal) || 0,
     };
     const denied = checkOrderChange(auth.actor, change);
@@ -209,6 +249,11 @@ export async function updateOrderByNumber(
       subtotal,
       tax_amount: taxAmount,
       discount_amount: discount,
+      // Written for a member order, and to clear it when an order that had one no
+      // longer qualifies; left out otherwise so other orders never touch the columns.
+      ...(membershipId || existingOrder.membership_id
+        ? { membership_id: membershipId, membership_discount: memberDiscount }
+        : {}),
       additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
       total_amount: totalAmount,
@@ -338,6 +383,9 @@ export async function updateOrderByNumber(
       ...change,
       fields: ["order details"],
     });
+
+    // The edit may have raised the customer's total shopping to a level's spend target.
+    await evaluateAutoMembership(storeId, customerInfo.customer_id);
 
     return {
       success: true,

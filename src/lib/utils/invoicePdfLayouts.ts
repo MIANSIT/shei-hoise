@@ -113,6 +113,7 @@ export function drawFullInvoice(
     ...addressLines,
     data.customer.contact ? `Phone: ${data.customer.contact}` : null,
     data.customer.email ? `Email: ${data.customer.email}` : null,
+    data.memberNumber ? `Member ID: ${data.memberNumber}` : null,
   ].filter(Boolean) as string[];
 
   customerInfo.forEach((info, index) => {
@@ -176,6 +177,7 @@ export function drawFullInvoice(
   const summaryData = [
     { label: "Subtotal", value: data.subtotal },
     { label: "Discount", value: -Math.abs(discountAmount) },
+    { label: "Member discount", value: -Math.abs(data.memberDiscount ?? 0) },
     { label: "Delivery Charge", value: data.deliveryCharge },
     { label: "Tax", value: data.taxAmount },
   ];
@@ -395,6 +397,14 @@ export function drawCompactInvoice(
     pdf.setTextColor(22, 163, 74);
     pdf.text("Discount", margin, y);
     pdf.text(`-${(data.discountAmount ?? 0).toFixed(2)}`, pageWidth - margin, y, { align: "right" });
+    pdf.setTextColor(0, 0, 0);
+    y += 4.2;
+  }
+
+  if ((data.memberDiscount ?? 0) > 0) {
+    pdf.setTextColor(22, 163, 74);
+    pdf.text("Member discount", margin, y);
+    pdf.text(`-${(data.memberDiscount ?? 0).toFixed(2)}`, pageWidth - margin, y, { align: "right" });
     pdf.setTextColor(0, 0, 0);
     y += 4.2;
   }

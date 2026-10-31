@@ -5,7 +5,7 @@ import Link from "next/link";
 import { m } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, User, ChevronRight, ChevronLeft, ChevronDown, Tag, X, CircleAlert, Clock } from "lucide-react";
+import { ShoppingBag, User, ChevronRight, ChevronLeft, ChevronDown, Tag, X, CircleAlert, Clock, Crown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import CartItemsList from "../../cart/CartItemList";
 import CheckoutForm from "./UserCheckoutForm";
@@ -45,6 +45,18 @@ interface UnifiedCheckoutLayoutProps {
   onRemoveCoupon?: () => void;
   appliedCoupon?: CouponValidationResult | null;
   couponValidating?: boolean;
+  /** The member discount verified for this shopper, whole taka. It replaces any coupon: only one applies. */
+  memberDiscount?: number;
+  /** "PAW-126-001 · Special", shown beside the applied member discount. */
+  memberLabel?: string | null;
+  /** The membership number being typed. The box is only offered when onApplyMember is given. */
+  memberNumber?: string;
+  onMemberNumberChange?: (value: string) => void;
+  onApplyMember?: () => void;
+  onRemoveMember?: () => void;
+  memberValidating?: boolean;
+  /** Why a typed number could not be applied. */
+  memberMessage?: string | null;
   onQuantityChange?: (
     productId: string,
     variantId: string | null,
@@ -81,12 +93,21 @@ export default function UnifiedCheckoutLayout({
   onRemoveCoupon,
   appliedCoupon,
   couponValidating = false,
+  memberDiscount = 0,
+  memberLabel = null,
+  memberNumber = "",
+  onMemberNumberChange,
+  onApplyMember,
+  onRemoveMember,
+  memberValidating = false,
+  memberMessage = null,
 }: UnifiedCheckoutLayoutProps) {
   const [activeSection, setActiveSection] = useState<"cart" | "customer">(
     "cart"
   );
   const [isClearing, setIsClearing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showMemberBox, setShowMemberBox] = useState(false);
 
   // Ticks once a minute — this is a courtesy heads-up, not a precise timer,
   // so second-level accuracy isn't worth the extra re-renders.
@@ -189,14 +210,17 @@ export default function UnifiedCheckoutLayout({
     (item) => item.product?.free_delivery === true
   );
 
+  // A member discount replaces any coupon: while one applies, the coupon takes nothing off.
+  const memberApplied = memberDiscount > 0;
   const couponDiscountAmount =
-    appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
+    !memberApplied && appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
 
   // Rounded to the nearest whole taka (x.5 and above rounds up) — must match
   // the total_amount createCustomerOrder stores.
   const totalWithShippingAndTax = Math.round(
     calculations.totalPrice -
-      couponDiscountAmount +
+      couponDiscountAmount -
+      memberDiscount +
       shippingFee +
       (taxAmount > 0 ? taxAmount : 0),
   );
@@ -400,7 +424,69 @@ export default function UnifiedCheckoutLayout({
 
               {cartItems.length > 0 && (
                 <div className='space-y-3 pt-4 border-t border-border'>
-                  {mode === "checkout" && onApplyCoupon && onCouponCodeChange && (
+                  {mode === "checkout" && onApplyMember && onMemberNumberChange && (
+                    <div className='pt-1'>
+                      {memberApplied ? (
+                        <div className='flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md px-3 py-2 text-sm'>
+                          <span className='flex items-center gap-1.5 text-amber-800 dark:text-amber-300 min-w-0'>
+                            <Crown className='h-3.5 w-3.5 shrink-0' />
+                            <span className='truncate'>
+                              {t.checkout.memberAppliedPrefix}
+                              {memberLabel ? ` (${memberLabel})` : ""}
+                            </span>
+                          </span>
+                          {memberNumber.trim() && onRemoveMember && (
+                            <button
+                              type='button'
+                              onClick={onRemoveMember}
+                              className='text-muted-foreground hover:text-foreground'
+                              aria-label={t.checkout.memberRemove}
+                            >
+                              <X className='h-4 w-4' />
+                            </button>
+                          )}
+                        </div>
+                      ) : showMemberBox ? (
+                        <div className='space-y-1.5'>
+                          <div className='flex gap-2'>
+                            <Input
+                              placeholder={t.checkout.memberPlaceholder}
+                              value={memberNumber}
+                              onChange={(e) => onMemberNumberChange(e.target.value)}
+                              disabled={memberValidating}
+                              className='h-9 text-sm'
+                              aria-label={t.checkout.memberPlaceholder}
+                            />
+                            <Button
+                              type='button'
+                              variant='outline'
+                              className='h-9 shrink-0'
+                              onClick={onApplyMember}
+                              disabled={memberValidating || !memberNumber.trim()}
+                            >
+                              {memberValidating ? t.checkout.memberApplying : t.checkout.memberApply}
+                            </Button>
+                          </div>
+                          {memberMessage && <p className='text-sm text-red-600'>{memberMessage}</p>}
+                        </div>
+                      ) : (
+                        <button
+                          type='button'
+                          onClick={() => setShowMemberBox(true)}
+                          className='flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground'
+                        >
+                          <Crown className='h-3.5 w-3.5' />
+                          {t.checkout.memberHave}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {mode === "checkout" && memberApplied && onApplyCoupon && (
+                    <p className='text-xs text-muted-foreground'>{t.checkout.memberCouponNote}</p>
+                  )}
+
+                  {mode === "checkout" && !memberApplied && onApplyCoupon && onCouponCodeChange && (
                     <div className='pt-1'>
                       {appliedCoupon?.valid ? (
                         <div className='flex items-center justify-between bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-md px-3 py-2 text-sm'>
@@ -542,6 +628,16 @@ export default function UnifiedCheckoutLayout({
                             <span>
                               -{displayCurrencyIconSafe}
                               {n(couponDiscountAmount.toFixed(2))}
+                            </span>
+                          </div>
+                        )}
+
+                        {memberApplied && (
+                          <div className='flex justify-between text-amber-700 dark:text-amber-400'>
+                            <span>{t.checkout.memberDiscountLabel}</span>
+                            <span>
+                              -{displayCurrencyIconSafe}
+                              {n(memberDiscount.toFixed(2))}
                             </span>
                           </div>
                         )}

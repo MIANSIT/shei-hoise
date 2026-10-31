@@ -182,7 +182,8 @@ CREATE TABLE IF NOT EXISTS "public"."categories" (
     "is_active" boolean DEFAULT true,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "store_id" "uuid"
+    "store_id" "uuid",
+    "show_in_store" boolean DEFAULT true NOT NULL
 );
 
 
@@ -381,6 +382,8 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "order_date" date DEFAULT CURRENT_DATE NOT NULL,
     "cod_settlement_id" uuid,
     "paid_at" timestamp with time zone,
+    "membership_id" uuid REFERENCES "public"."customer_memberships"("id") ON DELETE SET NULL,
+    "membership_discount" numeric(12,2) DEFAULT 0 NOT NULL,
     CONSTRAINT "orders_payment_status_check" CHECK ((("payment_status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('paid'::character varying)::"text", ('failed'::character varying)::"text", ('refunded'::character varying)::"text"]))),
     CONSTRAINT "orders_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('pending'::character varying)::"text", ('confirmed'::character varying)::"text", ('shipped'::character varying)::"text", ('delivered'::character varying)::"text", ('cancelled'::character varying)::"text", ('returned'::character varying)::"text"]))),
     CONSTRAINT "orders_fb_purchase_event_status_check" CHECK ((("fb_purchase_event_status")::"text" = ANY (ARRAY[('sent'::character varying)::"text", ('held'::character varying)::"text", ('suppressed'::character varying)::"text"])))
@@ -551,6 +554,64 @@ CREATE TABLE IF NOT EXISTS "public"."supplier_ledger" (
     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT "supplier_ledger_kind_check" CHECK ("kind" IN ('bill', 'payment')),
     CONSTRAINT "supplier_ledger_amount_check" CHECK ("amount" > 0)
+);
+
+-- Customer memberships (see migration 20261107000000). The store makes levels,
+-- gives a customer a level by hand and types the membership number itself.
+CREATE TABLE IF NOT EXISTS "public"."membership_plans" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "name" text NOT NULL,
+    "is_active" boolean DEFAULT true NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "min_spend" numeric(12,2) CHECK ("min_spend" IS NULL OR "min_spend" > 0),
+    "number_prefix" text,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."membership_plan_benefits" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "plan_id" uuid NOT NULL REFERENCES "public"."membership_plans"("id") ON DELETE CASCADE,
+    "label" text NOT NULL,
+    "discount_percent" numeric(5,2) NOT NULL,
+    "category_ids" uuid[] DEFAULT '{}' NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "membership_plan_benefits_percent_check" CHECK ("discount_percent" > 0 AND "discount_percent" <= 100)
+);
+
+-- Each store's membership card picture, where the name and number go on it, and
+-- the welcome email wording (see migration 20261111).
+CREATE TABLE IF NOT EXISTS "public"."membership_card_designs" (
+    "store_id" uuid NOT NULL PRIMARY KEY REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "blank_path" text,
+    "image_width" integer,
+    "image_height" integer,
+    "name_slot" jsonb,
+    "number_slot" jsonb,
+    "email_enabled" boolean DEFAULT true NOT NULL,
+    "email_brand" jsonb DEFAULT '{}'::jsonb NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "public"."customer_memberships" (
+    "id" uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    "store_id" uuid NOT NULL REFERENCES "public"."stores"("id") ON DELETE CASCADE,
+    "customer_id" uuid NOT NULL REFERENCES "public"."store_customers"("id") ON DELETE CASCADE,
+    "plan_id" uuid NOT NULL REFERENCES "public"."membership_plans"("id") ON DELETE RESTRICT,
+    "membership_number" text NOT NULL,
+    "starts_on" date NOT NULL,
+    "ends_on" date,
+    "notes" text,
+    "source" text DEFAULT 'manual' NOT NULL CHECK ("source" IN ('manual', 'auto')),
+    "welcome_email_to" text,
+    "welcome_email_sent_at" timestamp with time zone,
+    "welcome_email_error" text,
+    "assigned_by" uuid REFERENCES "public"."users"("id") ON DELETE SET NULL,
+    "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT "customer_memberships_dates_check" CHECK ("ends_on" IS NULL OR "ends_on" >= "starts_on")
 );
 
 CREATE TABLE IF NOT EXISTS "public"."branch_inventory" (

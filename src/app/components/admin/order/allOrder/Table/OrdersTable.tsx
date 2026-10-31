@@ -59,6 +59,7 @@ import CustomerOrderHistoryTags from "@/app/components/admin/order/common/Custom
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import ReceiptPreviewModal from "@/app/components/admin/order/quick-sale/ReceiptPreviewModal";
 import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
+import { getCustomerMemberNumber } from "@/lib/queries/membership/memberDiscount";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
 import { usePermissions } from "@/lib/context/PermissionsContext";
@@ -214,6 +215,22 @@ const OrdersTable: React.FC<Props> = ({
   const { storeData } = useInvoiceData({
     storeId: selectedOrderForInvoice?.store_id ?? receiptOrder?.store_id,
   });
+
+  // The customer's membership number, printed on the invoice when they are a member.
+  const [invoiceMemberNumber, setInvoiceMemberNumber] = useState<string | null>(null);
+  const invoiceStoreId = selectedOrderForInvoice?.store_id;
+  const invoiceCustomerId = selectedOrderForInvoice?.customer_id;
+  useEffect(() => {
+    setInvoiceMemberNumber(null);
+    if (!invoiceStoreId || !invoiceCustomerId) return;
+    let cancelled = false;
+    getCustomerMemberNumber(invoiceStoreId, invoiceCustomerId).then((number) => {
+      if (!cancelled) setInvoiceMemberNumber(number);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoiceStoreId, invoiceCustomerId]);
   // Stores with branches: invoices and receipts print the order's branch.
   const { enabled: branchesOn, branches, branchFileSuffix } = useBranches();
   const orderBranch = useCallback(
@@ -317,13 +334,17 @@ const OrdersTable: React.FC<Props> = ({
     if (!receiptOrder || !storeData || storeData.id !== receiptOrder.store_id) return;
     let cancelled = false;
     setReceiptBuilding(true);
-    buildReceiptPdfSetForOrder(
-      receiptOrder,
-      storeData,
-      paidAmountByOrderId[receiptOrder.id] ?? 0,
-      currencyIcon,
-      orderBranch(receiptOrder.branch_id),
-    )
+    getCustomerMemberNumber(receiptOrder.store_id, receiptOrder.customer_id)
+      .then((memberNumber) =>
+        buildReceiptPdfSetForOrder(
+          receiptOrder,
+          storeData,
+          paidAmountByOrderId[receiptOrder.id] ?? 0,
+          currencyIcon,
+          orderBranch(receiptOrder.branch_id),
+          memberNumber,
+        ),
+      )
       .then(({ combined, customerCopy, shopCopy }) => {
         if (cancelled) return;
         setReceiptPdfBlob(combined);
@@ -1366,7 +1387,13 @@ const OrdersTable: React.FC<Props> = ({
           subtotal={selectedOrderForInvoice.subtotal}
           deliveryCharge={selectedOrderForInvoice.shipping_fee}
           taxAmount={selectedOrderForInvoice.tax_amount}
-          discountAmount={selectedOrderForInvoice.discount_amount}
+          // discount_amount is the whole discount; the membership's part gets its own line.
+          discountAmount={Math.max(
+            0,
+            (selectedOrderForInvoice.discount_amount ?? 0) - (selectedOrderForInvoice.membership_discount ?? 0),
+          )}
+          memberDiscount={selectedOrderForInvoice.membership_discount ?? 0}
+          memberNumber={invoiceMemberNumber}
           // ✅ FIX 1: Convert number to AdditionalCharge array
           additionalCharges={
             selectedOrderForInvoice.additional_charges &&

@@ -24,6 +24,8 @@ export async function buildReceiptPdfSetForOrder(
   currencyIcon: string,
   /** Stores with branches: the order's branch, printed under the store name. */
   branch?: InvoiceBranch | null,
+  /** The customer's membership number when they are a member; printed under the order number. */
+  memberNumber?: string | null,
 ): Promise<ReceiptPdfSet> {
   const due =
     order.payment_status === "paid"
@@ -36,7 +38,14 @@ export async function buildReceiptPdfSetForOrder(
   const changeDue =
     cashReceived != null ? Math.max(0, cashReceived - order.total_amount) : null;
 
+  // A walk-in Quick Sale has no real name or phone ("Walk-in Customer" / "N/A"): print only what was entered.
+  const rawName = order.shipping_address?.customer_name || order.customers?.first_name || "";
+  const rawPhone = order.shipping_address?.phone || order.customers?.phone || "";
+  const customerName = rawName && rawName !== "Walk-in Customer" ? rawName : null;
+  const customerPhone = rawPhone && rawPhone !== "N/A" && rawPhone !== "No phone" ? rawPhone : null;
+
   return generateReceiptPdfSet({
+    customerBlock: { name: customerName, phone: customerPhone, memberNumber: memberNumber ?? null },
     storeName: storeData.store_name,
     branchLines: branchReceiptLines(branch),
     logoUrl: storeData.logo_url,
@@ -52,7 +61,9 @@ export async function buildReceiptPdfSetForOrder(
       amount: item.total_price,
     })),
     subtotal: order.subtotal,
-    discount: order.discount_amount ?? 0,
+    // discount_amount is the order's whole discount; the membership's part is shown on its own line.
+    discount: Math.max(0, (order.discount_amount ?? 0) - (order.membership_discount ?? 0)),
+    memberDiscount: order.membership_discount ?? 0,
     additionalCharges: order.additional_charges ?? 0,
     deliveryCharge: order.shipping_fee ?? 0,
     tax: order.tax_amount ?? 0,

@@ -4,6 +4,7 @@ import React from "react";
 import { Popconfirm, Tooltip } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { Category } from "@/lib/types/category";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 interface CategoryCardListProps {
   categories: Category[];
@@ -35,6 +36,16 @@ function ToggleSwitch({
                     ${checked ? "translate-x-4" : "translate-x-0.5"}`}
       />
     </button>
+  );
+}
+
+/** Marks an active category that customers can't browse (kept for the shop's own use). */
+function HiddenFromMenuBadge() {
+  const t = useTranslation();
+  return (
+    <span className="shrink-0 text-[10px] sm:text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400">
+      {t.admin.prodCatHiddenFromMenu}
+    </span>
   );
 }
 
@@ -83,6 +94,7 @@ const CategoryCard: React.FC<{
       >
         {category.is_active ? "Active" : "Inactive"}
       </span>
+      {category.is_active && category.show_in_store === false && <HiddenFromMenuBadge />}
     </div>
 
     {/* ── Description ── */}

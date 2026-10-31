@@ -83,6 +83,15 @@ export const PERMISSION_AREAS: readonly PermissionArea[] = [
     extras: [{ key: "collect_payment", label: "Collect due payment", labelBn: "বকেয়া আদায়" }],
   },
   {
+    key: "memberships",
+    label: "Memberships",
+    labelBn: "মেম্বারশিপ",
+    hint: "Membership levels and the customers who hold them (only with memberships in your plan)",
+    hintBn: "মেম্বারশিপ লেভেল ও যাদের মেম্বারশিপ আছে (প্ল্যানে মেম্বারশিপ থাকলে)",
+    actions: ["view", "add", "edit", "delete"],
+    extras: [],
+  },
+  {
     key: "courier",
     label: "Courier shipments",
     labelBn: "কুরিয়ার শিপমেন্ট",
@@ -241,7 +250,7 @@ export const PERMISSION_SECTIONS: readonly PermissionSection[] = [
     key: "selling",
     label: "Selling",
     labelBn: "বিক্রি",
-    areas: ["orders", "pos", "register", "customers", "courier"],
+    areas: ["orders", "pos", "register", "customers", "memberships", "courier"],
   },
   {
     key: "catalog",

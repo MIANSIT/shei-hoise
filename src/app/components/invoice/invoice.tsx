@@ -193,6 +193,10 @@ interface InvoiceModalProps {
   deliveryCharge: number;
   taxAmount: number;
   discountAmount?: number;
+  /** What the customer's membership took off (not part of discountAmount) — shown on its own line when > 0. */
+  memberDiscount?: number;
+  /** The customer's membership number, shown under their details when they are a member. */
+  memberNumber?: string | null;
   additionalCharges?: AdditionalCharge[];
   totalDue: number;
   /** Sum of any customer_payments recorded against this order (advance/partial payment) — omit or 0 for a normal, untouched order. */
@@ -225,6 +229,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
     deliveryCharge,
     taxAmount,
     discountAmount = 0,
+    memberDiscount = 0,
+    memberNumber = null,
     additionalCharges = [],
     totalDue,
     amountPaid = 0,
@@ -338,6 +344,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
             <div>
               ${customer.contact ? `<p>📞 ${customer.contact}</p>` : ""}
               ${customer.email ? `<p>✉️ ${customer.email}</p>` : ""}
+              ${memberNumber ? `<p><strong>Member ID:</strong> ${memberNumber}</p>` : ""}
             </div>
           </div>
         </div>
@@ -376,6 +383,14 @@ export default function InvoiceModal(props: InvoiceModalProps) {
               ? `<div class="summary-row discount">
             <span>Discount:</span>
             <span>-${currencyIcon}${discountAmount.toFixed(2)}</span>
+          </div>`
+              : ""
+          }
+          ${
+            memberDiscount > 0
+              ? `<div class="summary-row discount">
+            <span>Member discount:</span>
+            <span>-${currencyIcon}${memberDiscount.toFixed(2)}</span>
           </div>`
               : ""
           }
@@ -556,6 +571,8 @@ export default function InvoiceModal(props: InvoiceModalProps) {
           deliveryCharge,
           taxAmount,
           discountAmount,
+          memberDiscount,
+          memberNumber,
           additionalCharges,
           totalDue,
           paymentStatus,
@@ -734,6 +751,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
     <div style="margin-bottom:2px"><span class="bold">Customer: </span>${customer.name}</div>
     ${customer.contact ? `<div class="small">Phone: ${customer.contact}</div>` : ""}
+    ${memberNumber ? `<div class="small">Member ID: ${memberNumber}</div>` : ""}
     ${customer.address ? `<div class="small">Address: ${customer.address}</div>` : ""}
 
     <div class="divider-double"></div>
@@ -754,6 +772,7 @@ export default function InvoiceModal(props: InvoiceModalProps) {
 
     <div class="row"><span>Subtotal:</span><span>${displayCurrency}${subtotal.toFixed(2)}</span></div>
     ${discountAmount > 0 ? `<div class="row"><span>Discount:</span><span>-${displayCurrency}${discountAmount.toFixed(2)}</span></div>` : ""}
+    ${memberDiscount > 0 ? `<div class="row"><span>Member discount:</span><span>-${displayCurrency}${memberDiscount.toFixed(2)}</span></div>` : ""}
     ${deliveryCharge > 0 ? `<div class="row"><span>Delivery:</span><span>${displayCurrency}${deliveryCharge.toFixed(2)}</span></div>` : ""}
     ${taxAmount > 0 ? `<div class="row"><span>Tax:</span><span>${displayCurrency}${taxAmount.toFixed(2)}</span></div>` : ""}
     ${additionalChargesRows}
@@ -974,6 +993,11 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                           {customer.email}
                         </p>
                       )}
+                      {memberNumber && (
+                        <p className="text-xs sm:text-sm font-medium text-amber-700 dark:text-amber-400">
+                          Member ID: {memberNumber}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1063,6 +1087,16 @@ export default function InvoiceModal(props: InvoiceModalProps) {
                           <span className="font-mono">
                             −{currencyIcon}
                             {discountAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {memberDiscount > 0 && (
+                        <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400">
+                          <span>Member discount</span>
+                          <span className="font-mono">
+                            −{currencyIcon}
+                            {memberDiscount.toFixed(2)}
                           </span>
                         </div>
                       )}

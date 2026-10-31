@@ -8,6 +8,7 @@ import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import ExportUpsell from "@/app/components/admin/common/ExportUpsell";
 import { buildInvoiceRequestData } from "@/lib/utils/buildInvoiceRequestData";
+import { getMemberNumbersForCustomers } from "@/lib/queries/membership/memberDiscount";
 import { LockOutlined } from "@ant-design/icons";
 import { useBranches } from "@/lib/context/BranchContext";
 import { invoiceStoreFor } from "@/lib/utils/invoiceStore";
@@ -105,6 +106,11 @@ const BulkInvoiceAction: React.FC<Props> = ({
 
     setDownloading(true);
     try {
+      // Members get their membership number printed on the invoice.
+      const memberNumbers = await getMemberNumbersForCustomers(
+        storeData.id,
+        selectedOrders.map((order) => order.customer_id ?? ""),
+      );
       const invoices = selectedOrders.map((order) => {
         const data = buildInvoiceRequestData(
           order,
@@ -112,6 +118,7 @@ const BulkInvoiceAction: React.FC<Props> = ({
           getCustomerPhone(order),
           getFullAddress(order),
           paidAmountByOrderId[order.id],
+          order.customer_id ? (memberNumbers[order.customer_id] ?? null) : null,
         );
         const branch = branchesOn ? branches.find((b) => b.id === order.branch_id) : undefined;
         return branch ? { ...data, store: invoiceStoreFor(storeData, branch) } : data;

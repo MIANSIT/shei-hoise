@@ -11,10 +11,15 @@ export const createCategorySchema = z.object({
     .nullable()
     .optional(),
   is_active: z.boolean().default(true),
+  /** Shown as a browsable category on the storefront (shop filter, home page). Off = kept for the shop's own use. */
+  show_in_store: z.boolean().default(true),
 });
 
 export const updateCategorySchema = createCategorySchema.extend({
   id: z.string().uuid(),
+  // No default on an update: a caller that doesn't send it (like the Active
+  // switch on the list) must leave the saved choice alone.
+  show_in_store: z.boolean().optional(),
 });
 
 export type CreateCategoryType = z.infer<typeof createCategorySchema>;

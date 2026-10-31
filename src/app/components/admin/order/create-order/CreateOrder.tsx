@@ -45,6 +45,8 @@ import type { ShippingFee, DeliveryCourier } from "@/lib/types/store/store";
 import { getAllStoreCustomers } from "@/lib/queries/customers/getAllStoreCustomers";
 import { DetailedCustomer } from "@/lib/types/users";
 import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { getCustomerMembership, previewMemberDiscount } from "@/lib/queries/membership/memberDiscount";
+import type { CustomerMembershipSummary, MemberDiscountResult } from "@/lib/queries/membership/membershipTypes";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useCreateOrderDraftStore } from "@/lib/store/orderDraftStore";
@@ -90,6 +92,10 @@ export default function CreateOrder() {
   const [additionalCharges, setAdditionalCharges] = useState(0);
   const [deliveryCost, setDeliveryCost] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
+  // The chosen customer's membership and what it takes off this order (null = not a member).
+  const [memberInfo, setMemberInfo] = useState<MemberDiscountResult | null>(null);
+  // The chosen customer's membership for the details panel (shown even when it has expired).
+  const [customerMembership, setCustomerMembership] = useState<CustomerMembershipSummary | null>(null);
 
   const [status, setStatus] = useState<OrderStatus>(OrderStatus.PENDING);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
@@ -448,6 +454,45 @@ export default function CreateOrder() {
     }
   }, [customerInfo.deliveryOption, shippingFees]);
 
+  // The member discount for the chosen existing customer, worked out on the
+  // server and refreshed as the products change. The order checks it again when saved.
+  const memberStoreId = user?.store_id;
+  const memberCustomerId = customerInfo.customer_id ?? null;
+  useEffect(() => {
+    if (!memberStoreId || !memberCustomerId) {
+      setMemberInfo(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await previewMemberDiscount(
+        memberStoreId,
+        memberCustomerId,
+        orderProducts.map((it) => ({ productId: it.product_id, quantity: it.quantity, unitPrice: it.unit_price })),
+      );
+      if (!cancelled) setMemberInfo(result.membership ? result : null);
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [memberStoreId, memberCustomerId, orderProducts]);
+
+  useEffect(() => {
+    setCustomerMembership(null);
+    if (!memberStoreId || !memberCustomerId) return;
+    let cancelled = false;
+    getCustomerMembership(memberStoreId, memberCustomerId).then((membership) => {
+      if (!cancelled) setCustomerMembership(membership);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberStoreId, memberCustomerId]);
+
+  const subtotalNow = orderProducts.reduce((sum, item) => sum + item.total_price, 0);
+  const memberDiscount = Math.min(memberInfo?.discount ?? 0, subtotalNow);
+
   // Calculate totals including additional charges
   useEffect(() => {
     const newSubtotal = orderProducts.reduce(
@@ -458,9 +503,9 @@ export default function CreateOrder() {
 
     // Calculate total amount with all components
     const calculatedTotal =
-      newSubtotal - discount + additionalCharges + deliveryCost + taxAmount;
+      newSubtotal - discount - memberDiscount + additionalCharges + deliveryCost + taxAmount;
     setTotalAmount(calculatedTotal);
-  }, [orderProducts, discount, additionalCharges, deliveryCost, taxAmount]);
+  }, [orderProducts, discount, memberDiscount, additionalCharges, deliveryCost, taxAmount]);
 
   // Handle customer selection
   const handleCustomerSelect = async (customerId: string) => {
@@ -716,6 +761,17 @@ export default function CreateOrder() {
                     <Descriptions.Item label={t.admin.createOrderFieldOrderCount}>
                       <Text>{n(selectedCustomer.order_count || 0)} {t.admin.createOrderFieldOrders}</Text>
                     </Descriptions.Item>
+                    {customerMembership && (
+                      <Descriptions.Item label={t.admin.mbMemberTag}>
+                        <Space wrap>
+                          <Text strong>{customerMembership.number}</Text>
+                          <Text type="secondary">· {customerMembership.planName}</Text>
+                          <Tag color={customerMembership.status === "active" ? "gold" : "default"}>
+                            {customerMembership.status === "active" ? t.admin.mbStatusActive : t.admin.mbStatusExpired}
+                          </Tag>
+                        </Space>
+                      </Descriptions.Item>
+                    )}
                     {customerProfile?.address && (
                       <Descriptions.Item label={t.admin.createOrderFieldAddress}>
                         <Space>
@@ -944,6 +1000,8 @@ export default function CreateOrder() {
                   courierTrackingAllowed={courierTrackingAllowed}
                   shippingFees={shippingFees}
                   customerDeliveryOption={customerInfo.deliveryOption}
+                  memberDiscount={memberDiscount}
+                  memberLabel={memberInfo?.membership ? `${memberInfo.membership.number} · ${memberInfo.membership.planName}` : null}
                 />
               </Col>
             </Row>
@@ -960,6 +1018,7 @@ export default function CreateOrder() {
                   subtotal={subtotal}
                   taxAmount={taxAmount}
                   discount={discount}
+                  memberDiscount={memberDiscount}
                   additionalCharges={additionalCharges}
                   deliveryCost={deliveryCost}
                   totalAmount={totalAmount}

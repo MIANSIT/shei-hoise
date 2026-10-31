@@ -84,6 +84,10 @@ interface OrderSummaryProps {
   shippingFees?: ShippingFee[];
   customerDeliveryOption?: string;
   dirtyFields?: OrderSummaryDirtyFields;
+  /** What the customer's membership takes off this order, already counted in totalAmount (shown on its own line). */
+  memberDiscount?: number;
+  /** "PAW-126-001 · Special", shown beside the member discount. */
+  memberLabel?: string | null;
 }
 
 export default function OrderSummary({
@@ -121,6 +125,8 @@ export default function OrderSummary({
   shippingFees = [],
   customerDeliveryOption,
   dirtyFields = {},
+  memberDiscount = 0,
+  memberLabel = null,
 }: OrderSummaryProps) {
   const t = useTranslation();
   const n = useLocalNum();
@@ -395,6 +401,22 @@ export default function OrderSummary({
                 </Form.Item>
               </Col>
             </Row>
+
+            {memberDiscount > 0 && memberLabel && (
+              <Row gutter={16}>
+                <Col span={24}>
+                  <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-3 py-2 text-sm dark:bg-amber-500/10">
+                    <Text>
+                      {t.admin.mbMemberDiscount} ({memberLabel})
+                    </Text>
+                    <Text strong type="success">
+                      −{displayCurrencyIcon}
+                      {n(memberDiscount.toFixed(2))}
+                    </Text>
+                  </div>
+                </Col>
+              </Row>
+            )}
 
             <Row gutter={16}>
               <Col span={24}>

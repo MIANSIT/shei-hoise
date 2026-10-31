@@ -11,7 +11,9 @@ export async function getCategoriesQuery(
 ) {
   let query = supabase
     .from("categories")
-    .select("id,name,slug,description,parent_id,image_url,is_active,created_at", {
+    // "*" (not a column list) so a database that has not got show_in_store yet
+    // still loads every category screen and the whole storefront.
+    .select("*", {
       count: "exact",
     })
     .eq("store_id", storeId)

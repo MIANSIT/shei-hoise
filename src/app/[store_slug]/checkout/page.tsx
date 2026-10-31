@@ -32,6 +32,11 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
 import { getAutoApplyCoupons } from "@/lib/queries/coupons/getAutoApplyCoupons";
 import type { CouponValidationResult } from "@/lib/types/coupon";
+import {
+  isMembershipEnabled,
+  previewStorefrontMemberDiscount,
+  type StorefrontMemberPreview,
+} from "@/lib/queries/membership/memberStorefront";
 
 export default function CheckoutPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -47,6 +52,16 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
   const [couponValidating, setCouponValidating] = useState(false);
+  // Member discount: for a signed-in member it applies on its own; anyone else types a
+  // membership number, which only counts when it matches the phone number given below.
+  // It replaces any coupon (only one applies).
+  const [memberNumber, setMemberNumber] = useState("");
+  const [appliedMemberNumber, setAppliedMemberNumber] = useState("");
+  const [memberPreview, setMemberPreview] = useState<StorefrontMemberPreview | null>(null);
+  const [memberValidating, setMemberValidating] = useState(false);
+  const [memberMessage, setMemberMessage] = useState<string | null>(null);
+  // Only stores whose plan includes memberships offer the box; everyone else's checkout is unchanged.
+  const [membershipEnabled, setMembershipEnabled] = useState(false);
   const { currency, loading: currencyLoading } = useUserCurrencyIcon();
   const params = useParams();
   const router = useRouter();
@@ -328,6 +343,100 @@ export default function CheckoutPage() {
     setAppliedCoupon(null);
   }, []);
 
+  // Member discount. Like the coupon, this is only a live preview: createCustomerOrder
+  // works the discount out again on the server before the order is saved.
+  const memberDiscount = memberPreview?.applied ? memberPreview.discount : 0;
+  const cartSignature = cartItems
+    .map((i) => `${i.productId}:${i.variantId ?? ""}:${i.quantity}:${i.displayPrice}`)
+    .join("|");
+  const memberStoreId = useRef<string | null>(null);
+
+  const previewMember = useCallback(
+    async (number: string) => {
+      if (!memberStoreId.current) memberStoreId.current = await getStoreIdBySlug(store_slug);
+      if (!memberStoreId.current) return null;
+      return previewStorefrontMemberDiscount(memberStoreId.current, {
+        membershipNumber: number || undefined,
+        phone: leadPhone || undefined,
+        lines: cartItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.displayPrice })),
+      });
+    },
+    // cartItems is read through cartSignature, so a quantity or price change refreshes the preview.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store_slug, leadPhone, cartSignature],
+  );
+
+  // A signed-in member is recognised without typing anything; a typed number is re-checked
+  // whenever the cart or the phone number changes.
+  useEffect(() => {
+    if (!isMounted || cartLoading || cartItems.length === 0) return;
+    if (!membershipEnabled || (!isUserLoggedIn && !appliedMemberNumber)) {
+      setMemberPreview(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const result = await previewMember(appliedMemberNumber);
+      if (cancelled || !result) return;
+      setMemberPreview(result.applied ? result : null);
+      if (result.applied) {
+        couponTouchedByUser.current = true;
+        setCouponCode("");
+        setAppliedCoupon(null);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isMounted, cartLoading, cartItems.length, isUserLoggedIn, appliedMemberNumber, membershipEnabled, previewMember]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const storeId = memberStoreId.current ?? (await getStoreIdBySlug(store_slug));
+      if (!storeId) return;
+      memberStoreId.current = storeId;
+      const enabled = await isMembershipEnabled(storeId);
+      if (!cancelled) setMembershipEnabled(enabled);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [store_slug]);
+
+  const handleApplyMember = useCallback(async () => {
+    const number = memberNumber.trim();
+    if (!number) return;
+    if (!/^(?:880|0)1\d{9}$/.test(leadPhone.replace(/\D/g, ""))) {
+      setMemberMessage(t.checkout.memberNeedPhone);
+      return;
+    }
+    setMemberValidating(true);
+    setMemberMessage(null);
+    try {
+      const result = await previewMember(number);
+      if (result?.applied) {
+        setAppliedMemberNumber(number);
+        setMemberPreview(result);
+        couponTouchedByUser.current = true;
+        setCouponCode("");
+        setAppliedCoupon(null);
+      } else {
+        setMemberMessage(t.checkout.memberNotApplied);
+      }
+    } finally {
+      setMemberValidating(false);
+    }
+  }, [memberNumber, leadPhone, previewMember, t]);
+
+  const handleRemoveMember = useCallback(() => {
+    setAppliedMemberNumber("");
+    setMemberNumber("");
+    setMemberPreview(null);
+    setMemberMessage(null);
+  }, []);
+
   // Create temp order data for invoice
   const createTempOrderData = useCallback(
     (
@@ -381,7 +490,8 @@ export default function CheckoutPage() {
         country: values.country,
       };
 
-      const discountAmount = appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
+      // A member discount replaces the coupon.
+      const discountAmount = memberDiscount > 0 ? memberDiscount : appliedCoupon?.valid ? appliedCoupon.discountAmount : 0;
       const totalWithTax = Math.round(
         calculations.totalPrice - discountAmount + shippingFee + taxAmount,
       );
@@ -398,7 +508,7 @@ export default function CheckoutPage() {
         subtotal: calculations.subtotal,
         tax_amount: taxAmount > 0 ? taxAmount : 0,
         discount_amount: discountAmount,
-        coupon_code: appliedCoupon?.valid ? couponCode.toUpperCase() : null,
+        coupon_code: memberDiscount > 0 ? null : appliedCoupon?.valid ? couponCode.toUpperCase() : null,
         shipping_fee: shippingFee,
         total_amount: totalWithTax,
         currency: displayCurrencyIconSafe,
@@ -449,6 +559,7 @@ export default function CheckoutPage() {
       selectedShipping,
       appliedCoupon,
       couponCode,
+      memberDiscount,
     ],
   );
 
@@ -604,8 +715,9 @@ export default function CheckoutPage() {
           cartItems,
           calculations,
           taxAmount,
-          appliedCoupon?.valid ? couponCode : undefined,
-          appliedCoupon?.valid ? appliedCoupon.discountAmount : 0,
+          memberDiscount > 0 ? undefined : appliedCoupon?.valid ? couponCode : undefined,
+          memberDiscount > 0 ? memberDiscount : appliedCoupon?.valid ? appliedCoupon.discountAmount : 0,
+          appliedMemberNumber || undefined,
         );
 
         if (!result.success) {
@@ -695,6 +807,8 @@ export default function CheckoutPage() {
       t,
       appliedCoupon,
       couponCode,
+      memberDiscount,
+      appliedMemberNumber,
     ],
   );
 
@@ -785,6 +899,14 @@ export default function CheckoutPage() {
         onRemoveCoupon={handleRemoveCoupon}
         appliedCoupon={appliedCoupon}
         couponValidating={couponValidating}
+        memberDiscount={memberDiscount}
+        memberLabel={memberPreview?.applied ? `${memberPreview.memberNumber} · ${memberPreview.planName}` : null}
+        memberNumber={memberNumber}
+        onMemberNumberChange={membershipEnabled ? setMemberNumber : undefined}
+        onApplyMember={membershipEnabled ? handleApplyMember : undefined}
+        onRemoveMember={handleRemoveMember}
+        memberValidating={memberValidating}
+        memberMessage={memberMessage}
       />
 
       <AnimatePresence>

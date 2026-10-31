@@ -8,6 +8,9 @@ import { explodeBundleOrderProducts } from "./bundleExplosion";
 import { bundleItemKey } from "./bundleItemKey";
 import { validateCoupon } from "@/lib/queries/coupons/validateCoupon";
 import { redeemCoupon } from "@/lib/queries/coupons/redeemCoupon";
+import { computeMemberDiscount } from "@/lib/queries/membership/memberDiscountCore";
+import { evaluateAutoMembership } from "@/lib/queries/membership/memberAutoAssign";
+import { resolveStorefrontMemberId } from "@/lib/queries/membership/memberStorefrontCore";
 import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
 import { branchColumns, moveOrderStock, pickOrderBranch } from "./orderStock";
 import {
@@ -49,6 +52,13 @@ export interface CreateOrderData {
    * for Quick Sale). Omitted = pick the best branch automatically.
    */
   branchId?: string | null;
+  /**
+   * The part of `discount` that comes from the customer's membership. Checked
+   * here against the customer's own membership (see computeMemberDiscount), so
+   * a caller can't claim more than it is worth, and kept out of the role's
+   * discount limit since it is not the cashier's own to give.
+   */
+  membershipDiscount?: number;
 }
 
 export interface CreateOrderResult {
@@ -215,11 +225,30 @@ export async function createOrder(
     // within their role's discount limit.
     const auth = await authorizeForStore(storeId, channel === "pos" ? "pos.add" : "orders.add");
     if (!auth.ok) throw new Error(auth.error);
-    if (discount > 0) {
+    // A member discount is re-worked out from the customer's membership: the
+    // amount the screen sent can be at most what it is really worth.
+    let memberDiscount = 0;
+    let membershipId: string | null = null;
+    if ((orderData.membershipDiscount ?? 0) > 0) {
+      const member = await computeMemberDiscount(
+        storeId,
+        customerInfo.customer_id,
+        orderProducts.map((p) => ({ productId: p.product_id, quantity: p.quantity, unitPrice: p.unit_price })),
+      );
+      if (!member.membership || (orderData.membershipDiscount ?? 0) > member.discount + 0.01) {
+        throw new Error("The member discount no longer matches this customer's membership. Reload the page and try again.");
+      }
+      memberDiscount = Math.min(orderData.membershipDiscount ?? 0, discount);
+      membershipId = member.membership.id;
+    }
+
+    // Only the part the cashier chose to give is held to their discount permission and limit.
+    const manualDiscount = Math.max(0, discount - memberDiscount);
+    if (manualDiscount > 0) {
       if (channel === "pos" && !can(auth.actor, "pos.discount")) {
         throw new Error(permissionDeniedMessage("pos.discount"));
       }
-      const discountDenied = checkDiscountLimit(auth.actor, discount, subtotal);
+      const discountDenied = checkDiscountLimit(auth.actor, manualDiscount, subtotal);
       if (discountDenied) throw new Error(discountDenied);
     }
 
@@ -281,6 +310,9 @@ export async function createOrder(
       channel,
       cash_received: cashReceived ?? null,
       ...(orderDate ? { order_date: orderDate } : {}),
+      // Only written for a member order, so every other order is untouched
+      // even before the 20261108 migration has been applied.
+      ...(membershipId ? { membership_id: membershipId, membership_discount: memberDiscount } : {}),
       ...branchColumns(placement),
     };
 
@@ -425,6 +457,9 @@ export async function createOrder(
       }`,
     });
 
+    // A customer whose total shopping has now reached a level's spend target gets that membership.
+    await evaluateAutoMembership(storeId, customerInfo.customer_id);
+
     return {
       success: true,
       orderId: order.id,
@@ -454,6 +489,7 @@ export async function createCustomerOrder(
       subtotal: _clientSubtotal,
       taxAmount,
       couponCode,
+      membershipNumber,
       additionalCharges,
       deliveryCost,
       status = "pending",
@@ -550,7 +586,36 @@ export async function createCustomerOrder(
     // can't be satisfied by an inflated client-submitted subtotal.
     let finalDiscount = 0;
     let redeemedCoupon: { id: string; code: string } | null = null;
-    if (couponCode) {
+
+    // A verified member's own discount comes first: it REPLACES any coupon (the two
+    // never combine). The shopper counts as a member only when signed in, or when
+    // the membership number they typed matches the phone number they gave — a
+    // phone number on its own proves nothing. Worked out here from the server-side
+    // prices above, never taken from the client.
+    let memberDiscount = 0;
+    let membershipId: string | null = null;
+    const memberCustomerId = await resolveStorefrontMemberId(storeId, {
+      membershipNumber,
+      phone: customerInfo.phone,
+    });
+    if (memberCustomerId) {
+      const member = await computeMemberDiscount(
+        storeId,
+        memberCustomerId,
+        (orderProducts as OrderProduct[]).map((p) => ({
+          productId: p.product_id,
+          quantity: p.quantity,
+          unitPrice: p.unit_price,
+        })),
+      );
+      if (member.membership && member.discount > 0) {
+        memberDiscount = Math.min(member.discount, subtotal);
+        membershipId = member.membership.id;
+        finalDiscount = memberDiscount;
+      }
+    }
+
+    if (couponCode && !membershipId) {
       const validation = await validateCoupon(
         couponCode,
         storeId,
@@ -628,6 +693,9 @@ export async function createCustomerOrder(
       discount_amount: finalDiscount,
       coupon_id: redeemedCoupon?.id ?? null,
       coupon_code: redeemedCoupon?.code ?? null,
+      // Only written for a member order, so every other order is untouched even
+      // before the 20261108 migration has been applied.
+      ...(membershipId ? { membership_id: membershipId, membership_discount: memberDiscount } : {}),
       additional_charges: additionalCharges,
       shipping_fee: deliveryCost,
       // Discount is never client-trusted (see coupon re-check above), so the
@@ -800,6 +868,9 @@ export async function createCustomerOrder(
         );
       }
     }
+
+    // A customer whose total shopping has now reached a level's spend target gets that membership.
+    await evaluateAutoMembership(storeId, customerInfo.customer_id);
 
     return {
       success: true,

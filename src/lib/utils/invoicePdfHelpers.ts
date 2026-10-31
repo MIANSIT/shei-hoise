@@ -42,6 +42,10 @@ export interface InvoicePdfData {
   deliveryCharge: number;
   taxAmount: number;
   discountAmount?: number;
+  /** What the customer's membership took off (not part of discountAmount). */
+  memberDiscount?: number;
+  /** The customer's membership number, printed under their details when they are a member. */
+  memberNumber?: string | null;
   additionalCharges?: InvoicePdfAdditionalCharge[];
   totalDue: number;
   /** Sum of any customer_payments recorded against this order (advance/partial payment). */

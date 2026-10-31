@@ -155,7 +155,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: categories, error: categoriesError } = await supabase
     .from("categories")
     .select("slug, created_at, stores!inner(store_slug, is_active, status)")
-    .eq("is_active", true);
+    .eq("is_active", true)
+    // Categories kept for the shop's own use are not browsable pages worth indexing.
+    .neq("show_in_store", false);
 
   if (categoriesError) {
     console.error("[sitemap] Failed to fetch categories:", categoriesError.message);

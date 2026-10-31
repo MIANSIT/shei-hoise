@@ -26,6 +26,10 @@ interface InvoiceRequest {
   deliveryCharge: number;
   taxAmount: number;
   discountAmount?: number;
+  /** What the customer's membership took off (not part of discountAmount). */
+  memberDiscount?: number;
+  /** The customer's membership number, printed under their details when they are a member. */
+  memberNumber?: string | null;
   additionalCharges?: AdditionalCharge[];
   totalDue: number;
   paymentStatus?: string;
@@ -74,6 +78,8 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     deliveryCharge,
     taxAmount,
     discountAmount = 0,
+    memberDiscount = 0,
+    memberNumber = null,
     additionalCharges = [],
     totalDue,
     paymentStatus = "Pending",
@@ -193,6 +199,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     customer.address,
     customer.contact ? `Phone: ${customer.contact}` : null,
     customer.email ? `Email: ${customer.email}` : null,
+    memberNumber ? `Member ID: ${memberNumber}` : null,
   ].filter(Boolean) as string[];
 
   customerInfo.forEach((info, index) => {
@@ -257,6 +264,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   const summaryData = [
     { label: "Subtotal", value: subtotal },
     { label: "Discount", value: -Math.abs(discountAmount) },
+    { label: "Member discount", value: -Math.abs(memberDiscount) },
     { label: "Delivery Charge", value: deliveryCharge },
     { label: "Tax", value: taxAmount },
   ];
@@ -421,6 +429,7 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
     deliveryCharge,
     taxAmount,
     discountAmount = 0,
+    memberDiscount = 0,
     additionalCharges = [],
     totalDue,
     paymentStatus = "Pending",
@@ -622,6 +631,14 @@ async function generatePOSPDF(body: Omit<InvoiceRequest, "type">) {
   if (discountAmount > 0) {
     pdf.text("Discount:", summaryLabelX, y);
     pdf.text(`-${discountAmount.toFixed(2)}`, summaryValueX, y, {
+      align: "right",
+    });
+    y += 4;
+  }
+
+  if (memberDiscount > 0) {
+    pdf.text("Member disc.:", summaryLabelX, y);
+    pdf.text(`-${memberDiscount.toFixed(2)}`, summaryValueX, y, {
       align: "right",
     });
     y += 4;

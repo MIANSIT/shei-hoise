@@ -22,6 +22,8 @@ interface SaveOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  /** What the customer's membership takes off, on top of `discount`; the server checks it against the membership. */
+  memberDiscount?: number;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
@@ -47,6 +49,7 @@ export default function SaveOrderButton({
   subtotal,
   taxAmount,
   discount,
+  memberDiscount = 0,
   additionalCharges,
   deliveryCost,
   totalAmount,
@@ -108,7 +111,7 @@ export default function SaveOrderButton({
           </Text>
           <Text type="secondary">
             {t.admin.saveOrderConfirmDiscount} {displayCurrencyIconSafe}
-            {n(discount.toFixed(2))}
+            {n((discount + memberDiscount).toFixed(2))}
           </Text>
           <Text type="secondary">
             {t.admin.saveOrderConfirmAdditional} {displayCurrencyIconSafe}
@@ -228,7 +231,9 @@ export default function SaveOrderButton({
         orderProducts,
         subtotal,
         taxAmount,
-        discount,
+        // The order's whole discount: what was typed plus the member discount.
+        discount: discount + memberDiscount,
+        ...(memberDiscount > 0 ? { membershipDiscount: memberDiscount } : {}),
         additionalCharges,
         deliveryCost,
         totalAmount,
@@ -281,7 +286,7 @@ export default function SaveOrderButton({
             customerInfo: finalCustomerInfo,
             orderProducts,
             subtotal,
-            discount,
+            discount: discount + memberDiscount,
             additionalCharges,
             deliveryCost,
             taxAmount,
@@ -317,7 +322,7 @@ export default function SaveOrderButton({
               )}
               <Text type="secondary">
                 {t.admin.saveOrderDiscountApplied} {displayCurrencyIconSafe}
-                {n(discount.toFixed(2))}
+                {n((discount + memberDiscount).toFixed(2))}
               </Text>
               <Text type="secondary">
                 {t.admin.saveOrderAdditionalLabel} {displayCurrencyIconSafe}

@@ -45,6 +45,7 @@ export async function updateCategory(
         description: payload.description ?? null,
         parent_id: payload.parent_id ?? null,
         is_active: payload.is_active,
+        ...(payload.show_in_store === undefined ? {} : { show_in_store: payload.show_in_store }),
         ...imageUpdate,
       })
       .eq("id", payload.id)

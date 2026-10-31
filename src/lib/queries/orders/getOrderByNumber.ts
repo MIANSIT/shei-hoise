@@ -17,7 +17,10 @@ export interface OrderWithItems {
   subtotal: number;
   tax_amount: number;
   discount_amount?: number;
-  additional_charges?: number; 
+  /** The membership that gave part of discount_amount, and how much of it. */
+  membership_id?: string | null;
+  membership_discount?: number;
+  additional_charges?: number;
   shipping_fee: number;
   total_amount: number;
   currency: string;

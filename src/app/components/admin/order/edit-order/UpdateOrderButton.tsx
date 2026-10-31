@@ -20,6 +20,8 @@ interface UpdateOrderButtonProps {
   subtotal: number;
   taxAmount: number;
   discount: number;
+  /** What the customer's membership takes off, on top of `discount`; the server checks it against the membership. */
+  memberDiscount?: number;
   additionalCharges: number;
   deliveryCost: number;
   totalAmount: number;
@@ -43,6 +45,7 @@ export default function UpdateOrderButton({
   subtotal,
   taxAmount,
   discount,
+  memberDiscount = 0,
   additionalCharges,
   deliveryCost,
   totalAmount,
@@ -91,7 +94,7 @@ export default function UpdateOrderButton({
           </Text>
           <Text type="secondary">
             Discount: {displayCurrencyIconSafe}
-            {discount.toFixed(2)}
+            {(discount + memberDiscount).toFixed(2)}
           </Text>
           <Text type="secondary">
             Additional Charges: {displayCurrencyIconSafe}
@@ -201,7 +204,9 @@ export default function UpdateOrderButton({
         })),
         subtotal: Number(subtotal),
         taxAmount: Number(taxAmount),
-        discount: Number(discount),
+        // The order's whole discount: what was typed plus the member discount.
+        discount: Number(discount) + Number(memberDiscount),
+        ...(memberDiscount > 0 ? { membershipDiscount: Number(memberDiscount) } : {}),
         additionalCharges: Number(additionalCharges),
         deliveryCost: Number(deliveryCost),
         totalAmount: Number(totalAmount),

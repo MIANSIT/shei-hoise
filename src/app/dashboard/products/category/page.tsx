@@ -30,6 +30,7 @@ type RawCategory = {
   parent_id?: string | null;
   image_url?: string | null;
   is_active: boolean;
+  show_in_store?: boolean;
   created_at?: string;
 };
 
@@ -122,6 +123,7 @@ export default function CategoryPage() {
           parent_id: c.parent_id ?? null,
           image_url: c.image_url ?? null,
           is_active: c.is_active,
+          show_in_store: c.show_in_store ?? true,
           createdAt: formatDate(c.created_at),
         })) ?? []) as Category[],
       );
@@ -236,6 +238,7 @@ export default function CategoryPage() {
               description: data.description ?? null,
               parent_id,
               is_active: data.is_active ?? true,
+              show_in_store: data.show_in_store ?? true,
             },
             user.store_id,
             imageFile,

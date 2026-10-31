@@ -43,6 +43,8 @@ export interface ReceiptPdfData {
   items: ReceiptPdfItem[];
   subtotal: number;
   discount: number;
+  /** What the customer's membership took off (not part of `discount`) — printed only when > 0. */
+  memberDiscount?: number;
   /** Packaging/handling/etc. — printed only when > 0. */
   additionalCharges?: number;
   /** Delivery fee of an online order — printed only when > 0 (Quick Sale has none). */
@@ -58,6 +60,12 @@ export interface ReceiptPdfData {
   /** The customer identified for a due sale (collected so the balance can be traced back to them later) — omitted/blank for a fully-paid sale, so only printed alongside the DUE line below. */
   customerName?: string | null;
   customerPhone?: string | null;
+  /**
+   * Who the sale is for, printed under the order number when there is anything to print:
+   * the member's number (when they are a member), and the name and phone that were entered.
+   * A due sale already prints name and phone next to its DUE line, so those two are skipped there.
+   */
+  customerBlock?: { name?: string | null; phone?: string | null; memberNumber?: string | null } | null;
   /** What the customer already owed before this sale — printed with the total due, only when > 0. */
   previousDue?: number | null;
   currencyIcon: string;
@@ -196,6 +204,29 @@ function drawReceiptCopy(
   dashedLine(doc, y);
   y += 3.4;
 
+  const block = data.customerBlock;
+  const dueRepeatsCustomer = data.due != null && data.due > 0.01 && !!(data.customerName || data.customerPhone);
+  const blockLines = [
+    block?.memberNumber ? { text: `Member ID: ${block.memberNumber}`, bold: true } : null,
+    !dueRepeatsCustomer && block?.name ? { text: block.name, bold: false } : null,
+    !dueRepeatsCustomer && block?.phone ? { text: `Phone: ${block.phone}`, bold: false } : null,
+  ].filter((line): line is { text: string; bold: boolean } => line !== null);
+  if (blockLines.length > 0) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(0, 0, 0);
+    for (const line of blockLines) {
+      setTextFont(doc, line.text, bengaliLoaded, line.bold);
+      const wrapped: string[] = doc.splitTextToSize(line.text, CONTENT_WIDTH_MM);
+      for (const part of wrapped) {
+        doc.text(part, MARGIN_X_MM, y);
+        y += 3.3;
+      }
+    }
+    y += 0.4;
+    dashedLine(doc, y);
+    y += 3.4;
+  }
+
   for (const item of data.items) {
     y = itemRow(doc, y, item, data.currencyIcon, bengaliLoaded);
   }
@@ -206,6 +237,9 @@ function drawReceiptCopy(
 
   y = totalRow(doc, y, "Subtotal", amountText(data.currencyIcon, data.subtotal), false, 7.5, bengaliLoaded);
   y = totalRow(doc, y, "Discount", amountText(data.currencyIcon, data.discount), false, 7.5, bengaliLoaded);
+  if ((data.memberDiscount ?? 0) > 0) {
+    y = totalRow(doc, y, "Member disc.", amountText(data.currencyIcon, data.memberDiscount ?? 0), false, 7.5, bengaliLoaded);
+  }
   if ((data.additionalCharges ?? 0) > 0) {
     y = totalRow(doc, y, "Extra charges", amountText(data.currencyIcon, data.additionalCharges ?? 0), false, 7.5, bengaliLoaded);
   }
