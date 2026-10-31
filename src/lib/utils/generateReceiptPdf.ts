@@ -58,6 +58,8 @@ export interface ReceiptPdfData {
   /** The customer identified for a due sale (collected so the balance can be traced back to them later) — omitted/blank for a fully-paid sale, so only printed alongside the DUE line below. */
   customerName?: string | null;
   customerPhone?: string | null;
+  /** Who the order is for and where it goes (online orders) — printed under the order number when there is anything to print. */
+  customerInfo?: { name?: string | null; phone?: string | null; address?: string | null } | null;
   /** What the customer already owed before this sale — printed with the total due, only when > 0. */
   previousDue?: number | null;
   currencyIcon: string;
@@ -195,6 +197,28 @@ function drawReceiptCopy(
 
   dashedLine(doc, y);
   y += 3.4;
+
+  const info = data.customerInfo;
+  const infoLines: { text: string; bold: boolean }[] = [
+    info?.name ? { text: info.name, bold: true } : null,
+    info?.phone ? { text: `Phone: ${info.phone}`, bold: false } : null,
+    info?.address ? { text: info.address, bold: false } : null,
+  ].filter((line): line is { text: string; bold: boolean } => line !== null);
+  if (infoLines.length > 0) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(0, 0, 0);
+    for (const line of infoLines) {
+      setTextFont(doc, line.text, bengaliLoaded, line.bold);
+      const wrapped: string[] = doc.splitTextToSize(line.text, CONTENT_WIDTH_MM);
+      for (const part of wrapped) {
+        doc.text(part, MARGIN_X_MM, y);
+        y += 3.3;
+      }
+    }
+    y += 0.4;
+    dashedLine(doc, y);
+    y += 3.4;
+  }
 
   for (const item of data.items) {
     y = itemRow(doc, y, item, data.currencyIcon, bengaliLoaded);

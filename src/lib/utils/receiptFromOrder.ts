@@ -36,7 +36,21 @@ export async function buildReceiptPdfSetForOrder(
   const changeDue =
     cashReceived != null ? Math.max(0, cashReceived - order.total_amount) : null;
 
+  // Online orders carry who it is for and where it goes; Quick Sale walk-ins have none
+  // (a due sale already prints its customer next to the DUE line).
+  const shipping = order.shipping_address;
+  const addressLine = shipping?.address_line_1 || shipping?.address || "";
+  const customerInfo =
+    order.channel === "pos"
+      ? null
+      : {
+          name: shipping?.customer_name || order.customers?.first_name || null,
+          phone: shipping?.phone || order.customers?.phone || null,
+          address: [addressLine, shipping?.city, shipping?.country].filter(Boolean).join(", ") || null,
+        };
+
   return generateReceiptPdfSet({
+    customerInfo,
     storeName: storeData.store_name,
     branchLines: branchReceiptLines(branch),
     logoUrl: storeData.logo_url,
