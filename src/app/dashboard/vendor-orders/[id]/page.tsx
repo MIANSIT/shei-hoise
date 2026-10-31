@@ -54,7 +54,7 @@ export default function VendorOrderDetailPage() {
   // confirmed orders so the on-screen totals and the downloaded invoice
   // can't disagree with it. Drafts have no payments to wait for, so their
   // stored paid_amount/due_amount stay authoritative.
-  const [liveBalance, setLiveBalance] = useState<{ paid_allocated: number; due_remaining: number } | null>(null);
+  const [liveBalance, setLiveBalance] = useState<{ paid_allocated: number; credit_applied: number; due_remaining: number } | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!storeId) return;
@@ -80,7 +80,11 @@ export default function VendorOrderDetailPage() {
     getVendorInvoiceBalances(order.vendor_id).then((balances) => {
       if (cancelled) return;
       const match = balances.find((b) => b.order_id === order.id);
-      setLiveBalance(match ? { paid_allocated: match.paid_allocated, due_remaining: match.due_remaining } : null);
+      setLiveBalance(
+        match
+          ? { paid_allocated: match.paid_allocated, credit_applied: match.credit_applied, due_remaining: match.due_remaining }
+          : null,
+      );
     });
     return () => {
       cancelled = true;
@@ -457,6 +461,12 @@ export default function VendorOrderDetailPage() {
             <span className="text-gray-500">Paid</span>
             <span className="font-medium">{displayPaidAmount.toFixed(2)}</span>
           </div>
+          {(liveBalance?.credit_applied ?? 0) > 0.005 && (
+            <div className="flex justify-between text-xs text-emerald-600">
+              <span>Includes vendor credit (returned goods)</span>
+              <span>{liveBalance!.credit_applied.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm font-semibold text-red-500">
             <span>Due</span>
             <span>{displayDueAmount.toFixed(2)}</span>

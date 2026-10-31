@@ -506,6 +506,20 @@ export default function CreateVendorOrderPage() {
           </div>
         </div>
 
+        {vendorCurrentDue < -0.005 && (
+          <Alert
+            type="info"
+            showIcon
+            message="Vendor has a credit balance"
+            description={`${selectedVendor?.name ?? "This vendor"} has a credit of ${Math.abs(vendorCurrentDue).toFixed(2)} (returned goods or overpayment). It is taken off the amount they owe automatically${
+              dueAmount > 0
+                ? `: ${Math.min(Math.abs(vendorCurrentDue), dueAmount).toFixed(2)} of this invoice will show as covered by it.`
+                : "."
+            }`}
+            className="rounded-xl"
+          />
+        )}
+
         {creditLimitExceeded && (
           <Alert
             type="warning"

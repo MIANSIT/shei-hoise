@@ -485,10 +485,9 @@ const OrdersTable: React.FC<Props> = ({
     </Tooltip>
   );
 
-  // Quick Sale (POS) orders only — every other order type has no thermal
-  // receipt to reprint, just the regular invoice above.
-  const renderReceiptButton = (order: StoreOrder) =>
-    order.channel === "pos" && (
+  // Every order gets the thermal receipt next to the regular invoice, not just
+  // Quick Sale ones.
+  const renderReceiptButton = (order: StoreOrder) => (
       <Tooltip title="Print Receipt">
         <Button
           type="text"
@@ -501,7 +500,7 @@ const OrdersTable: React.FC<Props> = ({
           className={`${ACTION_CHIP_BASE} bg-linear-to-b from-amber-50 to-amber-100/80 dark:from-amber-950/50 dark:to-amber-900/30 border-amber-200/70 dark:border-amber-800/40 text-amber-600! dark:text-amber-400! hover:from-amber-100 hover:to-amber-200/80 dark:hover:from-amber-900/60 dark:hover:to-amber-800/40`}
         />
       </Tooltip>
-    );
+  );
 
   const renderInvoiceCell = (order: StoreOrder) => (
     <div className="flex items-center justify-center gap-1.5">

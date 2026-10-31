@@ -53,6 +53,9 @@ export async function buildReceiptPdfSetForOrder(
     })),
     subtotal: order.subtotal,
     discount: order.discount_amount ?? 0,
+    additionalCharges: order.additional_charges ?? 0,
+    deliveryCharge: order.shipping_fee ?? 0,
+    tax: order.tax_amount ?? 0,
     total: order.total_amount,
     paymentLabel:
       (order.payment_method && PAYMENT_LABELS[order.payment_method]) ||

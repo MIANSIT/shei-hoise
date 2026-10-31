@@ -102,50 +102,12 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   const margin = 15;
   const lineHeight = 5;
 
-  // ==================== CALCULATE DYNAMIC HEIGHT ====================
-  let estimatedHeight = margin;
-
-  estimatedHeight += 8;
-  const contactLines = [store.address, store.phone, store.email].filter(
-    Boolean,
-  ).length;
-  estimatedHeight += contactLines * lineHeight + 8;
-
-  estimatedHeight += 10;
-  const customerLines = [
-    customer.name,
-    customer.address,
-    customer.contact,
-    customer.email,
-  ].filter(Boolean).length;
-  estimatedHeight += customerLines * lineHeight + 8;
-
-  estimatedHeight += 15;
-  estimatedHeight += products.length * 8;
-  estimatedHeight += 8;
-
-  let summaryLines = 1;
-  if (discountAmount > 0) summaryLines++;
-  if (deliveryCharge > 0) summaryLines++;
-  if (taxAmount > 0) summaryLines++;
-  summaryLines += additionalCharges.filter((c) => c.amount !== 0).length;
-  estimatedHeight += summaryLines * 5;
-  estimatedHeight += 8;
-
-  if (paymentMethod && paymentMethod !== "N/A") estimatedHeight += 8;
-
-  if (notes && notes.length > 0) {
-    estimatedHeight += Math.ceil(notes.length / 90) * 5 + 8;
-  }
-
-  estimatedHeight += 40;
-  estimatedHeight += margin;
-
-  const dynamicHeight = Math.max(Math.ceil(estimatedHeight / 10) * 10, 160);
+  // A4, so it prints at real size; a long invoice continues on more pages.
+  const pageHeight = 297;
 
   const pdf = new jsPDF({
     unit: "mm",
-    format: [pageWidth, dynamicHeight],
+    format: "a4",
     compress: true,
   });
   enableBengaliText(pdf, loadBengaliFontServer());
@@ -302,6 +264,20 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
   const summaryX = pageWidth - margin - 70;
   let summaryY = finalY;
 
+  // Starts a new page when what comes next won't fit under what is already drawn.
+  const ensureSpace = (needed: number) => {
+    if (summaryY + needed > pageHeight - margin) {
+      pdf.addPage();
+      summaryY = margin;
+    }
+  };
+
+  // Keep the totals together: rows, grand total and the payment line.
+  const summaryRowCount =
+    summaryData.filter((item) => item.value !== 0).length +
+    additionalCharges.filter((charge) => charge.amount !== 0).length;
+  ensureSpace(summaryRowCount * 5 + 15);
+
   summaryData.forEach((item) => {
     if (item.value !== 0) {
       pdf.setFont("helvetica", "normal");
@@ -347,6 +323,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   // ==================== PAYMENT METHOD ====================
   if (paymentMethod && paymentMethod !== "N/A") {
+    ensureSpace(8);
     pdf.setFontSize(11);
     pdf.setFont("helvetica", "bold");
     pdf.text("Payment Method:", margin, summaryY);
@@ -362,6 +339,7 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
 
   // ==================== NOTES ====================
   if (notes) {
+    ensureSpace(10);
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "italic");
     pdf.text("Notes:", margin, summaryY);
@@ -369,14 +347,21 @@ async function generateA4PDF(body: Omit<InvoiceRequest, "type">) {
     applyBengaliFont(pdf, notes, bengaliLoaded);
 
     const notesLines = pdf.splitTextToSize(notes, pageWidth - 2 * margin);
-    notesLines.forEach((line: string, index: number) => {
-      pdf.text(line, margin, summaryY + 5 + index * 5);
+    notesLines.forEach((line: string) => {
+      summaryY += 5;
+      if (summaryY > pageHeight - margin) {
+        pdf.addPage();
+        summaryY = margin + 5;
+      }
+      pdf.text(line, margin, summaryY);
     });
     pdf.setFont("helvetica", "normal");
-    summaryY += notesLines.length * 5 + 8;
+    summaryY += 8;
   }
 
   // ==================== FOOTER ====================
+  // The footer (generated time + thank-you line) stays in one piece.
+  ensureSpace(50);
   summaryY += 10;
   pdf.setDrawColor(220, 220, 220);
   pdf.line(margin, summaryY, pageWidth - margin, summaryY);

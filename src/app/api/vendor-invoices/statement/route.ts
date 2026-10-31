@@ -57,10 +57,9 @@ export async function POST(req: NextRequest) {
     const pageWidth = 210;
     const margin = 15;
 
-    const estimatedHeight = margin + 70 + body.entries.length * 8 + 40;
-    const dynamicHeight = Math.max(Math.ceil(estimatedHeight / 10) * 10, 220);
-
-    const pdf = new jsPDF({ unit: "mm", format: [pageWidth, dynamicHeight], compress: true });
+    // A4, so it prints at real size; a long statement continues on more pages.
+    const pageHeight = 297;
+    const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
     enableBengaliText(pdf, loadBengaliFontServer());
 
     const storeInfo = [body.store.address, body.store.phone, body.store.email].filter(
@@ -125,7 +124,12 @@ export async function POST(req: NextRequest) {
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const finalY = (pdf as any).lastAutoTable.finalY + 10;
+    let finalY = (pdf as any).lastAutoTable.finalY + 10;
+    // The due box stays whole: if it won't fit under the table it starts the next page.
+    if (finalY + 16 > pageHeight - margin) {
+      pdf.addPage();
+      finalY = margin;
+    }
 
     const boxWidth = 80;
     const boxX = pageWidth - margin - boxWidth;

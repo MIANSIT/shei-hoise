@@ -17,6 +17,8 @@ export interface VendorInvoiceBalance {
   discount_amount: number;
   grand_total: number;
   paid_allocated: number;
+  /** The part of paid_allocated that came from the vendor's return credit rather than a payment. */
+  credit_applied: number;
   due_remaining: number;
   items: VendorInvoiceBalanceItem[];
 }
@@ -69,7 +71,10 @@ export async function getVendorInvoiceBalances(
 
   const pinnedByOrder = new Map<string, number>();
   // A refund is a negative payment, so it takes back from the pool what it paid out.
-  let pool = returnCredit;
+  // The pool is kept as two parts so an invoice can show how much of it was credit:
+  // payments are used first, the return credit covers the rest.
+  let creditPool = returnCredit;
+  let cashPool = 0;
   for (const payment of payments) {
     const amount = Number(payment.amount);
     if (payment.vendor_order_id) {
@@ -78,7 +83,7 @@ export async function getVendorInvoiceBalances(
         (pinnedByOrder.get(payment.vendor_order_id) ?? 0) + amount,
       );
     } else {
-      pool += amount;
+      cashPool += amount;
     }
   }
 
@@ -88,9 +93,13 @@ export async function getVendorInvoiceBalances(
     const remainingAfterPinned = grandTotal - pinned;
 
     let fromPool = 0;
+    let creditApplied = 0;
     if (remainingAfterPinned > 0) {
-      fromPool = Math.min(remainingAfterPinned, Math.max(pool, 0));
-      pool -= fromPool;
+      fromPool = Math.min(remainingAfterPinned, Math.max(cashPool + creditPool, 0));
+      const fromCash = Math.min(fromPool, Math.max(cashPool, 0));
+      creditApplied = fromPool - fromCash;
+      cashPool -= fromCash;
+      creditPool -= creditApplied;
     }
 
     const paidAllocated = pinned + fromPool;
@@ -103,6 +112,7 @@ export async function getVendorInvoiceBalances(
       discount_amount: Number(order.discount_amount),
       grand_total: grandTotal,
       paid_allocated: paidAllocated,
+      credit_applied: creditApplied,
       due_remaining: grandTotal - paidAllocated,
       items: (order.items ?? []).map((item) => ({
         product_name: item.product_name,

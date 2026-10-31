@@ -54,25 +54,21 @@ interface VendorInvoiceRequest {
   notes?: string | null;
 }
 
+// A4, so the PDF prints at real size. A long invoice runs onto more pages
+// instead of being squeezed (or stretched into one tall page that a printer
+// shrinks to fit A4).
 const PAGE_WIDTH = 210;
+const PAGE_HEIGHT = 297;
 const MARGIN = 15;
 
-// Draws the full invoice onto an already-created jsPDF instance and returns
-// the Y position it finished at. Called twice: once against a throwaway,
-// generously-tall canvas purely to measure how much height the real content
-// needs (item count, MRP column, notes length, and — critically — every item
-// row wrapping to two lines for its SKU all affect this unpredictably), then
-// again against a canvas sized exactly to that measurement. Guessing the
-// final height up front from a character-count heuristic (the previous
-// approach) reliably undershot it — a real invoice with 8 line items had its
-// Grand Total, Paid Amount and Due Amount silently drawn below the bottom of
-// a too-short page and never appeared in the downloaded PDF at all.
+// Draws the full invoice onto an A4 jsPDF instance, adding pages as the item
+// table, totals, extras and notes need them.
 function renderInvoice(
   pdf: jsPDF,
   body: VendorInvoiceRequest,
   hasMrp: boolean,
   isQuotation: boolean,
-): number {
+): void {
   const storeInfo = [body.store.address, body.store.phone, body.store.email].filter(
     Boolean,
   ) as string[];
@@ -160,6 +156,11 @@ function renderInvoice(
   ].filter(([, value]) => value !== 0) as [string, number][];
 
   const summaryPanelHeight = summaryRows.length * 6 + 30;
+  // Keep the totals box in one piece: if it won't fit under the table, it starts the next page.
+  if (finalY + summaryPanelHeight > PAGE_HEIGHT - MARGIN) {
+    pdf.addPage();
+    finalY = MARGIN;
+  }
   drawPanel(pdf, summaryX, finalY, summaryWidth, summaryPanelHeight);
   finalY += 6;
 
@@ -207,6 +208,10 @@ function renderInvoice(
   ].filter(Boolean) as string[];
 
   if (extras.length) {
+    if (finalY + extras.length * 5 > PAGE_HEIGHT - MARGIN) {
+      pdf.addPage();
+      finalY = MARGIN;
+    }
     pdf.setFontSize(9);
     pdf.setTextColor(...PDF_COLORS.textMuted);
     pdf.setFont("helvetica", "normal");
@@ -218,14 +223,22 @@ function renderInvoice(
     pdf.setTextColor(0, 0, 0);
     pdf.setFont("helvetica", "italic");
     pdf.setFontSize(9);
+    if (finalY + 10 > PAGE_HEIGHT - MARGIN) {
+      pdf.addPage();
+      finalY = MARGIN;
+    }
     pdf.text("Notes:", MARGIN, finalY);
     pdf.setFont("helvetica", "normal");
     const notesLines = pdf.splitTextToSize(body.notes, PAGE_WIDTH - 2 * MARGIN);
-    notesLines.forEach((line: string, i: number) => pdf.text(line, MARGIN, finalY + 5 + i * 5));
-    finalY += 5 + notesLines.length * 5;
+    notesLines.forEach((line: string) => {
+      finalY += 5;
+      if (finalY > PAGE_HEIGHT - MARGIN) {
+        pdf.addPage();
+        finalY = MARGIN + 5;
+      }
+      pdf.text(line, MARGIN, finalY);
+    });
   }
-
-  return finalY;
 }
 
 export async function POST(req: NextRequest) {
@@ -238,14 +251,7 @@ export async function POST(req: NextRequest) {
     const hasMrp = body.items.some((i) => i.mrp !== null && i.mrp !== undefined);
     const isQuotation = body.docType === "quotation";
 
-    // Measurement pass — tall enough that no realistic invoice could
-    // overflow it, discarded once we know how much height was actually used.
-    const measurePdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, 2000], compress: true });
-    enableBengaliText(measurePdf, loadBengaliFontServer());
-    const measuredHeight = renderInvoice(measurePdf, body, hasMrp, isQuotation);
-
-    const pageHeight = Math.max(Math.ceil((measuredHeight + MARGIN) / 10) * 10, 220);
-    const pdf = new jsPDF({ unit: "mm", format: [PAGE_WIDTH, pageHeight], compress: true });
+    const pdf = new jsPDF({ unit: "mm", format: "a4", compress: true });
     enableBengaliText(pdf, loadBengaliFontServer());
     renderInvoice(pdf, body, hasMrp, isQuotation);
 

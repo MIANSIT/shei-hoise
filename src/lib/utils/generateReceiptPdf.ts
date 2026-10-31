@@ -45,6 +45,10 @@ export interface ReceiptPdfData {
   discount: number;
   /** Packaging/handling/etc. — printed only when > 0. */
   additionalCharges?: number;
+  /** Delivery fee of an online order — printed only when > 0 (Quick Sale has none). */
+  deliveryCharge?: number;
+  /** Tax on the order — printed only when > 0. */
+  tax?: number;
   total: number;
   paymentLabel: string;
   cashReceived: number | null;
@@ -204,6 +208,12 @@ function drawReceiptCopy(
   y = totalRow(doc, y, "Discount", amountText(data.currencyIcon, data.discount), false, 7.5, bengaliLoaded);
   if ((data.additionalCharges ?? 0) > 0) {
     y = totalRow(doc, y, "Extra charges", amountText(data.currencyIcon, data.additionalCharges ?? 0), false, 7.5, bengaliLoaded);
+  }
+  if ((data.deliveryCharge ?? 0) > 0) {
+    y = totalRow(doc, y, "Delivery", amountText(data.currencyIcon, data.deliveryCharge ?? 0), false, 7.5, bengaliLoaded);
+  }
+  if ((data.tax ?? 0) > 0) {
+    y = totalRow(doc, y, "Tax", amountText(data.currencyIcon, data.tax ?? 0), false, 7.5, bengaliLoaded);
   }
   y += 1;
   dashedLine(doc, y);
