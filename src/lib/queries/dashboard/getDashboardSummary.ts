@@ -4,6 +4,10 @@ import { getVendorPaymentStatsForPeriod } from "@/lib/queries/vendor/getVendorPa
 import { getVendorSalesForPeriod } from "@/lib/queries/vendor/getVendorSalesForPeriod";
 import { getSalesSummary, type SalesSummary } from "./getSalesSummary";
 import { getPendingBalance } from "./getPendingBalance";
+import {
+  getExpenseBreakdown,
+  type ExpenseBreakdown,
+} from "@/lib/queries/expense/getExpenseBreakdown";
 
 export interface DashboardSummaryPayload {
   revenue: number;
@@ -43,6 +47,11 @@ export interface DashboardSummaryPayload {
     partially_out_of_stock_product_count: number;
     total_inventory_value: number;
   };
+  /**
+   * Running costs only. Stock buying and owner draws are stripped out and
+   * reported under `expense_kinds` instead — see accounting.ts for why they
+   * must never reach Net Profit.
+   */
   expense_metrics: {
     total_expenses: number;
     prev_total_expenses: number;
@@ -50,6 +59,8 @@ export interface DashboardSummaryPayload {
     top_expense_category: { name: string; amount: number };
     expense_category_breakdown: { name: string; amount: number }[];
   };
+  /** The same period's expenses split by accounting kind (operating / inventory / owner draw). */
+  expense_kinds: ExpenseBreakdown;
   vendor_profit: number;
   prev_vendor_profit: number;
   /** Confirmed vendor orders in the period — added to store sales for total sales. */
@@ -81,7 +92,7 @@ export async function getDashboardSummary(
   /** Stores with branches: one branch's dashboard. Omitted/null = the whole store. */
   branchId?: string | null,
 ): Promise<DashboardSummaryPayload> {
-  const [{ data, error }, vendorProfit, vendorPayments, salesSummary, vendorSales, pendingBalance] = await Promise.all([
+  const [{ data, error }, vendorProfit, vendorPayments, salesSummary, vendorSales, pendingBalance, expenses] = await Promise.all([
     supabase.rpc("get_dashboard_summary", {
       p_store_id: storeId,
       p_period_start: periodStart,
@@ -110,6 +121,9 @@ export async function getDashboardSummary(
     getSalesSummary(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId),
     getVendorSalesForPeriod(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId ?? null),
     getPendingBalance(storeId, branchId),
+    // The RPC sums every category into one total and only returns the top five
+    // by name, so the operating / stock-buying split is worked out here.
+    getExpenseBreakdown(storeId, periodStart, periodEnd, prevPeriodStart, prevPeriodEnd, branchId),
   ]);
 
   if (error) throw new Error(error.message);
@@ -126,5 +140,21 @@ export async function getDashboardSummary(
     vendor_sales: vendorSales.vendor_sales,
     prev_vendor_sales: vendorSales.prev_vendor_sales,
     sales_summary: salesSummary,
+    // Expenses the dashboard shows and subtracts are running costs only.
+    expense_metrics: {
+      total_expenses: expenses.current.operating,
+      prev_total_expenses: expenses.previous.operating,
+      expense_count: expenses.current.operatingCount,
+      top_expense_category: expenses.operatingByCategory[0]
+        ? {
+            name: expenses.operatingByCategory[0].name,
+            amount: expenses.operatingByCategory[0].amount,
+          }
+        : { name: "None", amount: 0 },
+      expense_category_breakdown: expenses.operatingByCategory
+        .slice(0, 5)
+        .map((c) => ({ name: c.name, amount: c.amount })),
+    },
+    expense_kinds: expenses,
   };
 }

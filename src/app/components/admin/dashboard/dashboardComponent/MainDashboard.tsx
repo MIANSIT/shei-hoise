@@ -86,6 +86,11 @@ interface MainDashboardProps {
   branchLabel?: string;
   /** Stores with branches: the branch comparison, shown above the snapshot on "All branches". */
   branchComparison?: React.ReactNode;
+  /** Which half of the books is showing: the selling side, or where the business stands. */
+  tab: DashboardTab;
+  onTabChange: (tab: DashboardTab) => void;
+  /** The Accounts half, rendered in place of the sales body when that tab is picked. */
+  accounts: React.ReactNode;
   /** The P&L as a step-by-step story (sales → costs → net). Replaces the three-cell bar when given. */
   profitStory?: {
     figures: ProfitStoryFigures;
@@ -94,6 +99,53 @@ interface MainDashboardProps {
     onOpenBranch?: (branchId: string) => void;
   };
 }
+
+/** The dashboard's two views: trading result, and where the business stands. */
+export type DashboardTab = "sales" | "accounts";
+
+// ─── Tab Selector ─────────────────────────────────────────────────────────────
+// Sales and Accounts answer two different questions and must not be mixed:
+// buying stock belongs to Accounts (cash into stock), never to the profit the
+// Sales view works out. See lib/utils/accounting.ts.
+const TabSelector: React.FC<{
+  value: DashboardTab;
+  onChange: (v: DashboardTab) => void;
+}> = ({ value, onChange }) => {
+  const t = useTranslation();
+  const tabs: [DashboardTab, string, string][] = [
+    ["sales", t.admin.tabSales, t.admin.tabSalesSub],
+    ["accounts", t.admin.tabAccounts, t.admin.tabAccountsSub],
+  ];
+  return (
+    <div role="tablist" aria-label={t.admin.businessOverview} className="flex items-center gap-1.5 sm:gap-2">
+      {tabs.map(([key, label, sub]) => {
+        const active = value === key;
+        return (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(key)}
+            className={`group rounded-xl border px-3 sm:px-4 py-1.5 text-left transition-all duration-150 ${
+              active
+                ? "border-indigo-500 bg-indigo-500 text-white shadow-md shadow-indigo-500/25"
+                : "border-border bg-card text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <span className="block text-xs sm:text-sm font-bold leading-tight">{label}</span>
+            <span
+              className={`hidden sm:block text-[10px] leading-tight ${
+                active ? "text-white/80" : "text-muted-foreground"
+              }`}
+            >
+              {sub}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 // ─── Period Selector ──────────────────────────────────────────────────────────
 const PeriodSelector: React.FC<{
@@ -387,6 +439,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   analyticsAllowed,
   branchLabel,
   branchComparison,
+  tab,
+  onTabChange,
+  accounts,
   profitStory,
 }) => {
   const t = useTranslation();
@@ -453,6 +508,9 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
           <PeriodSelector value={timePeriod} onChange={onTimePeriodChange} />
         </div>
+        <div className="max-w-400 mx-auto px-3 sm:px-6 pb-2 overflow-x-auto">
+          <TabSelector value={tab} onChange={onTabChange} />
+        </div>
       </div>
 
       {/* ── Page content ── */}
@@ -477,6 +535,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
         )}
 
+        {tab === "accounts" ? (
+          accounts
+        ) : (
+          <>
         {branchComparison}
 
         {/* P&L HERO */}
@@ -669,6 +731,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             ))}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

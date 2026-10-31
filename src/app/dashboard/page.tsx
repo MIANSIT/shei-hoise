@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import MainDashboard from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
+import MainDashboard, {
+  type DashboardTab,
+} from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
+import { AccountsView } from "@/app/components/admin/dashboard/dashboardComponent/AccountsView";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import {
@@ -9,6 +12,10 @@ import {
   DashboardSummaryPayload,
 } from "@/lib/queries/dashboard/getDashboardSummary";
 import { getDashboardPeriodRange } from "@/lib/utils/dashboardPeriods";
+import {
+  getAccountsOverview,
+  type AccountsOverview,
+} from "@/lib/queries/dashboard/getAccountsOverview";
 import {
   DollarOutlined,
   ShoppingCartOutlined,
@@ -37,11 +44,35 @@ import {
   type BranchComparisonRow,
 } from "@/lib/queries/dashboard/getBranchComparison";
 
+/** Zeros while the Accounts tab's first load is in flight. */
+const EMPTY_ACCOUNTS: AccountsOverview = {
+  cashIn: { orders: 0, dueCollections: 0, vendorPayments: 0, total: 0 },
+  cashOut: {
+    stockBuying: { supplierPayments: 0, inventoryExpenses: 0, total: 0 },
+    operatingExpenses: 0,
+    ownerDrawExpenses: 0,
+    refunds: 0,
+    ownerWithdrawals: 0,
+    total: 0,
+  },
+  outsideSpent: 0,
+  cashLeft: 0,
+  byMethod: [],
+  stock: { units: 0, value: 0, unitsMissingCost: 0 },
+  owedToYou: { customerDue: 0, codWithCourier: 0, vendorDue: 0, total: 0 },
+  youOwe: { supplierDue: 0, supplierVisible: false, total: 0 },
+  businessWorth: 0,
+};
+
 export default function DashboardPage() {
-  const { storeId, loading: userLoading, error: userError } = useCurrentUser();
+  const { storeId, role, loading: userLoading, error: userError } = useCurrentUser();
   const { allowed: analyticsAllowed } = useFeatureGate(storeId, "analytics");
 
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("monthly");
+  // Sales = did selling make money. Accounts = where the business stands.
+  const [tab, setTab] = useState<DashboardTab>("sales");
+  const [accounts, setAccounts] = useState<AccountsOverview | null>(null);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [summary, setSummary] = useState<DashboardSummaryPayload | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [summaryError, setSummaryError] = useState<Error | null>(null);
@@ -129,6 +160,35 @@ export default function DashboardPage() {
     };
     fetchSummary();
   }, [storeId, timePeriod, dashboardBranchId, branchesLoading]);
+
+  // Only fetched once the Accounts tab is actually opened — it walks the money
+  // history, which is more work than the sales summary.
+  useEffect(() => {
+    if (!storeId || branchesLoading || tab !== "accounts") return;
+    let cancelled = false;
+    const { periodStart, periodEnd } = getDashboardPeriodRange(timePeriod);
+    setLoadingAccounts(true);
+    getAccountsOverview(
+      storeId,
+      periodStart,
+      periodEnd,
+      dashboardBranchId,
+      branchesOn,
+      role === "store_owner",
+    )
+      .then((result) => {
+        if (!cancelled) setAccounts(result);
+      })
+      .catch((err) => {
+        console.error("Error fetching accounts overview:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingAccounts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId, branchesLoading, tab, timePeriod, dashboardBranchId, branchesOn, role]);
 
   const metrics = useDashboardMetrics(summary);
 
@@ -329,7 +389,7 @@ export default function DashboardPage() {
           : isAllTime
             ? "neutral"
             : getChangeType(expenseMetrics.changePercentage.netProfit),
-      description: `${t.admin.grossProfitMinus} + vendor profit`,
+      description: `${t.admin.grossProfitMinus} ${t.admin.psVendorProfitAdded}`,
     },
     {
       title: t.admin.expenseRevenueRatio,
@@ -482,6 +542,22 @@ export default function DashboardPage() {
       onTimePeriodChange={setTimePeriod}
       analyticsAllowed={analyticsAllowed}
       branchLabel={branchesOn ? (selectedBranch?.name ?? t.branches.allBranches) : undefined}
+      tab={tab}
+      onTabChange={setTab}
+      accounts={
+        <AccountsView
+          data={accounts ?? EMPTY_ACCOUNTS}
+          loading={loadingAccounts && !accounts}
+          periodLabel={getPeriodLabel(timePeriod)}
+          trading={{
+            sales: totalSales,
+            grossProfit: totalProfit,
+            netProfit: expenseMetrics.netProfit,
+          }}
+          formatMoney={(amount: number) => renderCurrency(amount)}
+          onOpenSales={() => setTab("sales")}
+        />
+      }
       profitStory={{
         figures: {
           sales: metrics.revenue,
@@ -490,6 +566,9 @@ export default function DashboardPage() {
           vendorProfit,
           netProfit: expenseMetrics.netProfit,
           netChangePct: isAllTime ? null : expenseMetrics.changePercentage.netProfit,
+          // Stock bought through an expense entry: named here so it is visibly
+          // kept out of profit rather than silently dropped.
+          stockBuyingKeptOut: expenseMetrics.inventoryPurchases,
           // Customers only: vendor sales and dues have their own Vendor Payments block.
           ...(salesSummary ? { allSales: salesSummary.sales, vendorSales } : {}),
         },

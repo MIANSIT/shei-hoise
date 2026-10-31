@@ -3,7 +3,7 @@ import type { TimePeriod } from "@/lib/hook/useDashboardMetrics";
 const STORE_TIMEZONE = "Asia/Dhaka";
 
 /** Earlier than the platform itself, so "all time" genuinely means all time. */
-const ALL_TIME_START = "2020-01-01";
+export const ALL_TIME_START = "2020-01-01";
 
 export interface DashboardPeriodRange {
   periodStart: string;
@@ -57,4 +57,15 @@ export function getDashboardPeriodRange(period: TimePeriod): DashboardPeriodRang
   const prevPeriodStart = addDays(prevPeriodEnd, -(spanDays - 1));
 
   return { periodStart, periodEnd, prevPeriodStart, prevPeriodEnd };
+}
+
+/**
+ * Every day the store has existed, up to today in its own business day. Used
+ * where a figure is a balance rather than a period total — cash in hand, stock
+ * on the shelf, what is still owed — which must count the whole history
+ * however short a window the page is showing.
+ * @returns the all-time range as ISO date strings
+ */
+export function getAllTimeRange(): { fromDate: string; toDate: string } {
+  return { fromDate: ALL_TIME_START, toDate: toDhakaDateString(new Date()) };
 }

@@ -1,4 +1,5 @@
 import type { Dayjs } from "dayjs";
+import type { ExpenseKind } from "@/lib/utils/accounting";
 
 // ─── Category ─────────────────────────────────────────────────────────────────
 
@@ -9,6 +10,13 @@ export interface ExpenseCategory {
   description?: string;
   icon?: string;
   color?: string;
+  /**
+   * How this category behaves in the books: "operating" is a running cost and
+   * is the only kind Profit & Loss subtracts; "inventory" is stock buying (cash
+   * out, never a cost of the period's sales); "owner_draw" is profit share.
+   * See lib/utils/accounting.ts. Absent on a database that predates the column.
+   */
+  kind?: ExpenseKind;
   is_default: boolean;
   is_active: boolean;
   created_at: string;
@@ -21,6 +29,7 @@ export interface CreateCategoryInput {
   description?: string;
   icon?: string;
   color?: string;
+  kind?: ExpenseKind;
   is_default?: boolean;
   is_active?: boolean;
 }
@@ -31,6 +40,7 @@ export interface UpdateCategoryInput {
   description?: string;
   icon?: string;
   color?: string;
+  kind?: ExpenseKind;
   is_default?: boolean;
   is_active?: boolean;
 }

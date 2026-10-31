@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Modal, Form, Input, Switch, Button } from "antd";
+import { Modal, Form, Input, Switch, Button, Select } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { ExpenseCategory } from "@/lib/types/expense/type";
 import {
@@ -11,6 +11,7 @@ import {
 import { IconPicker } from "@/app/components/admin/dashboard/expense/category/iconForm/IconPicker";
 import { CategoryPreview } from "@/app/components/admin/dashboard/expense/category/iconForm/CategoryPreview";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import type { ExpenseKind } from "@/lib/utils/accounting";
 
 interface FormValues {
   name: string;
@@ -18,6 +19,8 @@ interface FormValues {
   is_active?: boolean;
   icon?: string;
   color?: string;
+  /** Decides whether money in this category is subtracted from profit. */
+  kind?: ExpenseKind;
 }
 
 interface CategoryFormModalProps {
@@ -52,13 +55,14 @@ export function CategoryFormModal({
         is_active: editingCategory.is_active,
         icon: editingCategory.icon ?? undefined,
         color: editingCategory.color ?? DEFAULT_COLOR,
+        kind: editingCategory.kind ?? "operating",
       };
       form.setFieldsValue(vals);
       setPreview(vals);
     } else {
       form.resetFields();
-      form.setFieldsValue({ is_active: true, color: DEFAULT_COLOR });
-      setPreview({ name: "", is_active: true, color: DEFAULT_COLOR });
+      form.setFieldsValue({ is_active: true, color: DEFAULT_COLOR, kind: "operating" });
+      setPreview({ name: "", is_active: true, color: DEFAULT_COLOR, kind: "operating" });
     }
   }, [open, editingCategory, form]);
 
@@ -171,6 +175,30 @@ export function CategoryFormModal({
               placeholder={t.admin.catDescPlaceholder}
               className="rounded-xl"
               style={{ resize: "none" }}
+            />
+          </Form.Item>
+
+          {/* What this category does to the profit figure. Getting it wrong is
+              how buying stock ends up charged against sales twice. */}
+          <Form.Item
+            name="kind"
+            label={
+              <span className="text-sm font-semibold text-foreground">
+                {t.admin.catKindLabel}
+              </span>
+            }
+            extra={
+              <span className="text-xs text-muted-foreground">{t.admin.catKindHelp}</span>
+            }
+          >
+            <Select
+              className="rounded-xl"
+              style={{ height: 44 }}
+              options={[
+                { value: "operating", label: t.admin.catKindOperating },
+                { value: "inventory", label: t.admin.catKindInventory },
+                { value: "owner_draw", label: t.admin.catKindOwnerDraw },
+              ]}
             />
           </Form.Item>
 

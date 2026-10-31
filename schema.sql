@@ -270,7 +270,13 @@ CREATE TABLE IF NOT EXISTS "public"."expense_categories" (
     "is_default" boolean DEFAULT false,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "is_active" boolean DEFAULT true NOT NULL
+    "is_active" boolean DEFAULT true NOT NULL,
+    -- How this category behaves in the books — 20261107000000_expense_category_kinds.sql:
+    --   operating  = a running cost, subtracted in Profit & Loss
+    --   inventory  = stock buying; cash out and stock in, never a P&L cost
+    --   owner_draw = profit share / drawings; a split of profit, not a cost
+    "kind" text DEFAULT 'operating' NOT NULL,
+    CONSTRAINT "expense_categories_kind_check" CHECK ("kind" IN ('operating', 'inventory', 'owner_draw'))
 );
 
 

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import type { DashboardSummaryPayload } from "@/lib/queries/dashboard/getDashboardSummary";
 
 import { formatDate } from "@/lib/utils/formatDate";
+import { netProfitOf } from "@/lib/utils/accounting";
 export type TimePeriod = "weekly" | "monthly" | "yearly" | "all";
 export type OrderStatus =
   | "pending"
@@ -18,7 +19,12 @@ export type AlertType = "stock" | "order" | "payment" | "expense";
 // Expense Metrics Types
 // ─────────────────────────────────────────────
 export interface ExpenseMetrics {
+  /** Running costs only — stock buying is not one of them (see accounting.ts). */
   totalExpenses: number;
+  /** Stock bought through an expense entry this period. Cash out, never a cost of these sales. */
+  inventoryPurchases: number;
+  /** Profit share / drawings taken this period. A split of profit, not a cost. */
+  ownerDraws: number;
   netProfit: number;
   expenseToRevenueRatio: number;
   topExpenseCategory: { name: string; amount: number };
@@ -76,6 +82,8 @@ interface DashboardMetrics {
 
 const defaultExpenseMetrics: ExpenseMetrics = {
   totalExpenses: 0,
+  inventoryPurchases: 0,
+  ownerDraws: 0,
   netProfit: 0,
   expenseToRevenueRatio: 0,
   topExpenseCategory: { name: "None", amount: 0 },
@@ -145,10 +153,18 @@ export const useDashboardMetrics = (
 
     const vendorProfit = summary.vendor_profit ?? 0;
     const prevVendorProfit = summary.prev_vendor_profit ?? 0;
-    const netProfit =
-      summary.gross_profit + vendorProfit - summary.expense_metrics.total_expenses;
-    const prevNetProfit =
-      summary.prev_gross_profit + prevVendorProfit - summary.expense_metrics.prev_total_expenses;
+    // Running costs only: expense_metrics.total_expenses already excludes
+    // stock buying and owner draws, which belong to the Accounts view.
+    const netProfit = netProfitOf({
+      grossProfit: summary.gross_profit,
+      operatingExpenses: summary.expense_metrics.total_expenses,
+      vendorProfit,
+    });
+    const prevNetProfit = netProfitOf({
+      grossProfit: summary.prev_gross_profit,
+      operatingExpenses: summary.expense_metrics.prev_total_expenses,
+      vendorProfit: prevVendorProfit,
+    });
 
     const expenseToRevenueRatio =
       summary.revenue > 0
@@ -262,6 +278,8 @@ export const useDashboardMetrics = (
       alerts,
       expenseMetrics: {
         totalExpenses: summary.expense_metrics.total_expenses,
+        inventoryPurchases: summary.expense_kinds?.current.inventory ?? 0,
+        ownerDraws: summary.expense_kinds?.current.ownerDraw ?? 0,
         netProfit,
         expenseToRevenueRatio,
         topExpenseCategory: summary.expense_metrics.top_expense_category,

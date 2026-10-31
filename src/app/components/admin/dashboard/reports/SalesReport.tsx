@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { DatePicker, Table, Spin, Dropdown, Button, Popover, App } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { BarChart2, ShoppingBag, Store, Smartphone, Download, Loader2, Building2 } from "lucide-react";
+import {
+  BarChart2,
+  ShoppingBag,
+  Store,
+  Smartphone,
+  Download,
+  Loader2,
+  Building2,
+  Package,
+  Receipt,
+  Scale,
+  TrendingUp,
+} from "lucide-react";
 import { LockOutlined } from "@ant-design/icons";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -27,6 +39,10 @@ import {
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import {
+  getProfitLossReport,
+  type ProfitLossReport,
+} from "@/lib/queries/dashboard/getProfitLossReport";
 
 type Granularity = "day" | "week" | "month" | "year" | "custom";
 
@@ -234,6 +250,10 @@ export default function SalesReport() {
     dayjs(),
   ]);
   const [report, setReport] = useState<SalesReportResult | null>(null);
+  // The trading result for the same range: what the sales actually left behind
+  // once the goods and the running costs are taken off. Buying stock is not one
+  // of those costs — see lib/utils/accounting.ts.
+  const [profit, setProfit] = useState<ProfitLossReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { fromDate, toDate, bucket } =
@@ -252,8 +272,12 @@ export default function SalesReport() {
     if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const result = await getSalesReport(user.store_id, fromDate, toDate, bucket, reportBranchId, splitByBranch);
+      const [result, profitResult] = await Promise.all([
+        getSalesReport(user.store_id, fromDate, toDate, bucket, reportBranchId, splitByBranch),
+        getProfitLossReport(user.store_id, fromDate, toDate, reportBranchId),
+      ]);
       setReport(result);
+      setProfit(profitResult);
     } finally {
       setLoading(false);
     }
@@ -486,6 +510,43 @@ export default function SalesReport() {
                 value={money(report.posRevenue)}
               />
             </div>
+
+            {/* What those sales left behind. Stock buying is deliberately absent:
+                its cost is already inside the cost of goods as items sell. */}
+            {profit && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatTile
+                    icon={<Package size={18} />}
+                    label={t.admin.srCostOfGoods}
+                    value={money(profit.cogs)}
+                    hint={t.admin.srCostOfGoodsHint}
+                  />
+                  <StatTile
+                    icon={<TrendingUp size={18} />}
+                    label={t.admin.acTradingGross}
+                    value={money(profit.grossProfit)}
+                  />
+                  <StatTile
+                    icon={<Receipt size={18} />}
+                    label={t.admin.acRunningCosts}
+                    value={money(profit.totalExpenses)}
+                    hint={t.admin.acRunningCostsHint}
+                  />
+                  <StatTile
+                    icon={<Scale size={18} />}
+                    label={t.admin.acTradingNet}
+                    value={money(profit.netProfit)}
+                    hint={t.admin.srNetProfitHint}
+                  />
+                </div>
+                {profit.stockBuying > 0.005 && (
+                  <p className="m-0 rounded-xl bg-muted/50 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+                    {t.admin.srStockBuyingNote.replace("{amt}", money(profit.stockBuying))}
+                  </p>
+                )}
+              </div>
+            )}
 
             {splitByBranch && report.byBranch.length > 0 && (
               <div className="rounded-2xl border border-border/80 bg-card p-4">

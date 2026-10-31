@@ -71,6 +71,8 @@ const EMPTY: ProfitLossReportData = {
   cogs: 0,
   grossProfit: 0,
   totalExpenses: 0,
+  stockBuying: 0,
+  ownerDraws: 0,
   deliveryNetCost: 0,
   vendorProfit: 0,
   netProfit: 0,
@@ -206,6 +208,7 @@ export default function ProfitLossReport() {
                 allSales: report.salesAll,
                 vendorSales: report.vendorSales,
                 dayCount: range[1].startOf("day").diff(range[0].startOf("day"), "day") + 1,
+                stockBuyingKeptOut: report.stockBuying,
               }}
             />
 
@@ -236,9 +239,18 @@ export default function ProfitLossReport() {
               />
               <StatTile
                 icon={<Receipt size={18} />}
-                label="Total Expense"
+                label={t.admin.acRunningCosts}
                 value={money(report.totalExpenses)}
+                hint={t.admin.acRunningCostsHint}
               />
+              {report.stockBuying > 0.005 && (
+                <StatTile
+                  icon={<Package size={18} />}
+                  label={t.admin.acStockBuying}
+                  value={money(report.stockBuying)}
+                  hint={t.admin.acStockNote}
+                />
+              )}
               <StatTile
                 icon={<Truck size={18} />}
                 label="Delivery Cost"

@@ -104,6 +104,7 @@ export async function createStoreWithSettings({
           description: cat.description,
           icon: cat.icon,
           color: cat.color,
+          kind: cat.kind,
           is_default: true,
           is_active: true,
         })),

@@ -38,6 +38,14 @@ export interface ProfitStoryFigures {
   vendorSales?: number;
   /** Days in the period (inclusive). When given, the card adds a per-day average of sales and profit. */
   dayCount?: number;
+  /**
+   * Stock bought in the period through an expense entry. Deliberately not part
+   * of any step above — buying stock is cash turning into stock, and its cost
+   * reaches profit as COGS when the goods sell (see accounting.ts). Named under
+   * the steps when above zero, so an owner who logged a restock can see where
+   * that money went instead of assuming the profit is wrong.
+   */
+  stockBuyingKeptOut?: number;
 }
 
 /** One branch's profit, shown in the card on "All branches". */
@@ -83,7 +91,7 @@ const BAR: Record<Step["tone"], string> = {
 export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount } = figures;
+  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount, stockBuyingKeptOut } = figures;
   // Per-day average of the sales figure the card leads with: every order when
   // known, else what was received.
   const showDailyAverage = dayCount !== undefined && dayCount > 0;
@@ -304,6 +312,22 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
               </div>
             </li>
           </ol>
+
+          {(stockBuyingKeptOut ?? 0) > 0.005 && (
+            <p className="m-0 mt-4 rounded-xl bg-muted/50 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              {/* The amount sits mid-sentence in both languages, so the string is split around it. */}
+              {t.admin.psStockBuyingKept.split("{amt}").map((part, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && (
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {formatMoney(stockBuyingKeptOut ?? 0)}
+                    </span>
+                  )}
+                  {part}
+                </React.Fragment>
+              ))}
+            </p>
+          )}
         </div>
       </div>
     </section>
