@@ -62,10 +62,16 @@ export interface ReceiptPdfData {
   customerPhone?: string | null;
   /**
    * Who the sale is for, printed under the order number when there is anything to print:
-   * the member's number (when they are a member), and the name and phone that were entered.
-   * A due sale already prints name and phone next to its DUE line, so those two are skipped there.
+   * the member's number (when they are a member), the name and phone that were entered, and,
+   * for an online order, where it goes. A due sale already prints name and phone next to its
+   * DUE line, so those two are skipped there.
    */
-  customerBlock?: { name?: string | null; phone?: string | null; memberNumber?: string | null } | null;
+  customerBlock?: {
+    name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    memberNumber?: string | null;
+  } | null;
   /** What the customer already owed before this sale — printed with the total due, only when > 0. */
   previousDue?: number | null;
   currencyIcon: string;
@@ -208,8 +214,9 @@ function drawReceiptCopy(
   const dueRepeatsCustomer = data.due != null && data.due > 0.01 && !!(data.customerName || data.customerPhone);
   const blockLines = [
     block?.memberNumber ? { text: `Member ID: ${block.memberNumber}`, bold: true } : null,
-    !dueRepeatsCustomer && block?.name ? { text: block.name, bold: false } : null,
+    !dueRepeatsCustomer && block?.name ? { text: block.name, bold: true } : null,
     !dueRepeatsCustomer && block?.phone ? { text: `Phone: ${block.phone}`, bold: false } : null,
+    block?.address ? { text: block.address, bold: false } : null,
   ].filter((line): line is { text: string; bold: boolean } => line !== null);
   if (blockLines.length > 0) {
     doc.setFontSize(7.5);

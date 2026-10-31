@@ -38,14 +38,19 @@ export async function buildReceiptPdfSetForOrder(
   const changeDue =
     cashReceived != null ? Math.max(0, cashReceived - order.total_amount) : null;
 
-  // A walk-in Quick Sale has no real name or phone ("Walk-in Customer" / "N/A"): print only what was entered.
-  const rawName = order.shipping_address?.customer_name || order.customers?.first_name || "";
-  const rawPhone = order.shipping_address?.phone || order.customers?.phone || "";
+  // Who the order is for. A walk-in Quick Sale has no real name or phone ("Walk-in Customer" /
+  // "N/A"): print only what was entered. Online orders also print where the order goes.
+  const shipping = order.shipping_address;
+  const rawName = shipping?.customer_name || order.customers?.first_name || "";
+  const rawPhone = shipping?.phone || order.customers?.phone || "";
   const customerName = rawName && rawName !== "Walk-in Customer" ? rawName : null;
   const customerPhone = rawPhone && rawPhone !== "N/A" && rawPhone !== "No phone" ? rawPhone : null;
+  const addressLine = shipping?.address_line_1 || shipping?.address || "";
+  const customerAddress =
+    order.channel === "pos" ? null : [addressLine, shipping?.city, shipping?.country].filter(Boolean).join(", ") || null;
 
   return generateReceiptPdfSet({
-    customerBlock: { name: customerName, phone: customerPhone, memberNumber: memberNumber ?? null },
+    customerBlock: { name: customerName, phone: customerPhone, address: customerAddress, memberNumber: memberNumber ?? null },
     storeName: storeData.store_name,
     branchLines: branchReceiptLines(branch),
     logoUrl: storeData.logo_url,
