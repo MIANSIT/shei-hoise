@@ -10,6 +10,8 @@ export interface Supplier {
   isActive: boolean;
   /** How many products have this supplier as their default. */
   productCount: number;
+  /** Usual credit period: new bills from this supplier are due this many days after the bill date. Null = none. */
+  paymentTermsDays: number | null;
 }
 
 export interface SupplierInput {
@@ -18,6 +20,8 @@ export interface SupplierInput {
   email?: string;
   address?: string;
   notes?: string;
+  /** Days after the bill date that a bill is due; null or empty clears it. */
+  paymentTermsDays?: number | null;
 }
 
 /** What the store owes one supplier: bills minus payments. */
@@ -51,6 +55,9 @@ export interface SupplierEntryInput {
   paymentMethod?: string;
   /** Payments only: "shop" = paid from the shop's own money, "outside" = investor or the owner's pocket. */
   paidFrom?: "shop" | "outside";
+  /** Payments paid from outside: who paid, and whether it counts as their capital or a loan to repay. */
+  funderId?: string | null;
+  funderTreatment?: "capital" | "loan" | null;
   /** Payments from the shop's money, stores with branches: the branch it was paid from. */
   branchId?: string | null;
   note?: string;

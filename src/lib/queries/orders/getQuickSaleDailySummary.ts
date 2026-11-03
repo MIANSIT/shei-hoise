@@ -3,6 +3,17 @@ import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
 import { getCodCashSettledForDate, getCodMarkedPaidCashForDate } from "@/lib/queries/orders/codSettlements";
 
+/** One product line of a sale, with what it cost (TP) so the register can show profit per line. */
+export interface RegisterLine {
+  productName: string;
+  variantLabel: string | null;
+  quantity: number;
+  /** Selling rate per unit before any order-level discount. */
+  unitPrice: number;
+  /** Cost (TP) per unit; null when the product has no TP, so it is flagged rather than counted as 0. */
+  unitCost: number | null;
+}
+
 export interface QuickSaleDailyOrderRow {
   id: string;
   order_number: string;
@@ -14,6 +25,8 @@ export interface QuickSaleDailyOrderRow {
   status: OrderStatus;
   total_amount: number;
   due_remaining: number;
+  /** Product lines; null when they could not be loaded. */
+  lines: RegisterLine[] | null;
 }
 
 export interface QuickSaleDailySummary {
@@ -28,8 +41,18 @@ export interface QuickSaleDailySummary {
   dueCollectedToday: number;
   /** COD cash a courier actually handed over today, from settlements recorded against this date — see codSettlements.ts. Independent of when the covered orders were originally sold. */
   codCashSettled: number;
-  /** What the items sold today cost (cost price at sale, else variant/product TP). Null when it couldn't be loaded, so profit isn't shown as if cost were 0. */
+  /** What the items sold today cost (cost price at sale, else variant/product TP) — only lines that have a TP. Null when it couldn't be loaded, so profit isn't shown as if cost were 0. */
   costOfGoods: number | null;
+  /** Σ unit price × quantity before discounts, for the whole day. */
+  listSales: number;
+  /** Σ order discounts for the day. */
+  discountTotal: number;
+  /** Σ additional charges for the day. */
+  additionalTotal: number;
+  /** Lines sold with no TP anywhere; their sales are left out of profit, not counted as free. */
+  missingTpLines: number;
+  /** Selling value (before discount) of those lines. */
+  missingTpSales: number;
   orders: QuickSaleDailyOrderRow[];
 }
 
@@ -41,6 +64,11 @@ const EMPTY: QuickSaleDailySummary = {
   dueCollectedToday: 0,
   codCashSettled: 0,
   costOfGoods: 0,
+  listSales: 0,
+  discountTotal: 0,
+  additionalTotal: 0,
+  missingTpLines: 0,
+  missingTpSales: 0,
   orders: [],
 };
 
@@ -135,11 +163,14 @@ export async function getQuickSaleDailySummary(
 
   const collectedByMethod: Record<string, number> = {};
   const addCollected = (method: string | null, amount: number) => {
-    const key = method || "unknown";
+    // Card is part of Bank: one balance.
+    const key = method === PaymentMethod.CARD ? PaymentMethod.BANK_TRANSFER : method || "unknown";
     collectedByMethod[key] = (collectedByMethod[key] ?? 0) + amount;
   };
 
   let grossSales = 0;
+  let discountTotal = 0;
+  let additionalTotal = 0;
   for (const order of orders) {
     const total = Number(order.total_amount) || 0;
     // Same net-revenue definition as getSalesReport.ts — excludes
@@ -152,12 +183,32 @@ export async function getQuickSaleDailySummary(
       (Number(order.discount_amount) || 0) +
       (Number(order.additional_charges) || 0);
     grossSales += netRevenue;
+    discountTotal += Number(order.discount_amount) || 0;
+    additionalTotal += Number(order.additional_charges) || 0;
     if (order.payment_status === PaymentStatus.PAID && !isCod(order)) {
       addCollected(order.payment_method, total);
     }
   }
 
-  const costOfGoods = await getCostOfGoods(orders.map((o) => o.id));
+  const linesByOrder = await getOrderLines(orders.map((o) => o.id));
+  let listSales = 0;
+  let costOfGoods: number | null = linesByOrder ? 0 : null;
+  let missingTpLines = 0;
+  let missingTpSales = 0;
+  if (linesByOrder) {
+    for (const lines of linesByOrder.values()) {
+      for (const line of lines) {
+        const value = line.unitPrice * line.quantity;
+        listSales += value;
+        if (line.unitCost == null) {
+          missingTpLines += 1;
+          missingTpSales += value;
+        } else {
+          costOfGoods = (costOfGoods ?? 0) + line.unitCost * line.quantity;
+        }
+      }
+    }
+  }
 
   let dueCollectedToday = 0;
   for (const payment of payments) {
@@ -194,6 +245,7 @@ export async function getQuickSaleDailySummary(
     status: order.status as OrderStatus,
     total_amount: Number(order.total_amount) || 0,
     due_remaining: Math.max(0, dueRemainingByOrderId.get(order.id) ?? 0),
+    lines: linesByOrder ? (linesByOrder.get(order.id) ?? []) : null,
   }));
 
   return {
@@ -204,42 +256,74 @@ export async function getQuickSaleDailySummary(
     dueCollectedToday,
     codCashSettled,
     costOfGoods,
+    listSales,
+    discountTotal,
+    additionalTotal,
+    missingTpLines,
+    missingTpSales,
     orders: rows,
   };
 }
 
-/**
- * Cost of the items on these orders — the same cost the Profit & Loss report
- * uses: the cost saved on the order line, else the variant's, else the
- * product's trade price.
- */
-async function getCostOfGoods(orderIds: string[]): Promise<number | null> {
-  if (orderIds.length === 0) return 0;
+/** Readable "Size: L, Colour: Red" from an order line's variant_details. */
+function variantLabel(details: unknown): string | null {
+  if (!details || typeof details !== "object" || Array.isArray(details)) return null;
+  const parts = Object.entries(details as Record<string, unknown>)
+    .filter(([, v]) => typeof v === "string" || typeof v === "number")
+    .map(([k, v]) => `${k}: ${v}`);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
 
-  type CostRow = {
+/**
+ * Every line of these orders with its cost: the cost saved on the order line,
+ * else the variant's, else the product's trade price. A line with no TP at all
+ * gets unitCost null so it is flagged instead of being counted as zero cost.
+ * Null when the lines couldn't be loaded.
+ */
+async function getOrderLines(orderIds: string[]): Promise<Map<string, RegisterLine[]> | null> {
+  const byOrder = new Map<string, RegisterLine[]>();
+  if (orderIds.length === 0) return byOrder;
+
+  type LineRow = {
+    order_id: string | null;
+    product_name: string;
+    variant_details: unknown;
     quantity: number | null;
+    unit_price: number | null;
     cost_price: number | null;
     product_variants: { tp_price: number | null } | { tp_price: number | null }[] | null;
     products: { tp_price: number | null } | { tp_price: number | null }[] | null;
   };
-  const tp = (rel: CostRow["products"]) =>
+  const tp = (rel: LineRow["products"]) =>
     Number((Array.isArray(rel) ? rel[0]?.tp_price : rel?.tp_price) ?? 0) || 0;
 
-  let total = 0;
   const chunk = 200;
   for (let i = 0; i < orderIds.length; i += chunk) {
     const { data, error } = await supabase
       .from("order_items")
-      .select("quantity, cost_price, product_variants(tp_price), products(tp_price)")
+      .select(
+        "order_id, product_name, variant_details, quantity, unit_price, cost_price, product_variants(tp_price), products(tp_price)",
+      )
       .in("order_id", orderIds.slice(i, i + chunk));
     if (error) {
-      console.error("Failed to load cost of goods:", error.message);
+      console.error("Failed to load order lines:", error.message);
       return null;
     }
-    for (const row of (data ?? []) as unknown as CostRow[]) {
-      const unitCost = row.cost_price != null ? Number(row.cost_price) || 0 : tp(row.product_variants) || tp(row.products);
-      total += unitCost * (Number(row.quantity) || 0);
+    for (const row of (data ?? []) as unknown as LineRow[]) {
+      if (!row.order_id) continue;
+      const saved = Number(row.cost_price) || 0;
+      const cost = saved > 0 ? saved : tp(row.product_variants) || tp(row.products);
+      const line: RegisterLine = {
+        productName: row.product_name,
+        variantLabel: variantLabel(row.variant_details),
+        quantity: Number(row.quantity) || 0,
+        unitPrice: Number(row.unit_price) || 0,
+        unitCost: cost > 0 ? cost : null,
+      };
+      const list = byOrder.get(row.order_id);
+      if (list) list.push(line);
+      else byOrder.set(row.order_id, [line]);
     }
   }
-  return total;
+  return byOrder;
 }

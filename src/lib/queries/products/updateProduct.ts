@@ -8,6 +8,7 @@ import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 import { getVariantListPrice } from "@/lib/utils/variantProductPricing";
+import { saveVariantOrder } from "@/lib/queries/products/variantOrder";
 import { resolveProductBrandId } from "@/lib/queries/brands/brandAccess";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
@@ -190,6 +191,7 @@ async function updateProductInternal(data: ProductUpdateType, stockBranchId: str
   }
 
   if (variants && variants.length > 0) {
+    const orderedVariantIds: string[] = [];
     for (const variant of variants) {
       const { stock: variantStock, ...rest } = variant;
       // Same normalisation as the product above — a cleared variant discount
@@ -219,8 +221,11 @@ async function updateProductInternal(data: ProductUpdateType, stockBranchId: str
         variantId = data.id;
       }
 
+      if (variantId) orderedVariantIds.push(variantId);
       await setInventoryAudited(id, variantId ?? null, variantStock ?? 0, store_id, created_by, stockBranchId);
     }
+    // The order the owner arranged them in (drag or arrows on the form).
+    await saveVariantOrder(orderedVariantIds);
   }
 
   // 3️⃣ Simple product inventory (no variants)

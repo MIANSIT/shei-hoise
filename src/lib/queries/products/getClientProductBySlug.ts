@@ -5,6 +5,7 @@ import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailab
 import { getBundleContentsMap } from "@/lib/queries/bundles/getBundleContentsMap";
 import { getBundleComponentValueMap } from "@/lib/queries/bundles/getBundleComponentValueMap";
 import { BundleItem } from "@/lib/types/product";
+import { getVariantOrder, sortVariantsByOrder } from "@/lib/queries/products/variantOrder";
 
 interface ProductVariant {
   id: string;
@@ -118,6 +119,9 @@ export async function getClientProductBySlug(
   data.product_variants = (data.product_variants || []).filter(
     (variant: ProductVariant) => variant.is_active !== false,
   );
+
+  // In the order the owner arranged them on the product form.
+  data.product_variants = sortVariantsByOrder(data.product_variants, await getVariantOrder(data.id));
 
   const product = data as Product;
 

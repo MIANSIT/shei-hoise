@@ -8,6 +8,7 @@ import {
   getAuthorizedStoreId,
   logActivity,
 } from "@/lib/permissions/server";
+import { resolveFunder } from "@/lib/queries/financial/resolveFunder";
 
 export interface UpdateExpenseInput {
   id: string;
@@ -19,6 +20,9 @@ export interface UpdateExpenseInput {
   vendor_name?: string;
   payment_method?: string;
   paid_from?: "shop" | "outside";
+  /** Sent only to change who paid; null clears it. */
+  funder_id?: string | null;
+  funder_treatment?: "capital" | "loan" | null;
   platform?: string;
   notes?: string;
   branch_id?: string;
@@ -53,7 +57,7 @@ export async function updateExpense(
     }
     const { data: current } = await supabase
       .from("expenses")
-      .select("branch_id")
+      .select("branch_id, paid_from")
       .eq("id", id)
       .eq("store_id", storeResult.storeId)
       .maybeSingle();
@@ -63,9 +67,25 @@ export async function updateExpense(
     }
 
     // Strip undefined values so we never accidentally null out existing DB columns
-    const fields = Object.fromEntries(
+    const fields: Record<string, unknown> = Object.fromEntries(
       Object.entries(rawFields).filter(([, v]) => v !== undefined),
     );
+
+    // Who paid: only touched when the form sent it, and only counts for money from outside the shop.
+    if ("funder_id" in fields || "funder_treatment" in fields) {
+      const funder = await resolveFunder(
+        storeResult.storeId,
+        rawFields.paid_from ?? current?.paid_from ?? null,
+        rawFields.funder_id,
+        rawFields.funder_treatment,
+      );
+      if (!funder.ok) {
+        console.error("updateExpense:", funder.error);
+        return null;
+      }
+      fields.funder_id = funder.funderId;
+      fields.funder_treatment = funder.treatment;
+    }
 
     const { data, error } = await supabase
       .from("expenses")

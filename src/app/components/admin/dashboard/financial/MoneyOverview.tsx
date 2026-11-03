@@ -36,6 +36,12 @@ import { getOwnerWithdrawals, type OwnerWithdrawal } from "@/lib/queries/financi
 import { deleteOwnerWithdrawal, recordOwnerWithdrawal } from "@/lib/queries/financial/ownerWithdrawals";
 import { getCustomerRefunds, type CustomerRefund } from "@/lib/queries/financial/getCustomerRefunds";
 import { deleteCustomerRefundEntry, recordCustomerRefundEntry } from "@/lib/queries/financial/customerRefunds";
+import { createExpense } from "@/lib/queries/expense/createExpense";
+import { getExpenseCategories } from "@/lib/queries/expense/category/getExpenseCategories";
+import { getSuppliers } from "@/lib/queries/supplier/suppliers";
+import { addSupplierEntry } from "@/lib/queries/supplier/supplierLedger";
+import type { ExpenseCategory } from "@/lib/types/expense/type";
+import type { Supplier } from "@/lib/queries/supplier/supplierTypes";
 
 const EMPTY: MoneyOverviewData = {
   receivedTotal: 0,
@@ -56,6 +62,8 @@ const EMPTY: MoneyOverviewData = {
 
 type WithdrawMethod = Exclude<MoneyMethodKey, "cod">;
 const WITHDRAW_METHODS: readonly WithdrawMethod[] = ["cash", "mobile_banking", "card", "bank_transfer", "online", "other"];
+/** What the dialogs offer for new entries (Bank includes card). Card, Online and Other are still read correctly on older records. */
+const METHOD_CHOICES: readonly WithdrawMethod[] = ["cash", "mobile_banking", "bank_transfer"];
 
 const REFUND_METHODS: readonly MoneyMethodKey[] = ["cash", "mobile_banking", "card", "bank_transfer", "online", "cod", "other"];
 
@@ -121,8 +129,14 @@ export default function MoneyOverview() {
   const [saving, setSaving] = useState(false);
   const [wAmount, setWAmount] = useState<number | null>(null);
   const [wMethod, setWMethod] = useState<WithdrawMethod>("cash");
-  // "withdraw" takes money out of the business; "move" changes the method it sits in (bKash → cash).
-  const [wKind, setWKind] = useState<"withdraw" | "move">("withdraw");
+  // "withdraw" takes money out of the business; "move" changes the method it sits in (bKash → cash);
+  // "expense" and "supplier" pay a business cost from the shop's money (they create the real expense or supplier payment).
+  const [wKind, setWKind] = useState<"withdraw" | "move" | "expense" | "supplier">("withdraw");
+  const [eTitle, setETitle] = useState("");
+  const [eCategory, setECategory] = useState<string | null>(null);
+  const [sSupplier, setSSupplier] = useState<string | null>(null);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+  const [supplierList, setSupplierList] = useState<Supplier[]>([]);
   const [wToMethod, setWToMethod] = useState<WithdrawMethod>("cash");
   const [wDate, setWDate] = useState<Dayjs>(dayjs());
   const [wNotes, setWNotes] = useState("");
@@ -164,6 +178,18 @@ export default function MoneyOverview() {
     setWNotes("");
     // A branch's own page records against that branch; on "All branches" start from the branch you work in.
     setWBranch(reportBranchId ?? workBranchId ?? activeBranches[0]?.id ?? null);
+    setETitle("");
+    setECategory(null);
+    setSSupplier(null);
+    // The lists for the two payment choices; the dialog still works without them.
+    if (user?.store_id) {
+      void getExpenseCategories({ storeId: user.store_id, pageSize: 100 })
+        .then((r) => setExpenseCategories(r.data.filter((c) => c.is_active === true)))
+        .catch(() => undefined);
+      void getSuppliers(user.store_id)
+        .then((list) => setSupplierList(list.filter((s) => s.isActive)))
+        .catch(() => undefined);
+    }
     setWithdrawOpen(true);
   };
 
@@ -181,8 +207,59 @@ export default function MoneyOverview() {
       showError(t.admin.moMoveSame);
       return;
     }
+    if (wKind === "expense" && !eTitle.trim()) {
+      showError(t.admin.moqNeedTitle);
+      return;
+    }
+    if (wKind === "supplier" && !sSupplier) {
+      showError(t.admin.moqNeedSupplier);
+      return;
+    }
     setSaving(true);
     try {
+      // Paying a business cost creates the real record, so it also shows on the Expense page / Supplier Bills.
+      if (wKind === "expense") {
+        const created = await createExpense({
+          store_id: user.store_id,
+          title: eTitle.trim(),
+          amount: wAmount,
+          expense_date: wDate.format("YYYY-MM-DD"),
+          payment_method: wMethod,
+          paid_from: "shop",
+          ...(eCategory ? { category_id: eCategory } : {}),
+          ...(wNotes.trim() ? { notes: wNotes.trim() } : {}),
+          ...(branchesOn && wBranch ? { branch_id: wBranch } : {}),
+        });
+        if (!created) {
+          showError(t.admin.moWithdrawFailed);
+          return;
+        }
+        success(t.admin.moqSavedExpense);
+        setWithdrawOpen(false);
+        await load();
+        return;
+      }
+      if (wKind === "supplier" && sSupplier) {
+        const paid = await addSupplierEntry(user.store_id, {
+          supplierId: sSupplier,
+          kind: "payment",
+          amount: wAmount,
+          date: wDate.format("YYYY-MM-DD"),
+          paymentMethod: wMethod,
+          paidFrom: "shop",
+          branchId: branchesOn ? wBranch : null,
+          note: wNotes.trim() || undefined,
+        });
+        if (!paid.success) {
+          showError(paid.error ?? t.admin.moWithdrawFailed);
+          return;
+        }
+        success(t.admin.moqSavedSupplier);
+        setWithdrawOpen(false);
+        await load();
+        return;
+      }
+
       const result = await recordOwnerWithdrawal({
         storeId: user.store_id,
         amount: wAmount,
@@ -791,16 +868,46 @@ export default function MoneyOverview() {
         open={withdrawOpen}
         onCancel={saving ? undefined : () => setWithdrawOpen(false)}
         onOk={handleWithdraw}
-        okText={t.admin.moSaveWithdrawal}
+        okText={wKind === "expense" || wKind === "supplier" ? t.admin.moqSave : t.admin.moSaveWithdrawal}
         cancelText={t.admin.moCancel}
         confirmLoading={saving}
-        title={wKind === "move" ? t.admin.moMoveMoney : t.admin.moRecordWithdrawal}
+        title={
+          wKind === "move"
+            ? t.admin.moMoveMoney
+            : wKind === "withdraw"
+              ? t.admin.moRecordWithdrawal
+              : t.admin.moqPayTitle
+        }
         destroyOnHidden
       >
         <p className="text-xs text-muted-foreground mt-0 mb-4">
-          {wKind === "move" ? t.admin.moMoveExplain : t.admin.moWithdrawExplain}
+          {wKind === "move"
+            ? t.admin.moMoveExplain
+            : wKind === "withdraw"
+              ? t.admin.moWithdrawExplain
+              : wKind === "expense"
+                ? t.admin.moqExpenseExplain
+                : t.admin.moqSupplierExplain}
         </p>
         <div className="space-y-3">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.moqKindLabel}</label>
+            <Select
+              value={wKind}
+              onChange={(v: "withdraw" | "move" | "expense" | "supplier") => {
+                setWKind(v);
+                // A cash-out usually starts from mobile banking; a cost is usually paid in cash.
+                setWMethod(v === "move" ? "mobile_banking" : "cash");
+              }}
+              className="w-full mt-1"
+              options={[
+                { value: "move", label: t.admin.moTypeMove },
+                { value: "withdraw", label: t.admin.moTypeWithdraw },
+                { value: "expense", label: t.admin.moqKindExpense },
+                { value: "supplier", label: t.admin.moqKindSupplier },
+              ]}
+            />
+          </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moAmount}</label>
             <InputNumber min={0} value={wAmount} onChange={(v) => setWAmount(v)} className="w-full mt-1" autoFocus />
@@ -820,13 +927,13 @@ export default function MoneyOverview() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground">
-                {wKind === "move" ? t.admin.moMoveFrom : t.admin.moTakenFrom}
+                {wKind === "move" ? t.admin.moMoveFrom : wKind === "withdraw" ? t.admin.moTakenFrom : t.admin.moqPaidFrom}
               </label>
               <Select
                 value={wMethod}
                 onChange={setWMethod}
                 className="w-full mt-1"
-                options={WITHDRAW_METHODS.map((m) => ({ value: m, label: methodLabel[m] }))}
+                options={METHOD_CHOICES.map((m) => ({ value: m, label: methodLabel[m] }))}
               />
             </div>
             {wKind === "move" && (
@@ -836,7 +943,7 @@ export default function MoneyOverview() {
                   value={wToMethod}
                   onChange={setWToMethod}
                   className="w-full mt-1"
-                  options={WITHDRAW_METHODS.filter((m) => m !== wMethod).map((m) => ({ value: m, label: methodLabel[m] }))}
+                  options={METHOD_CHOICES.filter((m) => m !== wMethod).map((m) => ({ value: m, label: methodLabel[m] }))}
                 />
               </div>
             )}
@@ -852,6 +959,35 @@ export default function MoneyOverview() {
               />
             </div>
           </div>
+          {wKind === "expense" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">{t.admin.moqExpenseFor}</label>
+                <Input value={eTitle} onChange={(e) => setETitle(e.target.value)} maxLength={120} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">{t.admin.moqExpenseCategory}</label>
+                <Select
+                  allowClear
+                  value={eCategory ?? undefined}
+                  onChange={(v: string | undefined) => setECategory(v ?? null)}
+                  className="w-full mt-1"
+                  options={expenseCategories.map((c) => ({ value: c.id, label: c.name }))}
+                />
+              </div>
+            </div>
+          )}
+          {wKind === "supplier" && (
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">{t.admin.moqSupplier}</label>
+              <Select
+                value={sSupplier ?? undefined}
+                onChange={(v: string) => setSSupplier(v)}
+                className="w-full mt-1"
+                options={supplierList.map((s) => ({ value: s.id, label: s.name }))}
+              />
+            </div>
+          )}
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moNote}</label>
             <Input.TextArea value={wNotes} onChange={(e) => setWNotes(e.target.value)} rows={2} className="mt-1" />
@@ -894,7 +1030,7 @@ export default function MoneyOverview() {
                 value={rMethod}
                 onChange={setRMethod}
                 className="w-full mt-1"
-                options={REFUND_METHODS.map((m) => ({ value: m, label: methodLabel[m] }))}
+                options={METHOD_CHOICES.map((m) => ({ value: m, label: methodLabel[m] }))}
               />
             </div>
             <div>

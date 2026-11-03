@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Empty, Input, Modal, Popconfirm, Spin } from "antd";
+import { Empty, Input, InputNumber, Modal, Popconfirm, Spin } from "antd";
 import { BookOpen, HandCoins, Mail, MapPin, MessageCircle, Package, Pencil, Plus, ReceiptText, Search, Trash2, Truck } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useTranslation } from "@/lib/hook/useTranslation";
@@ -31,7 +31,7 @@ import {
   type SupplierEntryValues,
 } from "./SupplierMoneyModals";
 
-const EMPTY_FORM: SupplierInput = { name: "", phone: "", email: "", address: "", notes: "" };
+const EMPTY_FORM: SupplierInput = { name: "", phone: "", email: "", address: "", notes: "", paymentTermsDays: null };
 
 /**
  * Suppliers: the importers and wholesalers the store buys stock from. They are
@@ -105,6 +105,7 @@ export default function SuppliersPage() {
       email: supplier.email ?? "",
       address: supplier.address ?? "",
       notes: supplier.notes ?? "",
+      paymentTermsDays: supplier.paymentTermsDays,
     });
     setFormOpen(true);
   };
@@ -152,6 +153,8 @@ export default function SuppliersPage() {
         date: values.date,
         paymentMethod: values.paymentMethod,
         paidFrom: values.paidFrom,
+        funderId: values.funderId,
+        funderTreatment: values.funderTreatment,
         branchId: values.branchId,
         note: values.note,
       });
@@ -192,7 +195,7 @@ export default function SuppliersPage() {
 
   const totalDue = Object.values(balances).reduce((sum, b) => sum + Math.max(b.due, 0), 0);
 
-  const field = (key: keyof SupplierInput) => ({
+  const field = (key: Exclude<keyof SupplierInput, "paymentTermsDays">) => ({
     value: form[key] ?? "",
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value })),
@@ -332,6 +335,9 @@ export default function SuppliersPage() {
                         {supplier.address}
                       </div>
                     )}
+                    {supplier.paymentTermsDays != null && (
+                      <p className="m-0 text-xs">{t.admin.spTermsShown.replace("{n}", n(String(supplier.paymentTermsDays)))}</p>
+                    )}
                     {supplier.notes && <p className="m-0 text-xs italic">{supplier.notes}</p>}
                   </div>
 
@@ -438,6 +444,20 @@ export default function SuppliersPage() {
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.spAddress}</label>
             <Input {...field("address")} maxLength={200} className="mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.spTerms}</label>
+            <InputNumber
+              min={1}
+              max={365}
+              precision={0}
+              value={form.paymentTermsDays ?? null}
+              onChange={(v) => setForm((prev) => ({ ...prev, paymentTermsDays: typeof v === "number" ? v : null }))}
+              style={{ width: "100%" }}
+              className="mt-1"
+              placeholder={t.admin.spTermsPh}
+            />
+            <p className="m-0 mt-1 text-[11px] text-muted-foreground">{t.admin.spTermsHint}</p>
           </div>
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.spNotes}</label>

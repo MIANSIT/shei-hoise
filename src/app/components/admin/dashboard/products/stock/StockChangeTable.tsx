@@ -13,7 +13,7 @@ import { BulkReorderAdd } from "./BulkReorderAdd";
 import { useReorderListStore } from "@/lib/store/reorderListStore";
 import { assignSupplierToProducts } from "@/lib/queries/supplier/suppliers";
 import type { Supplier } from "@/lib/queries/supplier/supplierTypes";
-import { addSupplierEntry } from "@/lib/queries/supplier/supplierLedger";
+import { receivePurchase } from "@/lib/queries/supplier/purchases";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 import dayjs from "dayjs";
 import type { QuickAddBill } from "./QuickAddStock";
@@ -265,6 +265,30 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     billAmount: number | null,
   ) => {
     try {
+      // A delivery with a bill goes through Receive stock, so the stock, the average cost and the
+      // bill are saved together and linked, and the bill cannot be entered a second time.
+      const billSupplierId = supplierByProduct[productId];
+      if (billAmount && billSupplierId && user?.store_id && canSupplierMoney) {
+        const product = products.find((p) => p.id === productId);
+        const variant = variantId ? product?.variants?.find((v) => v.id === variantId) : undefined;
+        const name = variant ? `${product?.title ?? ""} ${variant.title}`.trim() : (product?.title ?? "");
+        const received = await receivePurchase(user.store_id, {
+          supplierId: billSupplierId,
+          branchId,
+          purchaseDate: dayjs().format("YYYY-MM-DD"),
+          note: t.admin.shAddBillNote.replace("{product}", name).replace("{qty}", String(quantity)),
+          items: [{ productId, variantId, quantity, unitCost: Math.round((billAmount / quantity) * 100) / 100 }],
+        });
+        if (!received.success) {
+          notify.error(received.error);
+          return;
+        }
+        notify.success(t.admin.shAddBillDone);
+        await refreshProducts();
+        onStockChanged?.();
+        return;
+      }
+
       await adjustInventory({
         product_id: productId,
         ...(variantId ? { variant_id: variantId } : {}),
@@ -274,25 +298,7 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
         created_by: user?.id ?? null,
       });
 
-      // The stock is in; now add what is owed for it. A failed bill never undoes the stock.
-      let billFailed = false;
-      const supplierId = supplierByProduct[productId];
-      if (billAmount && supplierId && user?.store_id) {
-        const product = products.find((p) => p.id === productId);
-        const variant = variantId ? product?.variants?.find((v) => v.id === variantId) : undefined;
-        const name = variant ? `${product?.title ?? ""} ${variant.title}`.trim() : (product?.title ?? "");
-        const bill = await addSupplierEntry(user.store_id, {
-          supplierId,
-          kind: "bill",
-          amount: billAmount,
-          date: dayjs().format("YYYY-MM-DD"),
-          note: t.admin.shAddBillNote.replace("{product}", name).replace("{qty}", String(quantity)),
-        });
-        billFailed = !bill.success;
-      }
-
-      if (billFailed) notify.error(t.admin.shAddBillFailed);
-      else notify.success(billAmount ? t.admin.shAddBillDone : t.admin.shAddStockDone);
+      notify.success(t.admin.shAddStockDone);
       await refreshProducts();
       onStockChanged?.();
     } catch (err) {
@@ -463,7 +469,50 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
     // "read current, compute new, overwrite" step, so this is race-safe even
     // if stock is changing concurrently (e.g. a sale coming through).
     let failures = 0;
+    // Products with a supplier and a cost price are received through Receive stock when a bill is
+    // wanted (stock, average cost and bill together); everything else is a plain stock change.
+    const billable =
+      addBills && value > 0 && canSupplierMoney
+        ? uniqueTargets.filter((tg) => {
+            const cost = unitCostOf(tg.productId, tg.variantId);
+            return !!supplierByProduct[tg.productId] && !!cost && cost > 0;
+          })
+        : [];
+    const billableKeys = new Set(billable.map((tg) => `${tg.productId}:${tg.variantId ?? ""}`));
+    let billedSuppliers = 0;
+    let billFailed = false;
+    if (billable.length > 0 && user?.store_id) {
+      const bySupplier = new Map<string, UpdateTarget[]>();
+      for (const tg of billable) {
+        const supplierId = supplierByProduct[tg.productId];
+        bySupplier.set(supplierId, [...(bySupplier.get(supplierId) ?? []), tg]);
+      }
+      for (const [supplierId, list] of bySupplier) {
+        const result = await receivePurchase(user.store_id, {
+          supplierId,
+          branchId,
+          purchaseDate: dayjs().format("YYYY-MM-DD"),
+          note: t.admin.shBulkBillNote.replace("{qty}", String(value)),
+          items: list.map((tg) => ({
+            productId: tg.productId,
+            variantId: tg.variantId,
+            quantity: value,
+            unitCost: unitCostOf(tg.productId, tg.variantId) ?? 0,
+          })),
+        });
+        if (result.success) {
+          billedSuppliers += 1;
+          succeeded.push(...list);
+        } else {
+          billFailed = true;
+          failures += list.length;
+          console.error("Bulk receive failed:", result.error);
+        }
+      }
+    }
+
     for (const { productId, variantId } of uniqueTargets) {
+      if (billableKeys.has(`${productId}:${variantId ?? ""}`)) continue;
       try {
         if (value === 0) {
           await updateInventory({
@@ -497,25 +546,8 @@ const StockChangeTable: React.FC<StockChangeTableProps> = ({
       );
     }
 
-    // Bill each supplier for what really went in (items that failed are left out). A failed
-    // bill never undoes the stock.
-    if (addBills && user?.store_id) {
-      const storeId = user.store_id;
-      const lines = [...billsBySupplier(succeeded, value)];
-      const results = await Promise.all(
-        lines.map(([supplierId, amount]) =>
-          addSupplierEntry(storeId, {
-            supplierId,
-            kind: "bill",
-            amount,
-            date: dayjs().format("YYYY-MM-DD"),
-            note: t.admin.shBulkBillNote.replace("{qty}", String(value)),
-          }),
-        ),
-      );
-      if (results.some((r) => !r.success)) notify.error(t.admin.shAddBillFailed);
-      else if (lines.length > 0) notify.success(t.admin.shBulkBillDone.replace("{n}", String(lines.length)));
-    }
+    if (billFailed) notify.error(t.admin.shAddBillFailed);
+    else if (billedSuppliers > 0) notify.success(t.admin.shBulkBillDone.replace("{n}", String(billedSuppliers)));
 
     setEditedStocks({});
     setSelectedRowKeys([]);

@@ -40,10 +40,16 @@ const ROUTE_REQUIREMENTS: ReadonlyArray<readonly [string, RouteRequirement]> = [
   ["/dashboard/stock/health", "stock.insights"],
   ["/dashboard/stock/reorder", "stock.insights"],
   ["/dashboard/stock/suppliers", "stock.view"],
+  // Receiving stock adds the supplier's bill, so it needs the supplier bills permission (the action also checks stock.edit).
+  ["/dashboard/stock/receive", "stock.supplier_money"],
+  ["/dashboard/stock/bills", "stock.supplier_money"],
   ["/dashboard/products", "products.view"],
 
   ["/dashboard/reviews", "reviews.view"],
   ["/dashboard/reports", "reports.view"],
+  ["/dashboard/financial/money-book", "owner"],
+  // The balance sheet shows cash and what the shop owes, so it needs the reports permission (cash itself is owner-only).
+  ["/dashboard/balance-sheet", "reports.view"],
   ["/dashboard/financial/money", "reports.view"],
   ["/dashboard/marketing/coupons", "coupons.view"],
 

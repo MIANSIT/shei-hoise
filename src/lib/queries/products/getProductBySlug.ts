@@ -2,6 +2,7 @@
 // lib/queries/products/getProductTypeBySlug.ts
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { ProductType } from "@/lib/schema/productSchema";
+import { getVariantOrder, sortVariantsByOrder } from "@/lib/queries/products/variantOrder";
 import type { ProductStock, ProductImage, Category } from "./getProducts";
 
 // DB variant type
@@ -182,7 +183,7 @@ export async function getProductBySlug(
       altText: img.alt_text ?? undefined,
       isPrimary: img.is_primary,
     })),
-    variants: (p.product_variants ?? []).map((v) =>
+    variants: sortVariantsByOrder(p.product_variants ?? [], await getVariantOrder(p.id)).map((v) =>
       mapVariant(v, p.product_images ?? [])
     ),
   };

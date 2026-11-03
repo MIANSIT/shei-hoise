@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import MainDashboard from "@/app/components/admin/dashboard/dashboardComponent/MainDashboard";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -29,9 +29,28 @@ import {
   TimePeriod,
 } from "@/lib/hook/useDashboardMetrics";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { computeMargins } from "@/lib/utils/profitMargins";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useBranches } from "@/lib/context/BranchContext";
 import { BranchComparison } from "@/app/components/admin/branches/BranchComparison";
+import { MoneyAlerts } from "@/app/components/admin/dashboard/dashboardComponent/MoneyAlerts";
+import { MoneyPositionStrip } from "@/app/components/admin/dashboard/dashboardComponent/MoneyPositionStrip";
+import { useAccrualStatements } from "@/lib/hook/useAccrualStatements";
+import { usePermissions } from "@/lib/context/PermissionsContext";
+
+/** One KPI card on the dashboard. */
+interface DashStat {
+  title: string;
+  value: ReactNode;
+  icon: ReactNode;
+  change: ReactNode;
+  changeType: "positive" | "negative" | "neutral";
+  description?: string;
+}
+
+/** % change from the previous period; 100 when there was nothing before, 0 when there is nothing now. */
+const pctChange = (current: number, previous: number): number =>
+  previous > 0 ? ((current - previous) / previous) * 100 : current > 0 ? 100 : 0;
 import {
   getBranchComparison,
   type BranchComparisonRow,
@@ -40,6 +59,9 @@ import {
 export default function DashboardPage() {
   const { storeId, loading: userLoading, error: userError } = useCurrentUser();
   const { allowed: analyticsAllowed } = useFeatureGate(storeId, "analytics");
+  // Plans with the Balance Sheet page get a short Profit & Loss card and a money strip here, and the full
+  // statements on that page. Plans without it only have the dashboard, so it carries the full statements.
+  const { allowed: balanceSheetAllowed, loading: balanceSheetLoading } = useFeatureGate(storeId, "balance_sheet");
 
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("monthly");
   const [summary, setSummary] = useState<DashboardSummaryPayload | null>(null);
@@ -58,6 +80,8 @@ export default function DashboardPage() {
     canSeeAllBranches,
     setSelectedBranchId,
   } = useBranches();
+  // Cash & bank comes from money pages that only the owner can read.
+  const { isOwner } = usePermissions();
   const dashboardBranchId = branchesOn ? selectedBranchId : null;
   // "All branches": every branch side by side (table + profit per branch in the card).
   const showComparison = branchesOn && !dashboardBranchId && canSeeAllBranches;
@@ -131,6 +155,22 @@ export default function DashboardPage() {
   }, [storeId, timePeriod, dashboardBranchId, branchesLoading]);
 
   const metrics = useDashboardMetrics(summary);
+
+  // Profit & Loss on one basis and the Balance, from the accrual functions. Null until they have
+  // loaded (or if the database doesn't have them), and then every card below keeps its old figure.
+  const periodRange = getDashboardPeriodRange(timePeriod);
+  const { data: accrual, ready: accrualReady, error: accrualError } = useAccrualStatements({
+    storeId,
+    branchId: dashboardBranchId,
+    periodStart: periodRange.periodStart,
+    periodEnd: periodRange.periodEnd,
+    prevPeriodStart: periodRange.prevPeriodStart,
+    prevPeriodEnd: periodRange.prevPeriodEnd,
+    compare: timePeriod !== "all",
+    enabled: !!storeId && !branchesLoading,
+    includeCash: isOwner,
+    withBranches: branchesOn,
+  });
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (userLoading || loadingSummary) {
@@ -228,7 +268,7 @@ export default function DashboardPage() {
         : 0;
 
   // ── Sales / Order KPI cards ──────────────────────────────────────────────────
-  const stats = [
+  const stats: DashStat[] = [
     salesSummary
       ? {
           title: `${getPeriodLabel(timePeriod)} ${t.admin.psSalesAll}`,
@@ -278,30 +318,76 @@ export default function DashboardPage() {
     },
   ];
 
+  // On the accrual basis the revenue, average order and gross profit cards are replaced: revenue
+  // counts every order that isn't cancelled or returned, and its cost counts with it. Vendor sales
+  // stay out of revenue because only their margin is profit (shown on its own line).
+  if (accrual) {
+    const { pl, prevPl } = accrual;
+    const revenueChange = pctChange(pl.netRevenue, prevPl?.netRevenue ?? 0);
+    const aov = pl.ordersCount > 0 ? pl.netRevenue / pl.ordersCount : 0;
+    const prevAov = prevPl && prevPl.ordersCount > 0 ? prevPl.netRevenue / prevPl.ordersCount : 0;
+    const grossChange = pctChange(pl.grossProfit, prevPl?.grossProfit ?? 0);
+    const margins = computeMargins(pl);
+    const fmtPct = (v: number | null) => (v == null ? "—" : `${n(v.toFixed(1))}%`);
+    stats[0] = {
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.fsNetRevenue}`,
+      value: renderCurrency(pl.netRevenue),
+      icon: <DollarOutlined className="text-emerald-500" />,
+      change: changeLabel(revenueChange),
+      changeType: changeTone(revenueChange),
+      description:
+        `${t.admin.psReceived} ${renderCurrencyText(pl.collected)} · ${t.admin.psToCollect} ${renderCurrencyText(pl.uncollected)}` +
+        (vendorSales > 0 ? ` · ${t.admin.fsVendorSalesNote.replace("{amount}", renderCurrencyText(vendorSales))}` : ""),
+    };
+    stats[2] = {
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.avgOrderValue}`,
+      value: renderCurrency(aov),
+      icon: <LineChartOutlined className="text-violet-500" />,
+      change: changeLabel(pctChange(aov, prevAov)),
+      changeType: changeTone(pctChange(aov, prevAov)),
+      description: t.admin.fsAovHow,
+    };
+    stats[3] = {
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.fsGross}`,
+      value: renderCurrency(pl.grossProfit),
+      icon: <DollarOutlined className="text-amber-500" />,
+      change: changeLabel(grossChange),
+      changeType: changeTone(grossChange),
+      description:
+        `${t.admin.fsProfitOnTp} ${fmtPct(margins.profitOnTp)} · ${t.admin.fsGrossMargin} ${fmtPct(margins.grossMargin)}` +
+        (pl.missingCostLines > 0 ? ` · ${n(String(pl.missingCostLines))} ${t.admin.fsNoTpShort}` : ""),
+    };
+  }
+
   // ── Expense / Financial KPI cards ────────────────────────────────────────────
   const { expenseMetrics } = metrics;
+  const expenseRatio = accrual
+    ? accrual.pl.netRevenue > 0
+      ? (accrual.pl.operatingExpenses / accrual.pl.netRevenue) * 100
+      : 0
+    : expenseMetrics.expenseToRevenueRatio;
 
   const expenseRatioHealth: "positive" | "negative" | "neutral" =
-    expenseMetrics.expenseToRevenueRatio === 0
+    expenseRatio === 0
       ? "neutral"
-      : expenseMetrics.expenseToRevenueRatio >= 80
+      : expenseRatio >= 80
         ? "negative"
-        : expenseMetrics.expenseToRevenueRatio >= 60
+        : expenseRatio >= 60
           ? "neutral"
           : "positive";
 
   const expenseRatioLabel =
-    expenseMetrics.expenseToRevenueRatio === 0
+    expenseRatio === 0
       ? t.admin.noRevenueData
-      : expenseMetrics.expenseToRevenueRatio >= 80
+      : expenseRatio >= 80
         ? t.admin.highReviewCosts
-        : expenseMetrics.expenseToRevenueRatio >= 60
+        : expenseRatio >= 60
           ? t.admin.moderate
           : t.admin.healthy;
 
-  const expenseStats = [
+  const expenseStats: DashStat[] = [
     {
-      title: `${getPeriodLabel(timePeriod)} ${t.admin.totalExpenses}`,
+      title: `${getPeriodLabel(timePeriod)} ${accrual ? t.admin.fsOpex : t.admin.totalExpenses}`,
       value: renderCurrency(expenseMetrics.totalExpenses),
       icon: <FallOutlined className="text-rose-500" />,
       change: changeLabel(expenseMetrics.changePercentage.expenses),
@@ -332,8 +418,8 @@ export default function DashboardPage() {
       description: `${t.admin.grossProfitMinus} + vendor profit`,
     },
     {
-      title: t.admin.expenseRevenueRatio,
-      value: `${n(expenseMetrics.expenseToRevenueRatio)}%`,
+      title: accrual ? t.admin.fsOpexRatio : t.admin.expenseRevenueRatio,
+      value: `${n(accrual ? expenseRatio.toFixed(1) : expenseRatio)}%`,
       icon: <PieChartOutlined className="text-orange-500" />,
       change: expenseRatioLabel,
       changeType: expenseRatioHealth,
@@ -344,10 +430,26 @@ export default function DashboardPage() {
       value: expenseMetrics.topExpenseCategory.name,
       icon: <TagOutlined className="text-pink-500" />,
       change: renderCurrency(expenseMetrics.topExpenseCategory.amount),
-      changeType: "neutral" as const,
+      changeType: "neutral",
       description: t.admin.highestSpendCat,
     },
   ];
+
+  if (accrual) {
+    const { pl, prevPl } = accrual;
+    const netProfit = pl.netProfit + vendorProfit;
+    const prevNet = (prevPl?.netProfit ?? 0) + (summary?.prev_vendor_profit ?? 0);
+    const netChange = prevNet > 0 ? pctChange(netProfit, prevNet) : netProfit > 0 ? 100 : netProfit < 0 ? -100 : 0;
+    expenseStats[1] = {
+      title: `${getPeriodLabel(timePeriod)} ${t.admin.fsNet}`,
+      value: renderCurrency(netProfit),
+      icon: <RiseOutlined className={netProfit >= 0 ? "text-emerald-500" : "text-rose-500"} />,
+      change: changeLabel(netChange),
+      // A loss stays red even on the all-time view: that is a fact about the figure itself.
+      changeType: netProfit < 0 ? "negative" : changeTone(netChange),
+      description: `${t.admin.fsNetMargin} ${n((pl.netRevenue > 0 ? (netProfit / pl.netRevenue) * 100 : 0).toFixed(1))}%`,
+    };
+  }
 
   // ── Order status cards ────────────────────────────────────────────────────────
   const orderStatusCards = [
@@ -412,8 +514,8 @@ export default function DashboardPage() {
       actionText: t.admin.restockNow,
     },
     {
-      title: t.admin.inventorySellValue,
-      value: renderCurrency(metrics.totalInventoryValue),
+      title: accrual ? t.admin.fsInventory : t.admin.inventorySellValue,
+      value: renderCurrency(accrual ? accrual.balance.inventoryAtCost : metrics.totalInventoryValue),
       icon: <DatabaseOutlined className="text-indigo-600" />,
       color: "bg-indigo-100",
       actionText: t.admin.viewDetails,
@@ -443,12 +545,12 @@ export default function DashboardPage() {
   // ── Payment amounts ───────────────────────────────────────────────────────────
   const orderAmounts = [
     {
-      title: t.admin.pendingAmount,
+      title: accrual ? t.admin.fsPayPending : t.admin.pendingAmount,
       amount: metrics.paymentAmounts.pending,
       status: "pending" as const,
     },
     {
-      title: t.admin.paidAmount,
+      title: accrual ? t.admin.fsPayPaid : t.admin.paidAmount,
       amount: metrics.paymentAmounts.paid,
       status: "paid" as const,
     },
@@ -464,6 +566,14 @@ export default function DashboardPage() {
     revenue: p.revenue,
     quantity: p.quantity,
   }));
+
+  // Net profit against the period before, for the story card; a swing from a loss reads against the size of that loss.
+  const accrualNetChangePct = (() => {
+    if (!accrual || !accrual.prevPl || timePeriod === "all") return null;
+    const current = accrual.pl.netProfit + vendorProfit;
+    const previous = accrual.prevPl.netProfit + (summary?.prev_vendor_profit ?? 0);
+    return previous === 0 ? null : ((current - previous) / Math.abs(previous)) * 100;
+  })();
 
   return (
     <MainDashboard
@@ -482,17 +592,55 @@ export default function DashboardPage() {
       onTimePeriodChange={setTimePeriod}
       analyticsAllowed={analyticsAllowed}
       branchLabel={branchesOn ? (selectedBranch?.name ?? t.branches.allBranches) : undefined}
+      moneyAlerts={
+        <MoneyAlerts
+          storeId={storeId}
+          branchId={dashboardBranchId}
+          withBranches={branchesOn}
+          cash={accrual?.cash ?? null}
+          formatMoney={(amount: number) => renderCurrency(amount)}
+        />
+      }
+      statements={
+        // While developing, say why the statements are missing instead of silently showing the old cards.
+        !accrual && accrualReady && accrualError && process.env.NODE_ENV !== "production" ? (
+          <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
+            Financial statements could not load, so the older figures are shown. {accrualError}
+          </div>
+        ) : accrual && !balanceSheetLoading && balanceSheetAllowed ? (
+          // The Profit & Loss story below already tells the profit; plans with the Balance Sheet get its money position here.
+          <MoneyPositionStrip data={accrual} formatMoney={(amount: number) => renderCurrency(amount)} />
+        ) : undefined
+      }
       profitStory={{
-        figures: {
-          sales: metrics.revenue,
-          grossProfit: metrics.grossProfit,
-          expenses: expenseMetrics.totalExpenses,
-          vendorProfit,
-          netProfit: expenseMetrics.netProfit,
-          netChangePct: isAllTime ? null : expenseMetrics.changePercentage.netProfit,
-          // Customers only: vendor sales and dues have their own Vendor Payments block.
-          ...(salesSummary ? { allSales: salesSummary.sales, vendorSales } : {}),
-        },
+        figures: accrual
+          ? {
+              // Every sale counts when it is made; what is unpaid shows as To collect.
+              sales: accrual.pl.netRevenue,
+              grossProfit: accrual.pl.grossProfit,
+              expenses: accrual.pl.operatingExpenses,
+              vendorProfit,
+              netProfit: accrual.pl.netProfit + vendorProfit,
+              netChangePct: accrualNetChangePct,
+              deliveryCost: accrual.pl.netDeliveryCost,
+              accrual: true,
+              collected: accrual.pl.collected,
+              vendorSales,
+              vendorReceived: metrics.vendorPayments.received,
+              vendorDue: metrics.vendorPayments.totalDue,
+              missingCostLines: accrual.pl.missingCostLines,
+              missingCostSales: accrual.pl.missingCostSales,
+            }
+          : {
+              sales: metrics.revenue,
+              grossProfit: metrics.grossProfit,
+              expenses: expenseMetrics.totalExpenses,
+              vendorProfit,
+              netProfit: expenseMetrics.netProfit,
+              netChangePct: isAllTime ? null : expenseMetrics.changePercentage.netProfit,
+              // Customers only: vendor sales and dues have their own Vendor Payments block.
+              ...(salesSummary ? { allSales: salesSummary.sales, vendorSales } : {}),
+            },
         formatMoney: (amount: number) => renderCurrency(amount),
         ...(showComparison && comparison && comparison.length > 1
           ? {

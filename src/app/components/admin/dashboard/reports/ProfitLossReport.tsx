@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { DatePicker, Spin, Button, Popover, App } from "antd";
+import { DatePicker, Spin, Button, Popover, App, Alert } from "antd";
 import dayjs, { Dayjs } from "dayjs";
 import {
   TrendingUp,
@@ -30,6 +30,7 @@ import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { ProfitStory } from "@/app/components/admin/dashboard/dashboardComponent/ProfitStory";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { computeMargins, netMarginPct } from "@/lib/utils/profitMargins";
 
 function StatTile({
   icon,
@@ -63,6 +64,7 @@ function StatTile({
 }
 
 const EMPTY: ProfitLossReportData = {
+  basis: "paid",
   salesAll: 0,
   toCollect: 0,
   vendorSales: 0,
@@ -70,6 +72,8 @@ const EMPTY: ProfitLossReportData = {
   additionalCharges: 0,
   cogs: 0,
   grossProfit: 0,
+  missingCostLines: 0,
+  missingCostSales: 0,
   totalExpenses: 0,
   deliveryNetCost: 0,
   vendorProfit: 0,
@@ -119,6 +123,8 @@ export default function ProfitLossReport() {
   }, [fetchReport]);
 
   const money = (v: number) => `${currencyIcon}${v.toFixed(2)}`;
+  const fmtPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
+  const margins = computeMargins({ ...report, netRevenue: report.totalSales });
 
   const handleExportPdf = async () => {
     if (exporting) return;
@@ -192,6 +198,15 @@ export default function ProfitLossReport() {
           </div>
         ) : (
           <>
+            {report.missingCostLines > 0 && (
+              <Alert
+                type="warning"
+                showIcon
+                message={t.admin.fsMissingTp
+                  .replace("{n}", String(report.missingCostLines))
+                  .replace("{amount}", money(report.missingCostSales))}
+              />
+            )}
             <ProfitStory
               periodLabel={`${range[0].format("DD-MM-YYYY")} – ${range[1].format("DD-MM-YYYY")}`}
               formatMoney={money}
@@ -203,8 +218,9 @@ export default function ProfitLossReport() {
                 netProfit: report.netProfit,
                 netChangePct: null,
                 deliveryCost: report.deliveryNetCost,
-                allSales: report.salesAll,
-                vendorSales: report.vendorSales,
+                missingCostLines: report.missingCostLines,
+                missingCostSales: report.missingCostSales,
+                ...(report.basis === "accrual" ? { accrual: true, collected: report.totalSales - report.toCollect, vendorSales: report.vendorSales } : { allSales: report.salesAll, vendorSales: report.vendorSales }),
                 dayCount: range[1].startOf("day").diff(range[0].startOf("day"), "day") + 1,
               }}
             />
@@ -218,21 +234,28 @@ export default function ProfitLossReport() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatTile
                 icon={<DollarSign size={18} />}
-                label={t.admin.psReceived}
+                label={report.basis === "accrual" ? t.admin.fsNetRevenue : t.admin.psReceived}
                 value={money(report.totalSales)}
-                hint={t.admin.psReceivedTileHint}
+                hint={report.basis === "accrual" ? t.admin.fsNetRevenueHow : t.admin.psReceivedTileHint}
               />
-              <StatTile
-                icon={<PlusCircle size={18} />}
-                label="Additional Charges"
-                value={money(report.additionalCharges)}
-                hint="Included in Total Sales"
-              />
+              {report.basis !== "accrual" && (
+                <StatTile
+                  icon={<PlusCircle size={18} />}
+                  label="Additional Charges"
+                  value={money(report.additionalCharges)}
+                  hint="Included in Total Sales"
+                />
+              )}
               <StatTile icon={<Package size={18} />} label="COGS" value={money(report.cogs)} />
               <StatTile
                 icon={<TrendingUp size={18} />}
                 label="Gross Profit"
                 value={money(report.grossProfit)}
+                hint={
+                  report.basis === "accrual"
+                    ? `${t.admin.fsProfitOnTp} ${fmtPct(margins.profitOnTp)} · ${t.admin.fsGrossMargin} ${fmtPct(margins.grossMargin)}`
+                    : undefined
+                }
               />
               <StatTile
                 icon={<Receipt size={18} />}
@@ -256,6 +279,7 @@ export default function ProfitLossReport() {
                 icon={<TrendingDown size={18} />}
                 label="Net Profit"
                 value={money(report.netProfit)}
+                hint={`${t.admin.fsNetMargin} ${fmtPct(netMarginPct(report.netProfit, report.totalSales, report.vendorProfit, report.missingCostSales))}`}
                 tone={report.netProfit < 0 ? "negative" : "default"}
               />
             </div>

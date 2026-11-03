@@ -13,6 +13,13 @@ const supplierSchema = z.object({
   email: z.string().trim().max(120, "Email is too long").optional(),
   address: z.string().trim().max(200, "Address is too long").optional(),
   notes: z.string().trim().max(500, "Notes are too long").optional(),
+  paymentTermsDays: z
+    .number("Enter the days as a number")
+    .int("Enter whole days")
+    .min(1, "Payment terms must be at least 1 day")
+    .max(365, "Payment terms can be at most 365 days")
+    .nullable()
+    .optional(),
 });
 
 interface SupplierRow {
@@ -23,6 +30,7 @@ interface SupplierRow {
   address: string | null;
   notes: string | null;
   is_active: boolean;
+  payment_terms_days?: number | null;
 }
 
 function clean(value: string | undefined): string | null {
@@ -39,14 +47,16 @@ export async function getSuppliers(storeId: string): Promise<Supplier[]> {
     const auth = await authorizeForStore(storeId, "stock.view");
     if (!auth.ok) return [];
 
-    const [suppliersRes, productsRes] = await Promise.all([
-      supabaseAdmin
-        .from("suppliers")
-        .select("id, name, phone, email, address, notes, is_active")
-        .eq("store_id", storeId)
-        .order("name"),
+    const loadSuppliers = (columns: string) =>
+      supabaseAdmin.from("suppliers").select(columns).eq("store_id", storeId).order("name");
+    const [withTerms, productsRes] = await Promise.all([
+      loadSuppliers("id, name, phone, email, address, notes, is_active, payment_terms_days"),
       supabaseAdmin.from("products").select("supplier_id").eq("store_id", storeId).not("supplier_id", "is", null).limit(100000),
     ]);
+    // Before the purchases migration is applied the terms column is missing: read the rest without it.
+    const suppliersRes = withTerms.error
+      ? await loadSuppliers("id, name, phone, email, address, notes, is_active")
+      : withTerms;
     if (suppliersRes.error) throw new Error(suppliersRes.error.message);
 
     const counts = new Map<string, number>();
@@ -54,7 +64,7 @@ export async function getSuppliers(storeId: string): Promise<Supplier[]> {
       counts.set(row.supplier_id, (counts.get(row.supplier_id) ?? 0) + 1);
     }
 
-    return ((suppliersRes.data ?? []) as SupplierRow[]).map((s) => ({
+    return ((suppliersRes.data ?? []) as unknown as SupplierRow[]).map((s) => ({
       id: s.id,
       name: s.name,
       phone: s.phone,
@@ -63,6 +73,7 @@ export async function getSuppliers(storeId: string): Promise<Supplier[]> {
       notes: s.notes,
       isActive: s.is_active,
       productCount: counts.get(s.id) ?? 0,
+      paymentTermsDays: s.payment_terms_days ?? null,
     }));
   } catch (error) {
     console.error("getSuppliers failed:", error);
@@ -117,6 +128,7 @@ export async function createSupplier(storeId: string, input: SupplierInput): Pro
         email: clean(v.email),
         address: clean(v.address),
         notes: clean(v.notes),
+        ...(v.paymentTermsDays !== undefined ? { payment_terms_days: v.paymentTermsDays } : {}),
       })
       .select("id")
       .single();
@@ -155,6 +167,7 @@ export async function updateSupplier(storeId: string, supplierId: string, input:
         email: clean(v.email),
         address: clean(v.address),
         notes: clean(v.notes),
+        ...(v.paymentTermsDays !== undefined ? { payment_terms_days: v.paymentTermsDays } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq("id", supplierId)

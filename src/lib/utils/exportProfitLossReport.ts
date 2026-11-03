@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import type { ProfitLossReport } from "@/lib/queries/dashboard/getProfitLossReport";
+import { computeMargins } from "@/lib/utils/profitMargins";
 import { enableBengaliText } from "@/lib/pdf/bengaliPdfText";
 import { loadBengaliFontBrowser } from "@/lib/pdf/bengaliFontBrowser";
 
@@ -157,11 +158,18 @@ export async function exportProfitLossReportPDF(
   // ── Sales · Received · To collect ──
   const cellsTop = resultTop + resultHeight + 6;
   const cellW = (contentWidth - 8) / 3;
-  const cells: { label: string; value: number; color: Rgb }[] = [
-    { label: "Sales (all orders)", value: report.salesAll, color: DARK },
-    { label: "Received", value: report.totalSales, color: GREEN },
-    { label: "To collect", value: report.toCollect, color: [180, 83, 9] },
-  ];
+  const accrual = report.basis === "accrual";
+  const cells: { label: string; value: number; color: Rgb }[] = accrual
+    ? [
+        { label: "Net revenue", value: report.salesAll, color: DARK },
+        { label: "Collected", value: report.salesAll - report.toCollect, color: GREEN },
+        { label: "Not collected yet", value: report.toCollect, color: [180, 83, 9] },
+      ]
+    : [
+        { label: "Sales (all orders)", value: report.salesAll, color: DARK },
+        { label: "Received", value: report.totalSales, color: GREEN },
+        { label: "To collect", value: report.toCollect, color: [180, 83, 9] },
+      ];
   cells.forEach((cell, i) => {
     const x = margin + i * (cellW + 4);
     pdf.setDrawColor(229, 231, 235);
@@ -179,17 +187,33 @@ export async function exportProfitLossReportPDF(
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(7.5);
   pdf.setTextColor(...MUTED);
-  pdf.text("Profit is worked out on money received only, so an order that may still be returned is never counted as profit.", margin, cellsTop + 21);
+  pdf.text(
+    accrual
+      ? "Revenue counts when the sale is made, and its cost counts with it. Money still owed to you shows as Accounts receivable on the dashboard."
+      : "Profit is worked out on money received only, so an order that may still be returned is never counted as profit.",
+    margin,
+    cellsTop + 21,
+  );
 
   // ── The statement, line by line ──
+  const margins = computeMargins({ ...report, netRevenue: report.totalSales });
+  const pctText = (v: number | null) => (v == null ? "-" : `${v.toFixed(1)}%`);
+  const grossNote = accrual
+    ? `Profit on TP ${pctText(margins.profitOnTp)}, margin on sales ${pctText(margins.grossMargin)}` +
+      (report.missingCostLines > 0
+        ? `. ${report.missingCostLines} item lines (${meta.currencySymbol}${money(report.missingCostSales)} of sales) have no TP and are left out of these percentages`
+        : "")
+    : "Earned on the items sold";
   type Line = { sign: string; label: string; note: string; value: number; kind: "plain" | "cost" | "total" | "final" };
   const lines: Line[] = [
-    { sign: "", label: "Sales received", note: "Paid orders, without delivery charge and tax", value: report.totalSales, kind: "plain" },
+    accrual
+      ? { sign: "", label: "Net revenue", note: "All orders except cancelled and returned, after discounts", value: report.totalSales, kind: "plain" }
+      : { sign: "", label: "Sales received", note: "Paid orders, without delivery charge and tax", value: report.totalSales, kind: "plain" },
     ...(report.additionalCharges > 0
       ? [{ sign: "", label: "   of which extra charges", note: "Packaging, handling etc. (already in sales)", value: report.additionalCharges, kind: "plain" as const }]
       : []),
     { sign: "−", label: "Cost of goods sold", note: "What the items cost you", value: report.cogs, kind: "cost" },
-    { sign: "=", label: "Gross profit", note: "Earned on the items sold", value: report.grossProfit, kind: "total" },
+    { sign: "=", label: "Gross profit", note: grossNote, value: report.grossProfit, kind: "total" },
     { sign: "−", label: "Expenses", note: "Rent, salary, ads and other costs", value: report.totalExpenses, kind: "cost" },
     {
       sign: report.deliveryNetCost < 0 ? "+" : "−",

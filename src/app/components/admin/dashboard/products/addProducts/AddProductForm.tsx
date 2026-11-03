@@ -389,7 +389,9 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
 
     const validatePricing = (data: ProductType): string[] => {
       const errors: string[] = [];
-      if (data.tp_price && data.base_price) {
+      // With variants the product's own TP and MRP are hidden and not used: saving writes the variants'
+      // list price into the product's MRP but leaves the old TP, so comparing the two warns about nothing.
+      if (!data.variants?.length && data.tp_price && data.base_price) {
         const tp = Number(data.tp_price),
           mrp = Number(data.base_price);
         if (tp > mrp)

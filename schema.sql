@@ -653,6 +653,50 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 
 -- stock_movements also gets "branch_id" uuid (null for stores without branches).
 
+-- Money Book — 20261115000000_add_money_book.sql, owners and investors — 20261116000000_add_money_partners.sql.
+--   money_opening_balances (id, store_id, branch_id, line [cash|mobile_banking|card|bank_transfer|online|other|
+--     fixed_assets|loans], amount, as_of_date, created_by, updated_at); unique per store, branch and line
+--   money_entries (id, store_id, branch_id, kind in|out, entry_type [owner_investment|loan_received|other_income|
+--     cash_over | loan_repayment|equipment_purchase|cash_short], amount, payment_method, entry_date, note, meta,
+--     partner_id, created_by, created_at)
+--   money_partners (id, store_id, name, kind owner|investor); expenses and supplier_ledger gain funder_id and
+--     funder_treatment (capital|loan), used when paid_from = 'outside'
+--   Owner-only SELECT policies; writes through owner-only server actions.
+
+-- Purchases — 20261114000000_add_purchases.sql. One delivery from one supplier.
+--   purchases (id, store_id, branch_id, supplier_id, bill_no, purchase_date, due_date,
+--     status draft|ordered|received|cancelled, total, note, attachment_url, created_by,
+--     created_at, received_at); unique (store_id, supplier_id, lower(bill_no)) unless cancelled
+--   purchase_items (id, purchase_id, store_id, product_id, variant_id, product_name,
+--     variant_name, quantity_ordered, quantity_received, unit_cost, cost_before, cost_after)
+--   suppliers."payment_terms_days" integer; supplier_ledger."purchase_id" uuid;
+--   stock_movements."purchase_id" uuid  (all optional; old rows untouched)
+--   receive_purchase(...) adds stock, sets weighted-average cost, adds the bill and any
+--     "paid now" payment in one transaction. service_role only.
+
+-- Month close — 20261120000000_add_period_closes.sql. One new table:
+--   period_closes(id, store_id, branch_id NULL = whole store, period_start, period_end,
+--     snapshot jsonb (Profit & Loss + balance + vendor figures + cash at the moment of
+--     closing), closed_by, closed_at). One row per store, branch scope and month end.
+--     RLS on with no policy: read and written only by server actions (service_role).
+
+-- Locking a closed month — 20261121000000_lock_closed_months.sql. Functions and triggers only:
+--   is_period_closed(store, branch, date) -> boolean  (SECURITY DEFINER; reads period_closes)
+--   enforce_closed_period('date_column')  BEFORE INSERT/UPDATE/DELETE trigger "trg_closed_period" on
+--     expenses, supplier_ledger, purchases, money_entries, customer_payments, customer_refunds,
+--     owner_withdrawals, store_cod_settlements, vendor_payments, vendor_settlements, vendor_orders
+--   enforce_closed_period_orders() on orders (date, branch, amounts, cancelled/returned are fixed)
+--   enforce_closed_period_order_items() on order_items
+--   A row dated in a closed month is refused until the month is reopened (period_closes row deleted).
+
+-- Accrual statements — 20261113000000_accrual_statements.sql. Two new read-only
+-- functions, no table changes:
+--   (20261117 redefines it: cost 0/null falls back to TP; returns missing_cost_lines / missing_cost_sales)
+--   get_profit_loss_accrual(store, from, to, branch) -> jsonb  (net revenue on every
+--     non-cancelled/returned order, matching COGS, expenses, net delivery cost, trend)
+--   get_balance_snapshot(store, branch) -> jsonb  (inventory at cost and selling price,
+--     customer due, COD with couriers, supplier payable)
+
 -- Orders by branch — 20261003000000_add_order_branches.sql:
 --   orders."branch_id" uuid REFERENCES store_branches(id) ON DELETE SET NULL
 --     (the branch whose stock the order holds; null for stores without branches)
@@ -805,6 +849,7 @@ CREATE TABLE IF NOT EXISTS "public"."product_variants" (
     "attributes" "jsonb",
     "weight" numeric(8,2),
     "is_active" boolean DEFAULT true,
+    "sort_order" integer DEFAULT 0 NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "updated_at" timestamp with time zone DEFAULT "now"(),
     "color" "text",

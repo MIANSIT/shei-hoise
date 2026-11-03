@@ -8,8 +8,8 @@ import { PaymentMethod } from "@/lib/types/enums";
 
 const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
   { value: PaymentMethod.CASH, label: "Cash" },
-  { value: PaymentMethod.CARD, label: "Card" },
-  { value: PaymentMethod.MOBILE_BANKING, label: "Mobile Banking (bKash/Nagad/Rocket)" },
+  { value: PaymentMethod.MOBILE_BANKING, label: "Mobile Banking (bKash/Nagad)" },
+  { value: PaymentMethod.BANK_TRANSFER, label: "Bank / Card" },
 ];
 
 export interface CustomerOrderOption {

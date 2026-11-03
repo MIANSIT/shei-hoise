@@ -159,8 +159,8 @@ export default function OrderSummary({
   const paymentMethodOptions = [
     { value: PaymentMethod.CASH, label: t.admin.orderPayCash },
     { value: PaymentMethod.COD, label: t.admin.orderCod },
-    { value: PaymentMethod.CARD, label: t.admin.orderPayCard },
     { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
+    { value: PaymentMethod.BANK_TRANSFER, label: t.admin.moBankTransfer },
   ];
 
   // Pathao/Steadfast only stay selectable if the plan includes courier

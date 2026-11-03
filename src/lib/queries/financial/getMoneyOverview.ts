@@ -139,8 +139,10 @@ const EMPTY: MoneyOverview = {
   pending: { customerDue: 0, codWithCourier: 0, vendorDue: 0, total: 0 },
 };
 
+/** Card counts as Bank: they are one balance, so card receipts, spending and refunds are folded into it. */
 function normalizeMethod(raw: string | null | undefined): MoneyMethodKey {
   const key = String(raw ?? "").trim().toLowerCase();
+  if (key === "card") return "bank_transfer";
   return (METHOD_KEYS as readonly string[]).includes(key) ? (key as MoneyMethodKey) : "other";
 }
 

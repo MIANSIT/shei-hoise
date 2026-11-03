@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin as supabase } from "@/lib/supabase/admin";
 import { Expense } from "@/lib/types/expense/type";
+import { resolveFunder } from "@/lib/queries/financial/resolveFunder";
 import {
   BRANCH_SCOPE_ERROR,
   authorizeForStore,
@@ -20,6 +21,9 @@ export interface CreateExpenseInput {
   payment_method?: string;
   /** "shop" (the shop's own money) or "outside" (investor / the owner's pocket). */
   paid_from?: "shop" | "outside";
+  /** When paid_from is "outside": who paid, and whether it counts as their capital or a loan to repay. */
+  funder_id?: string | null;
+  funder_treatment?: "capital" | "loan" | null;
   platform?: string;
   notes?: string;
   /** Stores with branches: the branch that carries it (default branch when omitted). */
@@ -45,9 +49,23 @@ export async function createExpense(
       return null;
     }
 
+    // "Who paid" only counts for money from outside the shop, and the person must be on this store's list.
+    const funder = await resolveFunder(input.store_id, input.paid_from, input.funder_id, input.funder_treatment);
+    if (!funder.ok) {
+      console.error("createExpense:", funder.error);
+      return null;
+    }
+    const { funder_id: _funderId, funder_treatment: _funderTreatment, ...plain } = input;
+    void _funderId;
+    void _funderTreatment;
+
     // Strip keys with undefined values to avoid sending null for NOT NULL columns
     const sanitized = Object.fromEntries(
-      Object.entries(input).filter(([, v]) => v !== undefined && v !== null),
+      Object.entries({
+        ...plain,
+        // Only sent when set, so stores whose database predates the columns keep working.
+        ...(funder.funderId ? { funder_id: funder.funderId, funder_treatment: funder.treatment } : {}),
+      }).filter(([, v]) => v !== undefined && v !== null),
     );
 
     const { data, error } = await supabase

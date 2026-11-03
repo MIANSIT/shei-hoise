@@ -49,6 +49,9 @@ export interface Expense {
   payment_method?: string;
   /** "shop" = paid from the shop's own money (counted in Money Overview); "outside" = investor or the owner's pocket. */
   paid_from?: "shop" | "outside" | null;
+  /** When paid from outside: who paid, and whether it counts as their capital or a loan to repay. */
+  funder_id?: string | null;
+  funder_treatment?: "capital" | "loan" | null;
   platform?: string;
   notes?: string;
   /** Stores with branches: the branch that carries this expense. */
@@ -68,6 +71,8 @@ export interface ExpenseFormValues {
   description?: string;
   payment_method?: string;
   paid_from?: "shop" | "outside";
+  /** Who paid and how it counts; only used when paid from outside. */
+  funder?: { partnerId: string | null; treatment: "capital" | "loan" };
   platform?: string;
   vendor_name?: string;
   notes?: string;

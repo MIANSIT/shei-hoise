@@ -4,6 +4,7 @@ import React from "react";
 import { ArrowDownRight, ArrowUpRight, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { computeMargins, netMarginPct } from "@/lib/utils/profitMargins";
 
 export interface ProfitStoryFigures {
   /** Paid sales (excl. shipping). */
@@ -38,6 +39,16 @@ export interface ProfitStoryFigures {
   vendorSales?: number;
   /** Days in the period (inclusive). When given, the card adds a per-day average of sales and profit. */
   dayCount?: number;
+  /** `sales` is net revenue on every order that is not cancelled or returned, not just paid ones. */
+  accrual?: boolean;
+  /** Accrual only: lines sold with no TP and what they sold for. They are left out of the percentages. */
+  missingCostLines?: number;
+  missingCostSales?: number;
+  /** Accrual only: the paid part of `sales`. When given, the card shows Sales · Received · To collect. */
+  collected?: number;
+  /** Stores that sell to vendors: money received from vendors this period, and what vendors still owe. */
+  vendorReceived?: number;
+  vendorDue?: number;
 }
 
 /** One branch's profit, shown in the card on "All branches". */
@@ -83,25 +94,34 @@ const BAR: Record<Step["tone"], string> = {
 export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount } = figures;
+  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount, accrual, missingCostLines = 0, missingCostSales = 0, collected, vendorReceived, vendorDue } = figures;
   // Per-day average of the sales figure the card leads with: every order when
   // known, else what was received.
   const showDailyAverage = dayCount !== undefined && dayCount > 0;
   const avgSales = showDailyAverage ? (allSales ?? sales) / dayCount : 0;
   const avgProfit = showDailyAverage ? netProfit / dayCount : 0;
-  const showCollection = allSales !== undefined;
+  // Sales · Received · To collect. On the accrual basis `sales` is every sale and `collected` the paid part;
+  // on the older basis `sales` is what was received and `allSales` every sale.
+  const showCollection = accrual ? collected !== undefined : allSales !== undefined;
+  const totalSales = accrual ? sales : (allSales ?? 0);
+  const receivedAmount = accrual ? (collected ?? 0) : sales;
   const showVendorSales = showCollection && (vendorSales ?? 0) > 0.005;
-  const toCollect = showCollection ? Math.max(allSales - sales, 0) : 0;
-  const receivedPct = showCollection && allSales > 0 ? Math.min((sales / allSales) * 100, 100) : 100;
+  const showVendorMoney = showCollection && (vendorReceived !== undefined || vendorDue !== undefined) && (showVendorSales || (vendorReceived ?? 0) > 0.005 || (vendorDue ?? 0) > 0.005);
+  const toCollect = showCollection ? Math.max(totalSales - receivedAmount, 0) : 0;
+  const receivedPct = showCollection && totalSales > 0 ? Math.min((receivedAmount / totalSales) * 100, 100) : 100;
   const separateDelivery = deliveryCost !== undefined;
   const cost = Math.max(sales - grossProfit, 0);
   const isLoss = netProfit < 0;
-  const margin = sales > 0 ? (netProfit / sales) * 100 : null;
+  const margin = netMarginPct(netProfit, sales, vendorProfit, missingCostSales);
+  // Profit on TP only where the cost is known to be complete (accrual basis).
+  const profitOnTp = accrual ? computeMargins({ netRevenue: sales, cogs: cost, grossProfit, missingCostSales }).profitOnTp : null;
 
   const steps: Step[] = [
-    showCollection
-      ? { key: "sales", label: t.admin.psSalesReceived, hint: t.admin.psSalesReceivedHint, amount: sales, sign: "+", tone: "sales" }
-      : { key: "sales", label: t.admin.psSales, hint: t.admin.psSalesHint, amount: sales, sign: "+", tone: "sales" },
+    accrual
+      ? { key: "sales", label: t.admin.fsNetRevenue, hint: t.admin.fsNetRevenueHow, amount: sales, sign: "+", tone: "sales" }
+      : showCollection
+        ? { key: "sales", label: t.admin.psSalesReceived, hint: t.admin.psSalesReceivedHint, amount: sales, sign: "+", tone: "sales" }
+        : { key: "sales", label: t.admin.psSales, hint: t.admin.psSalesHint, amount: sales, sign: "+", tone: "sales" },
     separateDelivery
       ? { key: "cost", label: t.admin.psCostGoods, hint: t.admin.psCostGoodsHint, amount: cost, sign: "−", tone: "cost" }
       : { key: "cost", label: t.admin.psCost, hint: t.admin.psCostHint, amount: cost, sign: "−", tone: "cost" },
@@ -206,6 +226,16 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
                 {t.admin.psMargin}: {n(margin.toFixed(1))}%
               </span>
             )}
+            {profitOnTp != null && (
+              <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                {t.admin.fsProfitOnTp}: {n(profitOnTp.toFixed(1))}%
+              </span>
+            )}
+            {missingCostLines > 0 && (
+              <span className="rounded-full bg-amber-300/90 px-3 py-1 text-xs font-semibold text-amber-950">
+                {n(String(missingCostLines))} {t.admin.fsNoTpShort}
+              </span>
+            )}
             {netChangePct != null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
                 <ChangeIcon size={13} aria-hidden="true" />
@@ -227,11 +257,11 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
               <div className={`grid grid-cols-1 gap-2 text-center ${showVendorSales ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3"}`}>
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t.admin.psSalesAll}</div>
-                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-foreground">{formatMoney(allSales)}</div>
+                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-foreground">{formatMoney(totalSales)}</div>
                 </div>
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{t.admin.psReceived}</div>
-                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(sales)}</div>
+                  <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(receivedAmount)}</div>
                 </div>
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{t.admin.psToCollect}</div>
@@ -247,8 +277,20 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
               <div className="mt-2.5 h-2 rounded-full bg-amber-200 dark:bg-amber-500/30 overflow-hidden" aria-hidden="true">
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${receivedPct}%` }} />
               </div>
+              {showVendorMoney && (
+                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-center">
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{t.admin.receivedFromVendors}</div>
+                    <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(vendorReceived ?? 0)}</div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{t.admin.vendorDueOutstanding}</div>
+                    <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(vendorDue ?? 0)}</div>
+                  </div>
+                </div>
+              )}
               <p className="m-0 mt-2 text-[11px] text-muted-foreground">
-                {t.admin.psCollectionNote}
+                {accrual ? t.admin.psCollectionNoteAccrual : t.admin.psCollectionNote}
                 {showVendorSales && ` ${t.admin.psVendorSalesNote}`}
               </p>
             </div>

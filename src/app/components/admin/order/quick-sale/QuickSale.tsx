@@ -1182,8 +1182,8 @@ export default function QuickSale() {
               onChange={(v) => setPaymentMethod(v as PaymentMethod)}
               options={[
                 { label: "Cash", value: PaymentMethod.CASH },
-                { label: "Card", value: PaymentMethod.CARD },
                 { label: "Mobile Banking", value: PaymentMethod.MOBILE_BANKING },
+                { label: "Bank / Card", value: PaymentMethod.BANK_TRANSFER },
               ]}
             />
           </div>

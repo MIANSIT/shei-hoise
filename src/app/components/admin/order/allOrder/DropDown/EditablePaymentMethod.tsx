@@ -25,12 +25,12 @@ const PaymentMethodSelect: React.FC<{
   const options = [
     { value: PaymentMethod.CASH, label: t.admin.orderPayCash },
     { value: PaymentMethod.COD, label: t.admin.orderCod },
-    { value: PaymentMethod.CARD, label: t.admin.orderPayCard },
     { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
+    { value: PaymentMethod.BANK_TRANSFER, label: t.admin.moBankTransfer },
   ];
   return (
     <Select
-      value={value}
+      value={value === PaymentMethod.CARD ? PaymentMethod.BANK_TRANSFER : value}
       style={{ width: 150 }}
       onChange={onChange}
       options={options}

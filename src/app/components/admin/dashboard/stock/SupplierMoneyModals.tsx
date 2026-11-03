@@ -9,8 +9,10 @@ import { useBranches } from "@/lib/context/BranchContext";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import type { SupplierEntryKind, SupplierLedgerEntry } from "@/lib/queries/supplier/supplierTypes";
+import { FunderPicker } from "@/app/components/admin/dashboard/financial/FunderPicker";
+import type { FunderValue } from "@/lib/queries/financial/moneyPartnerTypes";
 
-const PAY_METHODS = ["cash", "mobile_banking", "card", "bank_transfer", "online", "other"] as const;
+const PAY_METHODS = ["cash", "mobile_banking", "bank_transfer"] as const;
 
 export interface SupplierEntryValues {
   amount: number;
@@ -20,6 +22,9 @@ export interface SupplierEntryValues {
   paidFrom: "shop" | "outside";
   /** Payments from the shop's money in a store with branches. */
   branchId: string | null;
+  /** Payments from outside: who paid, and whether it counts as their capital or a loan to repay. */
+  funderId: string | null;
+  funderTreatment: "capital" | "loan" | null;
   note: string;
 }
 
@@ -53,6 +58,7 @@ export function SupplierEntryModal({
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [method, setMethod] = useState<string>("cash");
   const [paidFrom, setPaidFrom] = useState<"shop" | "outside">("shop");
+  const [funder, setFunder] = useState<FunderValue>({ partnerId: null, treatment: "capital" });
   const [branchId, setBranchId] = useState<string | null>(null);
   const [note, setNote] = useState("");
 
@@ -62,6 +68,7 @@ export function SupplierEntryModal({
       setDate(dayjs());
       setMethod("cash");
       setPaidFrom("shop");
+      setFunder({ partnerId: null, treatment: "capital" });
       setBranchId(workBranchId ?? activeBranches[0]?.id ?? null);
       setNote("");
     }
@@ -93,6 +100,8 @@ export function SupplierEntryModal({
           paymentMethod: method,
           paidFrom: kind === "payment" && investorAllowed ? paidFrom : "shop",
           branchId: needsBranch ? branchId : null,
+          funderId: kind === "payment" && investorAllowed && paidFrom === "outside" ? funder.partnerId : null,
+          funderTreatment: kind === "payment" && investorAllowed && paidFrom === "outside" && funder.partnerId ? funder.treatment : null,
           note,
         })
       }
@@ -150,6 +159,7 @@ export function SupplierEntryModal({
             <p className="m-0 mt-1 text-[11px] text-muted-foreground">{t.admin.moPaidFromHint}</p>
           </div>
         )}
+        {kind === "payment" && investorAllowed && paidFrom === "outside" && <FunderPicker value={funder} onChange={setFunder} />}
         {needsBranch && (
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moBranch}</label>

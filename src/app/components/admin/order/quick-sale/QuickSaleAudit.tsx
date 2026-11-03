@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, DatePicker, Table, Typography, InputNumber, Tag, Spin } from "antd";
+import { Button, DatePicker, Table, Typography, InputNumber, Tag, Spin, Alert } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs, { Dayjs } from "dayjs";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
@@ -12,6 +12,7 @@ import {
   getQuickSaleDailySummary,
   QuickSaleDailySummary,
   QuickSaleDailyOrderRow,
+  RegisterLine,
 } from "@/lib/queries/orders/getQuickSaleDailySummary";
 import { getRegisterOpeningCash } from "@/lib/queries/orders/registerOpeningCash";
 import { setRegisterOpeningCash } from "@/lib/queries/orders/setRegisterOpeningCash";
@@ -21,6 +22,7 @@ import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/Status
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
+import { usePermissions } from "@/lib/context/PermissionsContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
 
@@ -34,6 +36,11 @@ const EMPTY_SUMMARY: QuickSaleDailySummary = {
   dueCollectedToday: 0,
   codCashSettled: 0,
   costOfGoods: 0,
+  listSales: 0,
+  discountTotal: 0,
+  additionalTotal: 0,
+  missingTpLines: 0,
+  missingTpSales: 0,
   orders: [],
 };
 
@@ -65,6 +72,80 @@ function StatCard({
   );
 }
 
+function WaterfallRow({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between gap-3 ${strong ? "border-t border-border/60 pt-1 font-semibold" : ""}`}>
+      <span className="text-muted-foreground">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
+/** The lines of one sale: rate, and (for roles allowed to see cost) TP, line profit and profit on TP. */
+function LinesTable({
+  lines,
+  showCost,
+  money,
+}: {
+  lines: RegisterLine[];
+  showCost: boolean;
+  money: (v: number) => string;
+}) {
+  const columns: ColumnsType<RegisterLine> = [
+    {
+      title: "Product",
+      key: "product",
+      render: (_, line) => (
+        <div className="min-w-0">
+          <div className="text-sm">{line.productName}</div>
+          {line.variantLabel && <div className="text-xs text-muted-foreground">{line.variantLabel}</div>}
+        </div>
+      ),
+    },
+    { title: "Qty", dataIndex: "quantity", key: "quantity", align: "right" as const, width: 60 },
+    {
+      title: "Rate",
+      key: "rate",
+      align: "right" as const,
+      render: (_, line) => money(line.unitPrice),
+    },
+  ];
+  if (showCost) {
+    columns.push(
+      {
+        title: "TP",
+        key: "tp",
+        align: "right" as const,
+        render: (_, line) =>
+          line.unitCost == null ? <Tag color="orange">No TP</Tag> : money(line.unitCost),
+      },
+      {
+        title: "Profit",
+        key: "profit",
+        align: "right" as const,
+        render: (_, line) =>
+          line.unitCost == null ? "—" : money((line.unitPrice - line.unitCost) * line.quantity),
+      },
+      {
+        title: "Profit on TP",
+        key: "pct",
+        align: "right" as const,
+        render: (_, line) =>
+          line.unitCost == null ? "—" : `${((line.unitPrice / line.unitCost - 1) * 100).toFixed(1)}%`,
+      },
+    );
+  }
+  return (
+    <Table<RegisterLine>
+      columns={columns}
+      dataSource={lines}
+      rowKey={(line, i) => `${line.productName}-${i}`}
+      pagination={false}
+      size="small"
+    />
+  );
+}
+
 export default function QuickSaleAudit() {
   const { user } = useCurrentUser();
   const { loading: posFeatureLoading, allowed: posAllowed } = useFeatureGate(
@@ -76,6 +157,9 @@ export default function QuickSaleAudit() {
     !currencyLoading && typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
   const money = (v: number) => `${currencyIcon}${v.toFixed(2)}`;
   const { success, error } = useSheiNotification();
+  // Cost (TP) and profit are the owner's numbers: shown to roles that may see reports.
+  const { can } = usePermissions();
+  const canSeeProfit = can("reports.view");
 
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [summary, setSummary] = useState<QuickSaleDailySummary>(EMPTY_SUMMARY);
@@ -153,10 +237,15 @@ export default function QuickSaleAudit() {
   // Sale/online transactions.
   const cashExpected =
     (openingCash ?? 0) + (summary.collectedByMethod["cash"] ?? 0) + summary.codCashSettled;
-  // Profit on what was sold today (not what was collected): sales less the
-  // cost of the items. Shipping/tax are outside gross sales, so outside here too.
-  const profit = summary.costOfGoods == null ? null : summary.grossSales - summary.costOfGoods;
-  const margin = profit != null && summary.grossSales > 0 ? (profit / summary.grossSales) * 100 : null;
+  // Profit on what was sold today (not what was collected): net sales less the
+  // TP cost of the items. Lines with no TP are left out of both sides (and
+  // flagged), never counted as free. Shipping/tax are outside net sales too.
+  const costKnown = summary.costOfGoods;
+  const profitSales = summary.grossSales - summary.missingTpSales;
+  const profit = costKnown == null ? null : profitSales - costKnown;
+  // Main figure: profit on TP (TP 100, sold 125 = 25%). Beside it: margin on the selling price (20%).
+  const profitOnTp = profit != null && costKnown != null && costKnown > 0 ? (profit / costKnown) * 100 : null;
+  const margin = profit != null && profitSales > 0 ? (profit / profitSales) * 100 : null;
   const variance = countedCash != null ? countedCash - cashExpected : null;
 
   const columns: ColumnsType<QuickSaleDailyOrderRow> = [
@@ -273,24 +362,56 @@ export default function QuickSaleAudit() {
             />
           </div>
 
-          {summary.transactionCount > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard
-                label="Profit (today's sales)"
-                value={profit == null ? "—" : money(profit)}
-                hint={
-                  summary.dueOutstanding > 0.01
-                    ? `Gross sales − cost of items sold. Includes ${money(summary.dueOutstanding)} not yet collected`
-                    : "Gross sales − cost of items sold"
-                }
-                tone={profit == null ? "default" : profit < 0 ? "warning" : "success"}
-              />
-              <StatCard
-                label="Profit margin"
-                value={margin == null ? "—" : `${margin.toFixed(1)}%`}
-                hint="Profit ÷ gross sales"
-                tone={margin == null ? "default" : margin < 0 ? "warning" : "success"}
-              />
+          {summary.transactionCount > 0 && canSeeProfit && (
+            <div className="rounded-2xl border border-border/60 bg-card/50 p-4 space-y-3">
+              <Text strong className="text-sm">
+                Gross profit on today&apos;s sales
+              </Text>
+              {summary.missingTpLines > 0 && (
+                <Alert
+                  type="warning"
+                  showIcon
+                  message={`${summary.missingTpLines} item line${summary.missingTpLines === 1 ? "" : "s"} sold today ${summary.missingTpLines === 1 ? "has" : "have"} no TP (${money(summary.missingTpSales)} of sales). They are left out of profit below, not counted as free. Add the TP on the product to include them.`}
+                />
+              )}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <StatCard
+                    label="Profit on TP"
+                    value={profitOnTp == null ? "—" : `${profitOnTp.toFixed(1)}%`}
+                    hint="Profit ÷ TP cost. TP 100, sold 125 = 25%"
+                    tone={profitOnTp == null ? "default" : profitOnTp < 0 ? "warning" : "success"}
+                  />
+                  <StatCard
+                    label="Margin on selling price"
+                    value={margin == null ? "—" : `${margin.toFixed(1)}%`}
+                    hint="Profit ÷ net sales. TP 100, sold 125 = 20%"
+                    tone={margin == null ? "default" : margin < 0 ? "warning" : "success"}
+                  />
+                </div>
+                <div className="rounded-xl bg-muted/40 p-3 text-sm space-y-1">
+                  <WaterfallRow label="Sales at list price" value={money(summary.listSales)} />
+                  <WaterfallRow label="− Discounts" value={money(summary.discountTotal)} />
+                  {summary.additionalTotal > 0.005 && (
+                    <WaterfallRow label="+ Additional charges" value={money(summary.additionalTotal)} />
+                  )}
+                  <WaterfallRow label="= Net sales" value={money(summary.grossSales)} strong />
+                  {summary.missingTpSales > 0.005 && (
+                    <WaterfallRow label="− Lines with no TP (left out)" value={money(summary.missingTpSales)} />
+                  )}
+                  <WaterfallRow label="− TP cost of items sold" value={costKnown == null ? "—" : money(costKnown)} />
+                  <WaterfallRow
+                    label="= Gross profit"
+                    value={profit == null ? "—" : money(profit)}
+                    strong
+                  />
+                </div>
+              </div>
+              <Text type="secondary" className="text-xs">
+                Gross profit is before expenses and delivery cost. It counts what was sold today
+                {summary.dueOutstanding > 0.01 ? `, including ${money(summary.dueOutstanding)} not yet collected` : ""}.
+                Open an order below to see each line&apos;s TP and profit.
+              </Text>
             </div>
           )}
 
@@ -400,6 +521,12 @@ export default function QuickSaleAudit() {
             pagination={false}
             size="small"
             scroll={{ x: 700 }}
+            expandable={{
+              rowExpandable: (row) => (row.lines?.length ?? 0) > 0,
+              expandedRowRender: (row) => (
+                <LinesTable lines={row.lines ?? []} showCost={canSeeProfit} money={money} />
+              ),
+            }}
             locale={{ emptyText: "No transactions on this day." }}
           />
         </>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeForStore, logActivity } from "@/lib/permissions/server";
 import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
+import { resolveFunder } from "@/lib/queries/financial/resolveFunder";
 import type {
   SupplierBalance,
   SupplierEntryInput,
@@ -22,6 +23,8 @@ const entrySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date"),
   paymentMethod: z.enum(PAYMENT_METHODS).optional(),
   paidFrom: z.enum(["shop", "outside"]).optional(),
+  funderId: z.string().uuid().nullable().optional(),
+  funderTreatment: z.enum(["capital", "loan"]).nullable().optional(),
   branchId: z.string().uuid().nullable().optional(),
   note: z.string().trim().max(300, "Note is too long").optional(),
 });
@@ -150,6 +153,9 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
       }
     }
 
+    const funder = isPayment ? await resolveFunder(storeId, paidFrom, v.funderId, v.funderTreatment) : null;
+    if (funder && !funder.ok) return { success: false, error: funder.error };
+
     const { data, error } = await supabaseAdmin
       .from("supplier_ledger")
       .insert({
@@ -163,6 +169,8 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
         created_by: auth.actor.userId,
         // Only sent for a payment, so bills keep working on a database without the paid-from migration.
         ...(isPayment ? { paid_from: paidFrom, branch_id: branchId } : {}),
+        // Only sent when set, so a database without the columns keeps working.
+        ...(funder && funder.ok && funder.funderId ? { funder_id: funder.funderId, funder_treatment: funder.treatment } : {}),
       })
       .select("id")
       .single();

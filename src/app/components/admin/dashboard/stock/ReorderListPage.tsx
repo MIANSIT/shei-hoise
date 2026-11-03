@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import { Checkbox, Empty, Input, InputNumber, Popconfirm, Select, Spin, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -16,10 +17,10 @@ import { useInvoiceData } from "@/lib/hook/useInvoiceData";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 import { assignSupplierToProducts, getProductSupplierMap, getSuppliers } from "@/lib/queries/supplier/suppliers";
-import { addSupplierEntry } from "@/lib/queries/supplier/supplierLedger";
 import { whatsappNumber, type Supplier } from "@/lib/queries/supplier/supplierTypes";
 import { findReorderItems, type ReorderItemInfo } from "@/lib/queries/stock/findReorderItems";
 import { reorderItemKey, useReorderListStore, type ManualReorderItem } from "@/lib/store/reorderListStore";
+import { useReceiveDraftStore } from "@/lib/store/receiveDraftStore";
 import { printOrderList } from "@/lib/utils/printOrderList";
 import type { StockInsightRow } from "@/lib/queries/stock/stockInsightTypes";
 import { StockHealthBadge } from "@/app/components/admin/dashboard/products/stock/StockHealthBadge";
@@ -69,6 +70,9 @@ export default function ReorderListPage() {
   const { can } = usePermissions();
   const canAssign = can("stock.edit");
   const canMoney = can("stock.supplier_money");
+  const canEditStock = can("stock.edit");
+  const router = useRouter();
+  const setReceiveDraft = useReceiveDraftStore((s) => s.setDraft);
   const { storeData } = useInvoiceData({ storeId: storeId ?? undefined });
   const { data, loading, error } = useStockInsights();
   const { icon: currencyIconRaw } = useUserCurrencyIcon();
@@ -363,22 +367,21 @@ export default function ReorderListPage() {
     await loadSuppliers();
   };
 
-  const saveAsBill = async (supplier: Supplier, list: ReorderRow[]) => {
-    if (!storeId) return;
-    const amount = Math.round(totalOf(list) * 100) / 100;
-    if (amount <= 0) return;
-    const result = await addSupplierEntry(storeId, {
+  // The goods have not arrived yet, so no bill is made here. Receive stock is opened with this
+  // order filled in, and the bill is created when the delivery is received.
+  const receiveOrder = (supplier: Supplier, list: ReorderRow[]) => {
+    setReceiveDraft({
       supplierId: supplier.id,
-      kind: "bill",
-      amount,
-      date: dayjs().format("YYYY-MM-DD"),
-      note: t.admin.roWhatsappHeader,
+      lines: orderRowsOf(list).map((row) => ({
+        productId: row.productId,
+        variantId: row.variantId,
+        label: row.name,
+        quantity: quantityOf(row),
+        stock: row.stock,
+        unitCost: row.unitCost,
+      })),
     });
-    if (!result.success) {
-      notify.error(result.error ?? t.admin.spFailed);
-      return;
-    }
-    notify.success(t.admin.slBillSaved);
+    router.push("/dashboard/stock/receive");
   };
 
   const columns: ColumnsType<ReorderRow> = [
@@ -697,18 +700,11 @@ export default function ReorderListPage() {
                             <Printer size={14} aria-hidden="true" />
                             {t.admin.roPrint}
                           </button>
-                          {canMoney && group.supplier && groupTotal > 0 && (
-                            <Popconfirm
-                              title={t.admin.slBillConfirm}
-                              okText={t.admin.slSaveAsBill}
-                              cancelText={t.admin.spCancel}
-                              onConfirm={() => group.supplier && saveAsBill(group.supplier, group.rows)}
-                            >
-                              <button type="button" className={actionButton}>
-                                <ReceiptText size={14} aria-hidden="true" />
-                                {t.admin.slSaveAsBill}
-                              </button>
-                            </Popconfirm>
+                          {canMoney && canEditStock && group.supplier && groupTotal > 0 && (
+                            <button type="button" onClick={() => group.supplier && receiveOrder(group.supplier, group.rows)} className={actionButton}>
+                              <ReceiptText size={14} aria-hidden="true" />
+                              {t.admin.roReceiveThis}
+                            </button>
                           )}
                         </div>
                       </div>

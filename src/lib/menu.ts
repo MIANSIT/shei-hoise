@@ -43,6 +43,8 @@ import {
   History,
   ArrowLeftRight,
   Building2,
+  BookOpen,
+  Scale,
   Award,
   PiggyBank,
   Activity,
@@ -141,6 +143,8 @@ export const sideMenu: MenuItem[] = [
       { title: "Stock Health", labelKey: "menuStockHealth", href: "/dashboard/stock/health", icon: Activity, requiredFeature: "stock_management" },
       { title: "Reorder List", labelKey: "menuReorderList", href: "/dashboard/stock/reorder", icon: ClipboardList, requiredFeature: "stock_management" },
       { title: "Suppliers", labelKey: "menuSuppliers", href: "/dashboard/stock/suppliers", icon: Truck, requiredFeature: "stock_management" },
+      { title: "Receive Stock", labelKey: "menuReceiveStock", href: "/dashboard/stock/receive", icon: PackageCheck, requiredFeature: "stock_management" },
+      { title: "Supplier Bills", labelKey: "menuSupplierBills", href: "/dashboard/stock/bills", icon: HandCoins, requiredFeature: "stock_management" },
       {
         title: "Stock Transfers",
         labelKey: "menuStockTransfers",
@@ -181,6 +185,8 @@ export const sideMenu: MenuItem[] = [
     children: [
       // Hidden from the sidebar (and locked on the page) unless the plan has money_tracker.
       { title: "Money Overview", labelKey: "menuMoneyOverview", href: "/dashboard/financial/money", icon: PiggyBank, requiredFeature: "money_tracker" },
+      { title: "Balance Sheet", labelKey: "menuBalanceSheet", href: "/dashboard/balance-sheet", icon: Scale, requiredFeature: "balance_sheet" },
+      { title: "Money Book", labelKey: "menuMoneyBook", href: "/dashboard/financial/money-book", icon: BookOpen, requiredFeature: "money_tracker", ownerOnly: true },
       { title: "Customer Dues", labelKey: "menuCustomerDues", href: "/dashboard/customers/dues", icon: Wallet },
       { title: "COD Settlements", labelKey: "menuCodSettlements", href: "/dashboard/cod-settlements", icon: HandCoins },
       { title: "Expense", labelKey: "menuExpense", href: "/dashboard/expense", icon: CreditCard },

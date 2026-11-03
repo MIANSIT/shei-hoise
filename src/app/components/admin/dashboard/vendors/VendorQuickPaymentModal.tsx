@@ -9,10 +9,8 @@ import type { VendorPaymentMethod } from "@/lib/types/vendor/type";
 const PAYMENT_METHOD_OPTIONS: { value: VendorPaymentMethod; label: string }[] = [
   { value: "cash", label: "Cash" },
   { value: "cod", label: "Cash on Delivery" },
-  { value: "mobile_banking", label: "Mobile Banking (bKash/Nagad/Rocket)" },
-  { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "card", label: "Card" },
-  { value: "online", label: "Online" },
+  { value: "mobile_banking", label: "Mobile Banking (bKash/Nagad)" },
+  { value: "bank_transfer", label: "Bank / Card" },
 ];
 
 export interface VendorInvoiceOption {

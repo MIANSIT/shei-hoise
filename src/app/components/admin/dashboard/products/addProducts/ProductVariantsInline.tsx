@@ -5,7 +5,7 @@ import { UseFormReturn, Controller } from "react-hook-form";
 import { ProductType } from "@/lib/schema/productSchema";
 import { ProductVariantType } from "@/lib/schema/varientSchema";
 import FormField from "./FormField";
-import { Trash2, ChevronDown, ChevronUp, Layers, Info } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, Layers, Info, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calculateDiscountedPrice } from "@/lib/hook/useDiscountCalculation";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -105,6 +105,27 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         discount_amount: undefined,
       } as ProductVariantType,
     ]);
+  };
+
+  // Reordering: the order here is the order saved and shown on the product page. The per-variant UI
+  // state (collapsed, markup, attribute text) is kept by position, so it moves with the variant.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  const moveItem = <T,>(list: T[], from: number, to: number): T[] => {
+    if (list.length !== variants.length) return list;
+    const next = [...list];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    return next;
+  };
+
+  const handleMoveVariant = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= variants.length) return;
+    form.setValue("variants", moveItem(variants, from, to), { shouldDirty: true });
+    setCollapsedVariants((prev) => moveItem(prev, from, to));
+    setVariantPricing((prev) => moveItem(prev, from, to));
+    setAttrTexts((prev) => moveItem(prev, from, to));
   };
 
   const handleRemoveVariant = (index: number) => {
@@ -237,7 +258,21 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
         return (
           <div
             key={idx}
-            className={`rounded-2xl border bg-card transition-shadow ${isActive ? "border-border" : "border-border opacity-70"}`}
+            data-variant-card
+            onDragOver={(e) => {
+              if (dragIndex === null) return;
+              e.preventDefault();
+              setOverIndex(idx);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragIndex !== null) handleMoveVariant(dragIndex, idx);
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            className={`rounded-2xl border bg-card transition-shadow ${isActive ? "border-border" : "border-border opacity-70"} ${
+              overIndex === idx && dragIndex !== null && dragIndex !== idx ? "ring-2 ring-emerald-500" : ""
+            } ${dragIndex === idx ? "opacity-50" : ""}`}
           >
             {/* Variant header */}
             <div
@@ -245,6 +280,50 @@ const ProductVariantsInline: React.FC<ProductVariantsInlineProps> = ({
               onClick={() => toggleCollapse(idx)}
             >
               <div className="flex items-center gap-3">
+                {variants.length > 1 && (
+                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                    <span
+                      draggable
+                      role="button"
+                      tabIndex={-1}
+                      title={t.admin.variantDragHint}
+                      aria-label={t.admin.variantDragHint}
+                      onDragStart={(e) => {
+                        setDragIndex(idx);
+                        e.dataTransfer.effectAllowed = "move";
+                        const card = (e.currentTarget as HTMLElement).closest("[data-variant-card]");
+                        if (card) e.dataTransfer.setDragImage(card as HTMLElement, 24, 24);
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null);
+                        setOverIndex(null);
+                      }}
+                      className="cursor-grab rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </span>
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => handleMoveVariant(idx, idx - 1)}
+                      title={t.admin.variantMoveUp}
+                      aria-label={t.admin.variantMoveUp}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === variants.length - 1}
+                      onClick={() => handleMoveVariant(idx, idx + 1)}
+                      title={t.admin.variantMoveDown}
+                      aria-label={t.admin.variantMoveDown}
+                      className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
                 <span
                   className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${isActive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
                 >

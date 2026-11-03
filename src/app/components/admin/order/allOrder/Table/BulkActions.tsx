@@ -60,8 +60,8 @@ const BulkActions: React.FC<Props> = ({
   const PAYMENT_METHODS = [
     { value: PaymentMethod.CASH, label: t.admin.orderPayCash },
     { value: PaymentMethod.COD, label: t.admin.bulkCod },
-    { value: PaymentMethod.CARD, label: t.admin.orderPayCard },
     { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
+    { value: PaymentMethod.BANK_TRANSFER, label: t.admin.moBankTransfer },
   ];
 
   // A live courier shipment expects to collect cash on delivery — moving it

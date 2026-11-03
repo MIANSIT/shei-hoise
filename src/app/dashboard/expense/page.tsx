@@ -266,6 +266,9 @@ export default function ExpensesPage() {
               payment_method: values.payment_method,
             }),
             ...(values.paid_from && { paid_from: values.paid_from }),
+            ...(values.paid_from === "outside" && values.funder?.partnerId
+              ? { funder_id: values.funder.partnerId, funder_treatment: values.funder.treatment }
+              : {}),
             ...(values.platform && { platform: values.platform }),
             ...(values.vendor_name && { vendor_name: values.vendor_name }),
             ...(values.notes && { notes: values.notes }),
@@ -289,6 +292,12 @@ export default function ExpensesPage() {
             description: values.description ?? undefined,
             payment_method: values.payment_method ?? undefined,
             paid_from: values.paid_from ?? undefined,
+            // Who paid is sent only when it applies, or to clear it after switching back to the shop's money.
+            ...(values.paid_from === "outside"
+              ? { funder_id: values.funder?.partnerId ?? null, funder_treatment: values.funder?.partnerId ? values.funder.treatment : null }
+              : editingExpense.funder_id
+                ? { funder_id: null, funder_treatment: null }
+                : {}),
             platform: values.platform ?? undefined,
             vendor_name: values.vendor_name ?? undefined,
             notes: values.notes ?? undefined,

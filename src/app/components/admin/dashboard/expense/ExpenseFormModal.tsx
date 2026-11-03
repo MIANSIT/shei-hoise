@@ -30,6 +30,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import { FunderPicker } from "@/app/components/admin/dashboard/financial/FunderPicker";
 
 type ModalMode = "create" | "edit";
 
@@ -43,7 +44,10 @@ interface ExpenseFormModalProps {
   onCancel: () => void;
 }
 
-const PAYMENT_OPTIONS = Object.entries(PAYMENT_METHOD_CONFIG).map(
+// The three everyday methods (Bank includes card); older expenses saved with Card, Online, Check or Other still display.
+const PAYMENT_OPTIONS = Object.entries(PAYMENT_METHOD_CONFIG)
+  .filter(([key]) => ["cash", "mobile_banking", "bank_transfer"].includes(key))
+  .map(
   ([key, cfg]) => ({
     value: key,
     label: cfg.label,
@@ -96,6 +100,7 @@ function ExpenseFormModal({
         description: editingExpense.description || undefined,
         payment_method: editingExpense.payment_method || undefined,
         paid_from: editingExpense.paid_from || undefined,
+        funder: editingExpense.funder_id ? { partnerId: editingExpense.funder_id, treatment: editingExpense.funder_treatment ?? "capital" } : undefined,
         platform: editingExpense.platform || undefined,
         vendor_name: editingExpense.vendor_name || undefined,
         notes: editingExpense.notes || undefined,
@@ -250,6 +255,18 @@ function ExpenseFormModal({
                 ]}
                 className="rounded-lg"
               />
+            </Form.Item>
+          )}
+
+          {investorAllowed && (
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.paid_from !== cur.paid_from}>
+              {({ getFieldValue }) =>
+                getFieldValue("paid_from") === "outside" ? (
+                  <Form.Item name="funder">
+                    <FunderPicker />
+                  </Form.Item>
+                ) : null
+              }
             </Form.Item>
           )}
 

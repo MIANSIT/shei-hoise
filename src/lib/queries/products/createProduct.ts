@@ -9,6 +9,7 @@ import { checkLimit, hasFeature } from "@/lib/utils/planFeatures";
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { sanitizeHtml } from "@/lib/utils/sanitizeHtml";
 import { getVariantListPrice } from "@/lib/utils/variantProductPricing";
+import { saveVariantOrder } from "@/lib/queries/products/variantOrder";
 import { resolveProductBrandId } from "@/lib/queries/brands/brandAccess";
 import { BRANCH_SCOPE_ERROR, canUseBranch, getAuthorizedStoreId } from "@/lib/permissions/server";
 
@@ -225,6 +226,8 @@ async function createProductInternal(
       if (variantError) throw variantError;
 
       insertedVariants.forEach((v) => insertedVariantIds.push(v.id));
+      // Inserted in the order the owner arranged them: remember it.
+      await saveVariantOrder(insertedVariants.map((v) => v.id));
       firstVariantId = insertedVariants[0]?.id;
 
       // 🧾 Inventory for variants
