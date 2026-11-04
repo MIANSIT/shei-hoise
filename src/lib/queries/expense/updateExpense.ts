@@ -57,7 +57,7 @@ export async function updateExpense(
     }
     const { data: current } = await supabase
       .from("expenses")
-      .select("branch_id, paid_from")
+      .select("branch_id, paid_from, amount")
       .eq("id", id)
       .eq("store_id", storeResult.storeId)
       .maybeSingle();
@@ -78,6 +78,7 @@ export async function updateExpense(
         rawFields.paid_from ?? current?.paid_from ?? null,
         rawFields.funder_id,
         rawFields.funder_treatment,
+        { amount: Number(rawFields.amount ?? current?.amount ?? 0) || 0, excludeExpenseId: id },
       );
       if (!funder.ok) {
         console.error("updateExpense:", funder.error);

@@ -10,6 +10,8 @@ import { CurrencySelect } from "@/app/components/common/CurrencySelect";
 import { ShippingManager } from "@/app/components/shipping/ShippingManager";
 import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { saveStartingCash } from "@/lib/queries/financial/investorMoney";
+import { getStartingCash } from "@/lib/queries/financial/getCashPosition";
 import {
   SETUP_STEP_IDS,
   getSetupStepTitle,
@@ -104,6 +106,26 @@ export default function CompleteSetupWizard({
     settings.free_shipping_threshold != null ? String(settings.free_shipping_threshold) : "",
   );
 
+  // Starting cash, asked once for a new store so Business cash starts from what the owner holds today.
+  // It is optional, and hidden once saved (it can be changed later on the Investor money page).
+  const [cashAtStart, setCashAtStart] = useState("");
+  const [mobileAtStart, setMobileAtStart] = useState("");
+  const [bankAtStart, setBankAtStart] = useState("");
+  const [startCashSaved, setStartCashSaved] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    getStartingCash(store.id)
+      .then((rows) => {
+        if (!cancelled) setStartCashSaved(rows.length > 0);
+      })
+      .catch(() => {
+        if (!cancelled) setStartCashSaved(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [store.id]);
+
   const [facebook, setFacebook] = useState(socialMedia?.facebook_link ?? "");
   const [instagram, setInstagram] = useState(socialMedia?.instagram_link ?? "");
   const [twitter, setTwitter] = useState(socialMedia?.twitter_link ?? "");
@@ -161,6 +183,19 @@ export default function CompleteSetupWizard({
       return_policy_days: Number(returnDays) || 0,
       free_shipping_threshold: freeShippingAt === "" ? null : Number(freeShippingAt),
     });
+    // Typed starting cash is saved with the settings; a failure here never blocks the step (it can be added later).
+    if (ok && !startCashSaved && (cashAtStart || mobileAtStart || bankAtStart)) {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const result = await saveStartingCash(store.id, {
+        asOfDate: today,
+        amounts: {
+          cash: Math.max(Number(cashAtStart) || 0, 0),
+          mobile_banking: Math.max(Number(mobileAtStart) || 0, 0),
+          bank_transfer: Math.max(Number(bankAtStart) || 0, 0),
+        },
+      });
+      if (result.success) setStartCashSaved(true);
+    }
     setSaving(false);
     if (ok) markComplete("settings");
   };
@@ -440,6 +475,18 @@ export default function CompleteSetupWizard({
                 onChange={setFreeShippingAt}
               />
             </div>
+
+            {!startCashSaved && (
+              <div className="mt-8">
+                <h3 className="mb-1 text-base font-semibold text-foreground">{t.completeSetup.startCashHeading}</h3>
+                <p className="mb-4 max-w-lg text-sm text-muted-foreground">{t.completeSetup.startCashSub}</p>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                  <PillField id="startCash" type="number" label={t.admin.mbkCashInHand} value={cashAtStart} onChange={setCashAtStart} />
+                  <PillField id="startMobile" type="number" label={t.admin.mbkMobile} value={mobileAtStart} onChange={setMobileAtStart} />
+                  <PillField id="startBank" type="number" label={t.admin.mbkBankOnly} value={bankAtStart} onChange={setBankAtStart} />
+                </div>
+              </div>
+            )}
 
             <div className="mt-8">
               <button

@@ -92,7 +92,7 @@ export function SupplierPaymentLineFields({ value, onChange, onRemove, index, br
           />
         </div>
       )}
-      {investorAllowed && value.paidFrom === "outside" && <FunderPicker value={value.funder} onChange={(funder) => set({ funder })} />}
+      {investorAllowed && value.paidFrom === "outside" && <FunderPicker value={value.funder} onChange={(funder) => set({ funder })} amount={value.amount} />}
       {branchesOn && fromShop && (
         <div>
           <label className="text-xs font-semibold text-muted-foreground">{t.admin.rcPaidBranch}</label>

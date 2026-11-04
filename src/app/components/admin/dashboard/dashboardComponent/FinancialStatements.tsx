@@ -15,7 +15,7 @@ interface FinancialStatementsProps {
   /** Margin from vendor payments received in the period; added to net profit. */
   vendorProfit: number;
   formatMoney: (amount: number) => React.ReactNode;
-  /** The owner can open the Money Book to save opening balances. */
+  /** The owner can open the Investor money page to save the starting cash. */
   canSetUpCash?: boolean;
   /** Which statement(s) to show: both with tabs, or one on its own (the Balance Sheet page shows only the balance). */
   mode?: "both" | "pl" | "balance";
@@ -150,11 +150,13 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
   const fixedAssets = cash?.fixedAssets ?? 0;
   const loans = cash?.loans ?? 0;
   const advance = balance.supplierAdvance;
-  const totalAssets = cashTotal + fixedAssets + balance.inventoryAtCost + receivable + advance;
+  // Money people put in that has not been spent or paid back: an asset next to business cash, but never part of sales.
+  const investorAccount = cash?.investorAccount ?? 0;
+  const totalAssets = cashTotal + investorAccount + fixedAssets + balance.inventoryAtCost + receivable + advance;
   const payable = balance.accountsPayable;
   const totalLiabilities = payable === null ? null : payable + loans;
   const netPosition = totalLiabilities === null ? null : totalAssets - totalLiabilities;
-  const workingCapital = payable === null ? null : cashTotal + balance.inventoryAtCost + receivable + advance - payable;
+  const workingCapital = payable === null ? null : cashTotal + investorAccount + balance.inventoryAtCost + receivable + advance - payable;
   const methodLabel: Record<string, string> = {
     cash: t.admin.moCash,
     mobile_banking: t.admin.moMobileBanking,
@@ -171,6 +173,9 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
           { key: "cash", label: t.admin.fsCash, how: t.admin.fsCashHow, amount: formatMoney(cash.total) },
           ...cash.methods.map((m) => ({ key: `cash-${m.method}`, label: methodLabel[m.method] ?? m.method, amount: formatMoney(m.left), sub: true })),
         ]
+      : []),
+    ...(investorAccount > 0.005
+      ? [{ key: "investor-account", label: t.admin.fsInvestorAccount, how: t.admin.fsInvestorAccountHow, amount: formatMoney(investorAccount) }]
       : []),
     {
       key: "inventory",
@@ -222,6 +227,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
   ];
   const assetSegments: Segment[] = [
     { key: "cash", label: t.admin.fsCash, value: cashTotal, color: "bg-emerald-500" },
+    { key: "investor", label: t.admin.fsInvestorAccount, value: investorAccount, color: "bg-violet-500" },
     { key: "fixed", label: t.admin.fsFixedAssets, value: fixedAssets, color: "bg-slate-400" },
     { key: "inventory", label: t.admin.fsInventory, value: balance.inventoryAtCost, color: "bg-teal-500" },
     { key: "customers", label: t.admin.fsRecvCustomers, value: balance.customerDue, color: "bg-sky-400" },
@@ -287,7 +293,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
                 if (row.key === "setup") {
                   return (
                     <li key={row.key} className="py-3">
-                      <Link href="/dashboard/financial/money-book" className="text-sm font-semibold text-teal-700 underline-offset-2 hover:underline dark:text-teal-300">
+                      <Link href="/dashboard/financial/investor-money" className="text-sm font-semibold text-teal-700 underline-offset-2 hover:underline dark:text-teal-300">
                         {row.label}
                       </Link>
                     </li>

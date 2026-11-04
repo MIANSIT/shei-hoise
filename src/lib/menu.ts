@@ -43,7 +43,7 @@ import {
   History,
   ArrowLeftRight,
   Building2,
-  BookOpen,
+  Landmark,
   Scale,
   Award,
   PiggyBank,
@@ -186,7 +186,7 @@ export const sideMenu: MenuItem[] = [
       // Hidden from the sidebar (and locked on the page) unless the plan has money_tracker.
       { title: "Money Overview", labelKey: "menuMoneyOverview", href: "/dashboard/financial/money", icon: PiggyBank, requiredFeature: "money_tracker" },
       { title: "Balance Sheet", labelKey: "menuBalanceSheet", href: "/dashboard/balance-sheet", icon: Scale, requiredFeature: "balance_sheet" },
-      { title: "Money Book", labelKey: "menuMoneyBook", href: "/dashboard/financial/money-book", icon: BookOpen, requiredFeature: "money_tracker", ownerOnly: true },
+      { title: "Investor Money", labelKey: "menuInvestorMoney", href: "/dashboard/financial/investor-money", icon: Landmark, requiredFeature: "money_tracker", ownerOnly: true },
       { title: "Customer Dues", labelKey: "menuCustomerDues", href: "/dashboard/customers/dues", icon: Wallet },
       { title: "COD Settlements", labelKey: "menuCodSettlements", href: "/dashboard/cod-settlements", icon: HandCoins },
       { title: "Expense", labelKey: "menuExpense", href: "/dashboard/expense", icon: CreditCard },

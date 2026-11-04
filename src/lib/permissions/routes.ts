@@ -48,6 +48,7 @@ const ROUTE_REQUIREMENTS: ReadonlyArray<readonly [string, RouteRequirement]> = [
   ["/dashboard/reviews", "reviews.view"],
   ["/dashboard/reports", "reports.view"],
   ["/dashboard/financial/money-book", "owner"],
+  ["/dashboard/financial/investor-money", "owner"],
   // The balance sheet shows cash and what the shop owes, so it needs the reports permission (cash itself is owner-only).
   ["/dashboard/balance-sheet", "reports.view"],
   ["/dashboard/financial/money", "reports.view"],

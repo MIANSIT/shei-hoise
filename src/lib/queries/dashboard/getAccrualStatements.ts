@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { getOtherIncomeForPeriod } from "@/lib/queries/financial/otherIncome";
 
 export interface AccrualTrendPoint {
   date: string; // YYYY-MM-DD
@@ -23,9 +22,9 @@ export interface AccrualProfitLoss {
   operatingExpenses: number;
   /** Courier cost minus what customers were charged; negative means delivery earned money. */
   netDeliveryCost: number;
-  /** Money Book other income and cash counted over, minus cash counted short, in the period. Already inside netProfit. */
+  /** Always 0 now: only sales and expenses make profit. Kept so months closed before the Money Book went away still show their line. */
   otherIncome: number;
-  /** Store only: grossProfit − expenses − netDeliveryCost + otherIncome. Vendor margin is added by the caller. */
+  /** Store only: grossProfit − expenses − netDeliveryCost. Vendor margin is added by the caller. */
   netProfit: number;
   trend: AccrualTrendPoint[];
 }
@@ -76,8 +75,6 @@ export async function getAccrualProfitLoss(
     return null;
   }
   const row = data as Record<string, unknown>;
-  // Income that is not a sale (Money Book): part of profit, so the headline and the daily trend carry it.
-  const other = await getOtherIncomeForPeriod(storeId, fromDate, toDate, branchId ?? null);
   return {
     netRevenue: num(row.net_revenue),
     collected: num(row.collected),
@@ -89,11 +86,11 @@ export async function getAccrualProfitLoss(
     missingCostSales: num(row.missing_cost_sales),
     operatingExpenses: num(row.total_expenses),
     netDeliveryCost: num(row.delivery_net_cost),
-    otherIncome: other.total,
-    netProfit: num(row.net_profit) + other.total,
+    otherIncome: 0,
+    netProfit: num(row.net_profit),
     trend: ((row.trend as { date: string; net_profit: number }[] | null) ?? []).map((p) => ({
       date: String(p.date).slice(0, 10),
-      net_profit: num(p.net_profit) + (other.byDay[String(p.date).slice(0, 10)] ?? 0),
+      net_profit: num(p.net_profit),
     })),
   };
 }

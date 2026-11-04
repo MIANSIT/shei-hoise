@@ -105,7 +105,9 @@ export function AccountsView({
   const loans = cash?.loans ?? 0;
   const advance = balance.supplierAdvance;
   const payable = balance.accountsPayable;
-  const totalAssets = cashTotal + fixedAssets + balance.inventoryAtCost + owedToYou + advance;
+  // Money people put in is held apart from business cash: it adds to what the business holds, never to its sales.
+  const investorAccount = cash?.investorAccount ?? 0;
+  const totalAssets = cashTotal + investorAccount + fixedAssets + balance.inventoryAtCost + owedToYou + advance;
   const youOwe = payable === null ? null : payable + loans;
   // Without an opening balance the worth leaves out cash, and the card says so.
   const worth = youOwe === null ? null : totalAssets - youOwe;
@@ -135,7 +137,8 @@ export function AccountsView({
           <p className="mt-6 text-xs text-white/75">{t.admin.acWholeHistory}</p>
         </div>
         <div className="p-4 sm:p-6">
-          {cash && <Line sign="+" label={t.admin.mpCash} hint={t.admin.acCashHint} amount={formatMoney(cash.total)} />}
+          {cash && <Line sign="+" label={t.admin.acBusinessCash} hint={t.admin.acCashHint} amount={formatMoney(cash.total)} />}
+          {cash && investorAccount > 0.005 && <Line sign="+" label={t.admin.acInvestor} hint={t.admin.acInvestorHint} amount={formatMoney(investorAccount)} />}
           <Line
             sign="+"
             label={t.admin.acStock}

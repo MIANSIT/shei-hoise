@@ -259,11 +259,14 @@ function ExpenseFormModal({
           )}
 
           {investorAllowed && (
-            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.paid_from !== cur.paid_from}>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.paid_from !== cur.paid_from || prev.amount !== cur.amount}>
               {({ getFieldValue }) =>
                 getFieldValue("paid_from") === "outside" ? (
-                  <Form.Item name="funder">
-                    <FunderPicker />
+                  <Form.Item
+                    name="funder"
+                    rules={[{ validator: (_, v) => (v?.partnerId ? Promise.resolve() : Promise.reject(new Error(t.admin.invFunderRequired))) }]}
+                  >
+                    <FunderPicker amount={getFieldValue("amount")} />
                   </Form.Item>
                 ) : null
               }

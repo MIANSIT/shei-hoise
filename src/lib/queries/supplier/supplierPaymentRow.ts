@@ -39,6 +39,8 @@ export async function buildPaymentRow(
   line: PaymentLineInput,
   createdBy: string,
   extra: Record<string, unknown> = {},
+  /** Money already taken from each investor's account by earlier parts of the same payment, so the parts are checked together. */
+  taken?: Map<string, number>,
 ): Promise<{ ok: true; row: Record<string, unknown> } | { ok: false; error: string }> {
   const paidFrom = line.paidFrom ?? "shop";
   let branchId: string | null = null;
@@ -66,8 +68,10 @@ export async function buildPaymentRow(
     billBranchId = billBranch.id as string;
   }
 
-  const funder = await resolveFunder(storeId, paidFrom, line.funderId, line.funderTreatment);
+  const earlier = line.funderId ? (taken?.get(line.funderId) ?? 0) : 0;
+  const funder = await resolveFunder(storeId, paidFrom, line.funderId, line.funderTreatment, { amount: line.amount, alreadyTaken: earlier });
   if (!funder.ok) return { ok: false, error: funder.error };
+  if (funder.funderId) taken?.set(funder.funderId, earlier + line.amount);
 
   return {
     ok: true,

@@ -59,7 +59,20 @@ export async function returnToSupplier(
     const { data: supplier } = await supabaseAdmin.from("suppliers").select("id, name").eq("id", v.supplierId).eq("store_id", storeId).maybeSingle();
     if (!supplier) return { success: false, error: "Supplier not found" };
 
-    const credit = round2(v.items.reduce((sum, i) => sum + round2(i.quantity * i.unitCredit), 0));
+    // The credit is the product's TP, so it cannot be edited: the TP on file is used whenever there is one.
+    // The typed value only counts for a product that has no TP yet.
+    const productIds = [...new Set(v.items.map((i) => i.productId))];
+    const { data: tpRows } = await supabaseAdmin.from("products").select("id, tp_price").eq("store_id", storeId).in("id", productIds);
+    const variantIds = v.items.map((i) => i.variantId).filter((id): id is string => !!id);
+    const { data: variantRows } = variantIds.length > 0 ? await supabaseAdmin.from("product_variants").select("id, tp_price").in("id", variantIds) : { data: [] };
+    const productTp = new Map(((tpRows ?? []) as { id: string; tp_price: number | null }[]).map((r) => [r.id, Number(r.tp_price) || 0]));
+    const variantTp = new Map(((variantRows ?? []) as { id: string; tp_price: number | null }[]).map((r) => [r.id, Number(r.tp_price) || 0]));
+    if (productTp.size !== productIds.length) return { success: false, error: "A product was not found" };
+    const unitCreditFor = (i: (typeof v.items)[number]): number => {
+      const tp = (i.variantId ? variantTp.get(i.variantId) : 0) || productTp.get(i.productId) || 0;
+      return tp > 0 ? tp : i.unitCredit;
+    };
+    const credit = round2(v.items.reduce((sum, i) => sum + round2(i.quantity * unitCreditFor(i)), 0));
     if (credit <= 0) return { success: false, error: "Enter what the supplier credits for the goods" };
 
     // Stock first: the database refuses to take out more than is there.

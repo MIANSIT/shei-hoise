@@ -216,7 +216,15 @@ export function ReturnToSupplierModal({ open, onClose, onSaved, money }: ReturnT
                   <InputNumber min={1} max={l.stock} precision={0} value={l.quantity} onChange={(v) => patchLine(l.key, { quantity: v === null ? null : Number(v) })} style={{ width: "100%" }} />
                 </td>
                 <td className="py-2 pr-2">
-                  <InputNumber min={0} precision={2} value={l.unitCredit} onChange={(v) => patchLine(l.key, { unitCredit: v === null ? null : Number(v) })} style={{ width: "100%" }} />
+                  {/* The credit is the product's TP. It can only be typed for a product that has no TP yet. */}
+                  <InputNumber
+                    min={0}
+                    precision={2}
+                    value={l.unitCredit}
+                    disabled={l.cost != null && l.cost > 0}
+                    onChange={(v) => patchLine(l.key, { unitCredit: v === null ? null : Number(v) })}
+                    style={{ width: "100%" }}
+                  />
                 </td>
                 <td className="py-2 pr-2 text-right tabular-nums whitespace-nowrap">{money(round2((l.quantity ?? 0) * (l.unitCredit ?? 0)))}</td>
                 <td className="py-2 text-right">
@@ -227,6 +235,7 @@ export function ReturnToSupplierModal({ open, onClose, onSaved, money }: ReturnT
               </tr>
             ))}
           </tbody>
+          <caption className="caption-bottom pt-2 text-left text-[11px] text-muted-foreground">{t.admin.rtTpLocked}</caption>
           <tfoot>
             <tr className="border-t-2 border-border font-bold">
               <td colSpan={3} className="py-2 pr-2">

@@ -158,7 +158,7 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
       }
     }
 
-    const funder = isPayment ? await resolveFunder(storeId, paidFrom, v.funderId, v.funderTreatment) : null;
+    const funder = isPayment ? await resolveFunder(storeId, paidFrom, v.funderId, v.funderTreatment, { amount: v.amount }) : null;
     if (funder && !funder.ok) return { success: false, error: funder.error };
 
     // A bill typed by hand belongs to the branch that received the goods (stores with branches).
@@ -248,8 +248,10 @@ export async function addSupplierPayments(storeId: string, input: SupplierPaymen
     if (!supplier) return { success: false, error: "Supplier not found" };
 
     const rows: Record<string, unknown>[] = [];
+    // Money taken from each investor's account by the parts so far, so the parts are checked together.
+    const taken = new Map<string, number>();
     for (const line of v.lines) {
-      const built = await buildPaymentRow(storeId, v.supplierId, v.date, v.note || null, line, auth.actor.userId);
+      const built = await buildPaymentRow(storeId, v.supplierId, v.date, v.note || null, line, auth.actor.userId, {}, taken);
       if (!built.ok) return { success: false, error: built.error };
       rows.push(built.row);
     }

@@ -9,6 +9,8 @@ export interface RecordCodSettlementInput {
   totalAmount: number;
   orderIds: string[];
   note?: string | null;
+  /** How the courier paid: the money lands on that balance. Cash when left out. */
+  paymentMethod?: "cash" | "mobile_banking" | "bank_transfer";
 }
 
 /**
@@ -56,21 +58,27 @@ export async function recordCodSettlement(
   const branchId = [...branchIds][0] ?? null;
   if (branchId && !canUseBranch(storeResult.actor, branchId)) throw new Error(BRANCH_SCOPE_ERROR);
 
-  const { data: settlement, error: insertError } = await supabaseAdmin
+  const method = input.paymentMethod && ["cash", "mobile_banking", "bank_transfer"].includes(input.paymentMethod) ? input.paymentMethod : "cash";
+  const baseRow = {
+    store_id: storeId,
+    courier: input.courier || null,
+    settlement_date: input.settlementDate,
+    total_amount: input.totalAmount,
+    order_count: eligibleIds.length,
+    note: input.note || null,
+    ...(branchId ? { branch_id: branchId } : {}),
+  };
+  let { data: settlement, error: insertError } = await supabaseAdmin
     .from("store_cod_settlements")
-    .insert({
-      store_id: storeId,
-      courier: input.courier || null,
-      settlement_date: input.settlementDate,
-      total_amount: input.totalAmount,
-      order_count: eligibleIds.length,
-      note: input.note || null,
-      ...(branchId ? { branch_id: branchId } : {}),
-    })
+    .insert({ ...baseRow, payment_method: method })
     .select("id")
     .single();
+  // A database without the payment method column (migration 20261202) keeps working: the settlement counts as cash.
+  if (insertError && /payment_method/i.test(insertError.message)) {
+    ({ data: settlement, error: insertError } = await supabaseAdmin.from("store_cod_settlements").insert(baseRow).select("id").single());
+  }
 
-  if (insertError) throw new Error(insertError.message);
+  if (insertError || !settlement) throw new Error(insertError?.message ?? "Could not save the settlement");
 
   // Handing the cash over is what makes a delivered COD order paid — without
   // this the customer stayed "owing" the full total (courier charge included)

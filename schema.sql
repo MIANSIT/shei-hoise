@@ -663,6 +663,17 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 --     funder_treatment (capital|loan), used when paid_from = 'outside'
 --   Owner-only SELECT policies; writes through owner-only server actions.
 
+-- Investor money — 20261201000000_investor_money.sql. Replaces the Money Book (its tables stay but are hidden and not counted).
+--   money_start (id, store_id, branch_id, method [cash|mobile_banking|bank_transfer], amount, as_of_date, created_by,
+--     updated_at); unique per store, branch and method. The earliest as_of_date is the day the new system started.
+--   investor_deals (id, store_id, partner_id -> money_partners, kind [loan|profit_share|payback], profit_share_pct
+--     (profit_share only), note, created_by, created_at)
+--   investor_entries (id, store_id, deal_id, entry_type [put_in|repay|pay_back|profit_share_paid], amount, entry_date,
+--     pay_from [business|investor] (null for put_in), payment_method, branch_id, period_month 'YYYY-MM' (profit_share_paid
+--     only), note, created_by, created_at)
+--   Payments from the Investor account on expenses and supplier bills keep using paid_from = 'outside' + funder_id.
+--   Owner-only SELECT policies; writes through owner-only server actions.
+
 -- Purchases — 20261114000000_add_purchases.sql. One delivery from one supplier.
 --   purchases (id, store_id, branch_id, supplier_id, bill_no, purchase_date, due_date,
 --     status draft|ordered|received|cancelled, total, note, attachment_url, created_by,

@@ -45,6 +45,8 @@ export default function CodSettlementsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [settlementDate, setSettlementDate] = useState<Dayjs>(dayjs());
+  // How the courier paid: the money lands on that balance (cash, mobile banking or bank).
+  const [settlementMethod, setSettlementMethod] = useState<"cash" | "mobile_banking" | "bank_transfer">("cash");
   const [amountReceived, setAmountReceived] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -148,6 +150,7 @@ export default function CodSettlementsPage() {
         totalAmount: amountReceived,
         orderIds: selectedIds,
         note: note || null,
+        paymentMethod: settlementMethod,
       });
       success("Settlement recorded — cash added to that date's Register Audit");
       setNote("");
@@ -236,6 +239,12 @@ export default function CodSettlementsPage() {
         ]
       : []),
     { title: "Orders", dataIndex: "order_count", key: "order_count", align: "right" as const },
+    {
+      title: t.admin.codReceivedBy,
+      dataIndex: "payment_method",
+      key: "payment_method",
+      render: (v: string | null | undefined) => (v === "mobile_banking" ? t.admin.moMobileBanking : v === "bank_transfer" ? t.admin.moBankTransfer : t.admin.moCash),
+    },
     {
       title: "Amount Received",
       dataIndex: "total_amount",
@@ -340,6 +349,22 @@ export default function CodSettlementsPage() {
                   onChange={(d) => d && setSettlementDate(d)}
                   allowClear={false}
                   disabledDate={(d) => d.isAfter(dayjs(), "day")}
+                />
+              </div>
+              <div>
+                <label htmlFor="cod-method" className="mb-1 block text-xs text-muted-foreground">
+                  {t.admin.codReceivedBy}
+                </label>
+                <Select
+                  id="cod-method"
+                  value={settlementMethod}
+                  onChange={setSettlementMethod}
+                  style={{ width: 200 }}
+                  options={[
+                    { value: "cash", label: t.admin.moCash },
+                    { value: "mobile_banking", label: t.admin.moMobileBanking },
+                    { value: "bank_transfer", label: t.admin.moBankTransfer },
+                  ]}
                 />
               </div>
               <div>

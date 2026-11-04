@@ -27,8 +27,7 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
-import { getMoneyEntries } from "@/lib/queries/financial/getCashPosition";
-import type { MoneyEntry } from "@/lib/queries/financial/moneyBookTypes";
+import { BranchMoneyTransfers } from "./BranchMoneyTransfers";
 import {
   getMoneyOverview,
   type MoneyMethodKey,
@@ -120,8 +119,6 @@ export default function MoneyOverview() {
   const [data, setData] = useState<MoneyOverviewData>(EMPTY);
   const [withdrawals, setWithdrawals] = useState<OwnerWithdrawal[]>([]);
   const [refunds, setRefunds] = useState<CustomerRefund[]>([]);
-  // Money in and out entered on the Money Book (owner only), for the picked dates and branch.
-  const [bookEntries, setBookEntries] = useState<MoneyEntry[]>([]);
   const [refundOpen, setRefundOpen] = useState(false);
   const [rAmount, setRAmount] = useState<number | null>(null);
   const [rMethod, setRMethod] = useState<MoneyMethodKey>("cash");
@@ -146,15 +143,6 @@ export default function MoneyOverview() {
   const [wNotes, setWNotes] = useState("");
   const [wBranch, setWBranch] = useState<string | null>(null);
 
-  const bookTypeLabel: Record<string, string> = {
-    owner_investment: t.admin.mbkTypeOwnerInvestment,
-    loan_received: t.admin.mbkTypeLoanReceived,
-    other_income: t.admin.mbkTypeOtherIncome,
-    loan_repayment: t.admin.mbkTypeLoanRepayment,
-    equipment_purchase: t.admin.mbkTypeEquipment,
-    cash_over: t.admin.mbkTypeCashOver,
-    cash_short: t.admin.mbkTypeCashShort,
-  };
   const fromDate = range[0].format("YYYY-MM-DD");
   const toDate = range[1].format("YYYY-MM-DD");
 
@@ -162,19 +150,13 @@ export default function MoneyOverview() {
     if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const [overview, withdrawalList, refundList, bookList] = await Promise.all([
+      const [overview, withdrawalList, refundList] = await Promise.all([
         getMoneyOverview(user.store_id, fromDate, toDate, reportBranchId, branchesOn, isOwner),
         isOwner
           ? getOwnerWithdrawals(user.store_id, fromDate, toDate, reportBranchId).catch(() => [])
           : Promise.resolve([]),
         getCustomerRefunds(user.store_id, fromDate, toDate, reportBranchId),
-        isOwner ? getMoneyEntries(user.store_id, fromDate).catch(() => [] as MoneyEntry[]) : Promise.resolve([] as MoneyEntry[]),
       ]);
-      setBookEntries(
-        bookList
-          .filter((e) => e.date <= toDate && (!reportBranchId || e.branchId === reportBranchId))
-          .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1)),
-      );
       setData(overview);
       setWithdrawals(withdrawalList);
       setRefunds(refundList);
@@ -810,44 +792,6 @@ export default function MoneyOverview() {
               </section>
             )}
 
-            {isOwner && (
-              <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h2 className="text-sm font-bold text-foreground m-0">{t.admin.moBookTitle}</h2>
-                    <p className="text-xs text-muted-foreground m-0 mt-0.5 mb-4">{t.admin.moBookSub}</p>
-                  </div>
-                  <Link href="/dashboard/financial/money-book" className="text-xs font-semibold text-indigo-600 hover:underline">
-                    {t.admin.moOpenBook}
-                  </Link>
-                </div>
-                {bookEntries.length === 0 ? (
-                  <p className="text-sm text-muted-foreground m-0 py-4 text-center">{t.admin.moNoBook}</p>
-                ) : (
-                  <ul className="m-0 p-0 list-none divide-y divide-border">
-                    {bookEntries.map((e) => (
-                      <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-foreground">
-                            {bookTypeLabel[e.entryType] ?? e.entryType}
-                            <span className="ml-2 text-xs font-normal text-muted-foreground">
-                              {methodLabel[withdrawalMethod(e.paymentMethod)]} · {dayjs(e.date).format("DD-MM-YYYY")}
-                              {branchesOn && e.branchId ? ` · ${branchName(e.branchId)}` : ""}
-                            </span>
-                          </div>
-                          {e.note && <div className="text-[11px] text-muted-foreground wrap-break-word">{e.note}</div>}
-                        </div>
-                        <span className={`shrink-0 text-sm font-bold tabular-nums ${e.kind === "in" ? "text-emerald-600" : "text-rose-600"}`}>
-                          {e.kind === "in" ? "+" : "−"}
-                          {money(e.amount)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            )}
-
             <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
               <h2 className="text-sm font-bold text-foreground m-0">{t.admin.moPendingTitle}</h2>
               <p className="text-xs text-muted-foreground m-0 mt-0.5 mb-4">{t.admin.moPendingSub}</p>
@@ -876,6 +820,9 @@ export default function MoneyOverview() {
                 ))}
               </ul>
             </section>
+
+            {/* Branch to branch: sent by one branch, confirmed by the other before it counts there. */}
+            {branchesOn && <BranchMoneyTransfers onChanged={() => void load()} />}
 
             {/* Vendors are kept apart so they never blur the shop's own numbers. */}
             {(data.vendorReceivedTotal > 0.005 || pending.vendorDue > 0.005) && (

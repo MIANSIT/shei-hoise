@@ -87,7 +87,10 @@ export interface CashPosition {
   /** Cash & bank, all methods together. */
   total: number;
   fixedAssets: number;
+  /** Investor loans still owed. */
   loans: number;
+  /** The Investor account: money people put in that has not been spent or paid back. Whole store only; 0 for a branch. Missing in copies saved before it existed. */
+  investorAccount?: number;
 }
 
 /** Income that is not a sale (Money Book other income, cash over, minus cash short) for a period. */

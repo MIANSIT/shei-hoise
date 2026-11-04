@@ -6,6 +6,8 @@ export interface CodSettlement {
   total_amount: number;
   order_count: number;
   note: string | null;
+  /** How the courier paid: cash, mobile_banking or bank_transfer. Null on settlements saved before this was asked (counted as cash). */
+  payment_method?: string | null;
   /** Stores with branches: the branch whose orders it covers. */
   branch_id?: string | null;
   created_at: string;

@@ -100,7 +100,7 @@ export async function loadMoneyAlerts({ storeId, branchId, withBranches, canSeeB
         kind: "negativeCash",
         count: below.length,
         amount: below.reduce((s, m) => s + Math.abs(m.left), 0),
-        href: "/dashboard/financial/money-book",
+        href: "/dashboard/financial/investor-money",
         severity: "danger",
       });
     }

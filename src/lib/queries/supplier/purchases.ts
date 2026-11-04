@@ -104,8 +104,11 @@ export async function receivePurchase(storeId: string, input: ReceivePurchaseInp
     }
 
     // "Who paid" only counts for money from outside the shop, and the person must be on this store's list.
-    const funder = await resolveFunder(storeId, v.paidFrom, v.funderId, v.funderTreatment);
+    const funder = await resolveFunder(storeId, v.paidFrom, v.funderId, v.funderTreatment, { amount: v.paidAmount ?? 0 });
     if (!funder.ok) return { success: false, error: funder.error };
+    // Money taken from each investor's account so far, so the extra parts are checked together with the first.
+    const taken = new Map<string, number>();
+    if (funder.funderId) taken.set(funder.funderId, v.paidAmount ?? 0);
 
     // No pay-by date typed: use this supplier's own terms, if it has any, so the bill can be flagged when late.
     let dueDate = v.dueDate ?? null;
@@ -157,7 +160,7 @@ export async function receivePurchase(storeId: string, input: ReceivePurchaseInp
       let failure: string | null = null;
       for (const line of v.extraPayments ?? []) {
         // Paying this delivery's bill: every part is applied to the bills of the branch that received the goods.
-        const built = await buildPaymentRow(storeId, v.supplierId, v.purchaseDate, `Paid with purchase${v.billNo ? ` ${v.billNo}` : ""}`, { ...line, billBranchId: line.billBranchId ?? v.branchId ?? null }, actor.userId, { purchase_id: row.purchase_id });
+        const built = await buildPaymentRow(storeId, v.supplierId, v.purchaseDate, `Paid with purchase${v.billNo ? ` ${v.billNo}` : ""}`, { ...line, billBranchId: line.billBranchId ?? v.branchId ?? null }, actor.userId, { purchase_id: row.purchase_id }, taken);
         if (!built.ok) {
           failure = built.error;
           break;

@@ -685,7 +685,7 @@ export default function ReceiveStockPage() {
                     <p className="m-0 mt-1 text-[11px] text-muted-foreground">{t.admin.moPaidFromHint}</p>
                     {paidFrom === "outside" && (
                       <div className="mt-2">
-                        <FunderPicker value={funder} onChange={setFunder} />
+                        <FunderPicker value={funder} onChange={setFunder} amount={paidFirst} />
                       </div>
                     )}
                   </div>

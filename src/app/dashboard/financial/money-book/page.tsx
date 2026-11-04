@@ -1,10 +1,6 @@
-import FeatureGatedPage from "@/app/components/admin/common/FeatureGatedPage";
-import MoneyBookPage from "@/app/components/admin/dashboard/financial/MoneyBookPage";
+import { redirect } from "next/navigation";
 
+/** The Money Book was replaced by the Investor money page; old links and bookmarks land there. */
 export default function MoneyBookRoute() {
-  return (
-    <FeatureGatedPage featureKey="money_tracker">
-      <MoneyBookPage />
-    </FeatureGatedPage>
-  );
+  redirect("/dashboard/financial/investor-money");
 }

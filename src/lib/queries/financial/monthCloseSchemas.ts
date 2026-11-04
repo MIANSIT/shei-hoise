@@ -26,5 +26,7 @@ export const cashSchema = z
     total: MONEY,
     fixedAssets: MONEY,
     loans: MONEY,
+    // Copies saved before the Investor account existed do not have it.
+    investorAccount: MONEY.optional(),
   })
   .nullable();

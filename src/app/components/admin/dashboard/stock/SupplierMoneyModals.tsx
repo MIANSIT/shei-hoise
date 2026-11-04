@@ -211,7 +211,7 @@ export function SupplierEntryModal({
             <p className="m-0 mt-1 text-[11px] text-muted-foreground">{t.admin.moPaidFromHint}</p>
           </div>
         )}
-        {kind === "payment" && investorAllowed && paidFrom === "outside" && <FunderPicker value={funder} onChange={setFunder} />}
+        {kind === "payment" && investorAllowed && paidFrom === "outside" && <FunderPicker value={funder} onChange={setFunder} amount={amount} />}
         {needsBillGoodsBranch && (
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.rcBranch}</label>

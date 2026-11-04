@@ -50,7 +50,7 @@ export async function createExpense(
     }
 
     // "Who paid" only counts for money from outside the shop, and the person must be on this store's list.
-    const funder = await resolveFunder(input.store_id, input.paid_from, input.funder_id, input.funder_treatment);
+    const funder = await resolveFunder(input.store_id, input.paid_from, input.funder_id, input.funder_treatment, { amount: Number(input.amount) || 0 });
     if (!funder.ok) {
       console.error("createExpense:", funder.error);
       return null;

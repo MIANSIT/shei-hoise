@@ -288,13 +288,21 @@ export async function getCodCashSettledForDate(
 ): Promise<number> {
   if (!storeId) return 0;
 
-  let query = supabase
-    .from("store_cod_settlements")
-    .select("total_amount")
-    .eq("store_id", storeId)
-    .eq("settlement_date", dateStr);
-  if (branchId) query = query.eq("branch_id", branchId);
-  const { data, error } = await query;
+  // Only cash goes into the drawer: a courier payout on bKash or into the bank is not drawer cash.
+  // Settlements saved before the payment method was asked have none and count as cash.
+  const load = async (cashOnly: boolean) => {
+    let query = supabase
+      .from("store_cod_settlements")
+      .select("total_amount")
+      .eq("store_id", storeId)
+      .eq("settlement_date", dateStr);
+    if (cashOnly) query = query.or("payment_method.is.null,payment_method.eq.cash");
+    if (branchId) query = query.eq("branch_id", branchId);
+    return query;
+  };
+  let { data, error } = await load(true);
+  // A database without the payment method column (migration 20261202): every settlement counts as cash, as before.
+  if (error) ({ data, error } = await load(false));
 
   if (error) {
     console.error("Failed to load COD cash settled for date:", error.message);

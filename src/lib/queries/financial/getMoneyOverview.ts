@@ -152,6 +152,8 @@ interface PaidOrderRow {
   created_at: string | null;
   paid_at: string | null;
   branch_id?: string | null;
+  /** The courier settlement that paid this COD order, if any: its payment method says which balance the money landed on. */
+  cod_settlement_id?: string | null;
   payment_method: string | null;
   subtotal: number | null;
   discount_amount: number | null;
@@ -234,8 +236,8 @@ export async function getMoneyOverview(
           .from("orders")
           .select(
             withBranches
-              ? "id, order_date, created_at, paid_at, branch_id, payment_method, subtotal, discount_amount, additional_charges"
-              : "id, order_date, created_at, paid_at, payment_method, subtotal, discount_amount, additional_charges",
+              ? "id, order_date, created_at, paid_at, branch_id, cod_settlement_id, payment_method, subtotal, discount_amount, additional_charges"
+              : "id, order_date, created_at, paid_at, cod_settlement_id, payment_method, subtotal, discount_amount, additional_charges",
           )
           .eq("store_id", storeId)
           .eq("payment_status", "paid")
@@ -278,6 +280,9 @@ export async function getMoneyOverview(
       duePayments.map((p) => p.order_id).filter((id): id is string => !!id),
     );
 
+    // How each courier settlement was paid (cash, bKash or bank). A settlement saved before this was asked counts as cash.
+    const codMethod = await loadCodSettlementMethods(storeId, orders.map((o) => o.cod_settlement_id));
+
     const rows = new Map<MoneyMethodKey, MoneyMethodRow>();
     const rowFor = (method: MoneyMethodKey): MoneyMethodRow => {
       let row = rows.get(method);
@@ -308,7 +313,10 @@ export async function getMoneyOverview(
       const amount =
         Number(order.subtotal ?? 0) - Number(order.discount_amount ?? 0) + Number(order.additional_charges ?? 0);
       if (amount <= 0) continue;
-      rowFor(normalizeMethod(order.payment_method)).fromOrders += amount;
+      // A COD order paid by a courier settlement lands on the balance the courier paid into.
+      let orderMethod = normalizeMethod(order.payment_method);
+      if (orderMethod === "cod" && order.cod_settlement_id) orderMethod = normalizeMethod(codMethod.get(order.cod_settlement_id) ?? "cash");
+      rowFor(orderMethod).fromOrders += amount;
       addToBranch(order.branch_id, "received", amount);
       // Placed before the period but paid in it (e.g. last month's COD): it is money now, not this period's sales.
       if (order.order_date && order.order_date < fromDate) sources.ordersEarlier += amount;
@@ -364,6 +372,14 @@ export async function getMoneyOverview(
       }
       rowFor(normalizeMethod(w.payment_method)).withdrawn += w.amount;
       addToBranch(w.branch_id, "withdrawn", w.amount);
+    }
+
+    // Money sent between branches: out of the sender when sent, into the receiver when it confirms. The whole-store
+    // view is left alone, because the money stays in the business the whole time.
+    if (branchId) {
+      const moves = await loadBranchTransferMoves(storeId, fromDate, toDate, branchId);
+      for (const m of moves.out) rowFor(normalizeMethod(m.method)).movedOut += m.amount;
+      for (const m of moves.in) rowFor(normalizeMethod(m.method)).movedIn += m.amount;
     }
 
     const byMethod = [...rows.values()]
@@ -446,6 +462,55 @@ export async function getMoneyOverview(
     console.error("Failed to load money overview:", error);
     return EMPTY;
   }
+}
+
+/**
+ * How each courier settlement was paid. Settlements with no method (saved before it was asked) and databases
+ * without the column read as cash.
+ */
+async function loadCodSettlementMethods(storeId: string, ids: (string | null | undefined)[]): Promise<Map<string, string>> {
+  const methods = new Map<string, string>();
+  const unique = [...new Set(ids.filter((id): id is string => !!id))];
+  for (let i = 0; i < unique.length; i += 100) {
+    const { data, error } = await supabase
+      .from("store_cod_settlements")
+      .select("id, payment_method")
+      .eq("store_id", storeId)
+      .in("id", unique.slice(i, i + 100));
+    if (error) break;
+    for (const row of (data ?? []) as { id: string; payment_method: string | null }[]) methods.set(row.id, row.payment_method ?? "cash");
+  }
+  return methods;
+}
+
+/** What one branch sent and received through branch-to-branch transfers in a period, by payment method. */
+async function loadBranchTransferMoves(
+  storeId: string,
+  fromDate: string,
+  toDate: string,
+  branchId: string,
+): Promise<{ out: { method: string; amount: number }[]; in: { method: string; amount: number }[] }> {
+  const [sent, got] = await Promise.all([
+    supabase
+      .from("branch_money_transfers")
+      .select("amount, payment_method")
+      .eq("store_id", storeId)
+      .eq("from_branch_id", branchId)
+      .in("status", ["sent", "received"])
+      .gte("transfer_date", fromDate)
+      .lte("transfer_date", toDate),
+    supabase
+      .from("branch_money_transfers")
+      .select("amount, payment_method")
+      .eq("store_id", storeId)
+      .eq("to_branch_id", branchId)
+      .eq("status", "received")
+      .gte("received_date", fromDate)
+      .lte("received_date", toDate),
+  ]);
+  const shape = (rows: unknown) => ((rows ?? []) as { amount: number; payment_method: string }[]).map((r) => ({ method: r.payment_method, amount: Number(r.amount) }));
+  // Before the transfers table exists both reads fail, and there is simply nothing to add.
+  return { out: sent.error ? [] : shape(sent.data), in: got.error ? [] : shape(got.data) };
 }
 
 /** Payments dated in the range. branch_id is only filtered on when a branch is picked, so stores without branches never depend on it. */
