@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import StatCard from "./StatCard";
 import InventoryAlertCard from "./InventoryAlertCard";
@@ -100,7 +100,11 @@ interface MainDashboardProps {
     branchProfits?: BranchProfit[];
     onOpenBranch?: (branchId: string) => void;
   };
+  /** The Accounts tab. Given a function that switches back to the Sales tab. When omitted there are no tabs. */
+  accountsView?: (openSales: () => void) => React.ReactNode;
 }
+
+type DashboardTab = "sales" | "accounts";
 
 // ─── Period Selector ──────────────────────────────────────────────────────────
 const PeriodSelector: React.FC<{
@@ -295,8 +299,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
   moneyAlerts,
   hideProfitHero = false,
   profitStory,
+  accountsView,
 }) => {
   const t = useTranslation();
+  const [tab, setTab] = useState<DashboardTab>("sales");
   const periodLabel =
     timePeriod === "weekly"
       ? t.admin.periodLast7
@@ -361,12 +367,38 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
           <PeriodSelector value={timePeriod} onChange={onTimePeriodChange} />
         </div>
+        {accountsView && (
+          <div className="max-w-400 mx-auto px-3 sm:px-6 pb-2 flex gap-2" role="tablist" aria-label={t.admin.businessOverview}>
+            {(
+              [
+                ["sales", t.admin.acTabSales, t.admin.acTabSalesSub],
+                ["accounts", t.admin.acTabAccounts, t.admin.acTabAccountsSub],
+              ] as [DashboardTab, string, string][]
+            ).map(([key, label, sub]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                onClick={() => setTab(key)}
+                className={`rounded-xl px-3 sm:px-4 py-1.5 text-left transition-colors ${
+                  tab === key
+                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/30"
+                    : "border border-border bg-card text-foreground hover:bg-muted"
+                }`}
+              >
+                <span className="block text-xs sm:text-sm font-bold leading-tight">{label}</span>
+                <span className={`block text-[10px] leading-tight ${tab === key ? "text-white/80" : "text-muted-foreground"}`}>{sub}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Page content ── */}
       <div className="max-w-400 mx-auto px-3 sm:px-6 pt-4 sm:pt-7 space-y-5 sm:space-y-8">
-        {/* ALERTS */}
-        {alerts.length > 0 && (
+        {/* ALERTS: stock and order alerts belong to selling; the Accounts tab keeps only the money alerts */}
+        {tab === "sales" && alerts.length > 0 && (
           <div
             className="rounded-2xl p-3 sm:p-4
             bg-amber-50 dark:bg-amber-500/10
@@ -387,6 +419,10 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
 
         {moneyAlerts}
 
+        {tab === "accounts" ? (
+          accountsView?.(() => setTab("sales"))
+        ) : (
+        <>
         {branchComparison}
 
         {statements}
@@ -555,6 +591,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
             ))}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

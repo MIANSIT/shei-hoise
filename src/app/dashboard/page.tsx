@@ -34,7 +34,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useBranches } from "@/lib/context/BranchContext";
 import { BranchComparison } from "@/app/components/admin/branches/BranchComparison";
 import { MoneyAlerts } from "@/app/components/admin/dashboard/dashboardComponent/MoneyAlerts";
-import { MoneyPositionStrip } from "@/app/components/admin/dashboard/dashboardComponent/MoneyPositionStrip";
+import { AccountsView } from "@/app/components/admin/dashboard/dashboardComponent/AccountsView";
 import { useAccrualStatements } from "@/lib/hook/useAccrualStatements";
 import { useRecordDailyBalance } from "@/lib/hook/useRecordDailyBalance";
 import { usePermissions } from "@/lib/context/PermissionsContext";
@@ -579,6 +579,15 @@ export default function DashboardPage() {
     return previous === 0 ? null : ((current - previous) / Math.abs(previous)) * 100;
   })();
 
+  const periodLabelText =
+    timePeriod === "weekly"
+      ? t.admin.periodLast7
+      : timePeriod === "monthly"
+        ? t.admin.periodLast30
+        : timePeriod === "yearly"
+          ? t.admin.periodLast365
+          : t.admin.periodAllTime;
+
   return (
     <MainDashboard
       stats={stats}
@@ -611,11 +620,29 @@ export default function DashboardPage() {
           <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
             Financial statements could not load, so the older figures are shown. {accrualError}
           </div>
-        ) : accrual && !balanceSheetLoading && balanceSheetAllowed ? (
-          // The Profit & Loss story below already tells the profit; plans with the Balance Sheet get its money position here.
-          <MoneyPositionStrip data={accrual} formatMoney={(amount: number) => renderCurrency(amount)} />
         ) : undefined
       }
+      accountsView={(openSales: () => void) => (
+        <AccountsView
+          data={accrual}
+          ready={accrualReady}
+          storeId={storeId ?? ""}
+          branchId={dashboardBranchId}
+          withBranches={branchesOn}
+          isOwner={isOwner}
+          periodStart={periodRange.periodStart}
+          periodEnd={periodRange.periodEnd}
+          periodLabel={periodLabelText}
+          formatMoney={(amount: number) => renderCurrency(amount)}
+          balanceSheetAllowed={!balanceSheetLoading && balanceSheetAllowed}
+          trading={{
+            sales: accrual ? accrual.pl.netRevenue : metrics.revenue,
+            grossProfit: accrual ? accrual.pl.grossProfit : metrics.grossProfit,
+            netProfit: accrual ? accrual.pl.netProfit + vendorProfit : expenseMetrics.netProfit,
+          }}
+          onOpenSales={openSales}
+        />
+      )}
       profitStory={{
         figures: accrual
           ? {
