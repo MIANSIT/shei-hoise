@@ -6,6 +6,7 @@ import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import type { BranchComparisonRow } from "@/lib/queries/dashboard/getBranchComparison";
+import { computeMargins } from "@/lib/utils/profitMargins";
 
 interface BranchComparisonProps {
   /** null while loading. */
@@ -21,6 +22,9 @@ const ZERO: Totals = {
   sales: 0,
   received: 0,
   grossProfit: 0,
+  cogs: 0,
+  missingCostLines: 0,
+  missingCostSales: 0,
   expenses: 0,
   vendorProfit: 0,
   net: 0,
@@ -44,6 +48,9 @@ export function BranchComparison({ rows, currency }: BranchComparisonProps) {
       sales: acc.sales + r.sales,
       received: acc.received + r.received,
       grossProfit: acc.grossProfit + r.grossProfit,
+      cogs: acc.cogs + r.cogs,
+      missingCostLines: acc.missingCostLines + r.missingCostLines,
+      missingCostSales: acc.missingCostSales + r.missingCostSales,
       expenses: acc.expenses + r.expenses,
       vendorProfit: acc.vendorProfit + r.vendorProfit,
       net: acc.net + r.net,
@@ -58,12 +65,27 @@ export function BranchComparison({ rows, currency }: BranchComparisonProps) {
     { key: "sales", label: t.branches.cmpSales, money: true },
     { key: "received", label: t.admin.psReceived, money: true },
     { key: "grossProfit", label: t.branches.cmpGrossProfit, money: true },
+    { key: "cogs", label: t.branches.cmpProfitOnTp, money: false },
     { key: "expenses", label: t.branches.cmpExpenses, money: true },
     { key: "net", label: t.branches.cmpNet, money: true },
     { key: "customerDue", label: t.branches.cmpCustomerDue, money: true },
     { key: "codPending", label: t.branches.cmpCodPending, money: true },
   ];
   const cell = (row: Totals, key: keyof Totals, isMoney: boolean) => {
+    // The "TP cost" column shows Profit on TP: gross profit over TP cost, without lines that have no TP.
+    if (key === "cogs") {
+      const pct = computeMargins({ netRevenue: row.sales, cogs: row.cogs, grossProfit: row.grossProfit, missingCostSales: row.missingCostSales }).profitOnTp;
+      return (
+        <span>
+          {pct === null ? "—" : `${n(pct.toFixed(1))}%`}
+          {row.missingCostLines > 0 && (
+            <span className="ml-1 text-amber-600 dark:text-amber-400" title={t.branches.cmpNoTpTip.replace("{n}", n(row.missingCostLines))}>
+              ⚠
+            </span>
+          )}
+        </span>
+      );
+    }
     const value = row[key];
     const text = isMoney ? money(value) : n(value);
     const negative = key === "net" && value < 0;

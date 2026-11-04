@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { getOtherIncomeForPeriod } from "@/lib/queries/financial/otherIncome";
 
 export interface AccrualTrendPoint {
   date: string; // YYYY-MM-DD
@@ -22,7 +23,9 @@ export interface AccrualProfitLoss {
   operatingExpenses: number;
   /** Courier cost minus what customers were charged; negative means delivery earned money. */
   netDeliveryCost: number;
-  /** Store only: grossProfit − expenses − netDeliveryCost. Vendor margin is added by the caller. */
+  /** Money Book other income and cash counted over, minus cash counted short, in the period. Already inside netProfit. */
+  otherIncome: number;
+  /** Store only: grossProfit − expenses − netDeliveryCost + otherIncome. Vendor margin is added by the caller. */
   netProfit: number;
   trend: AccrualTrendPoint[];
 }
@@ -40,6 +43,8 @@ export interface BalanceSnapshot {
   accountsPayable: number | null;
   /** Paid to suppliers above their bills, kept with them: an asset. 0 until migration 20261118 is applied. */
   supplierAdvance: number;
+  /** True when accountsPayable is one branch's own bills (goods it received) rather than the whole store's. */
+  payableByBranch?: boolean;
 }
 
 const num = (v: unknown): number => Number(v) || 0;
@@ -71,6 +76,8 @@ export async function getAccrualProfitLoss(
     return null;
   }
   const row = data as Record<string, unknown>;
+  // Income that is not a sale (Money Book): part of profit, so the headline and the daily trend carry it.
+  const other = await getOtherIncomeForPeriod(storeId, fromDate, toDate, branchId ?? null);
   return {
     netRevenue: num(row.net_revenue),
     collected: num(row.collected),
@@ -82,10 +89,11 @@ export async function getAccrualProfitLoss(
     missingCostSales: num(row.missing_cost_sales),
     operatingExpenses: num(row.total_expenses),
     netDeliveryCost: num(row.delivery_net_cost),
-    netProfit: num(row.net_profit),
+    otherIncome: other.total,
+    netProfit: num(row.net_profit) + other.total,
     trend: ((row.trend as { date: string; net_profit: number }[] | null) ?? []).map((p) => ({
       date: String(p.date).slice(0, 10),
-      net_profit: num(p.net_profit),
+      net_profit: num(p.net_profit) + (other.byDay[String(p.date).slice(0, 10)] ?? 0),
     })),
   };
 }

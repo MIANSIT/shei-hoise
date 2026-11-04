@@ -8,6 +8,7 @@ import {
   type BalanceSnapshot,
 } from "@/lib/queries/dashboard/getAccrualStatements";
 import { getVendorsOverviewStats } from "@/lib/queries/vendor/getVendorsOverviewStats";
+import { getBranchPayable } from "@/lib/queries/supplier/supplierBills";
 import { getCashPosition } from "@/lib/queries/financial/getCashPosition";
 import type { CashPosition } from "@/lib/queries/financial/moneyBookTypes";
 
@@ -80,11 +81,19 @@ export function useAccrualStatements({
       // Cash is a bonus: if it cannot be worked out the rest of the statements still show.
       includeCash ? getCashPosition(storeId, branchId, withBranches).catch(() => null) : Promise.resolve(null),
     ])
-      .then(([pl, prevPl, balance, vendorStats, cash]) => {
+      .then(async ([pl, prevPl, balance, vendorStats, cash]) => {
+        if (cancelled) return;
+        // A branch owes suppliers for the goods it received: the unpaid part of its own bills. Money paid ahead
+        // belongs to no branch. Only for people who may see supplier money (the figure is hidden otherwise).
+        let finalBalance = balance;
+        if (balance && branchId && balance.accountsPayable !== null) {
+          const branchPayable = await getBranchPayable(storeId, branchId).catch(() => null);
+          if (branchPayable !== null) finalBalance = { ...balance, accountsPayable: branchPayable, supplierAdvance: 0, payableByBranch: true };
+        }
         if (cancelled) return;
         setData(
-          pl && balance
-            ? { pl, prevPl, balance, vendorDue: Math.max(vendorStats?.branch_due ?? vendorStats?.total_due ?? 0, 0), cash }
+          pl && finalBalance
+            ? { pl, prevPl, balance: finalBalance, vendorDue: Math.max(vendorStats?.branch_due ?? vendorStats?.total_due ?? 0, 0), cash }
             : null,
         );
         setReady(true);

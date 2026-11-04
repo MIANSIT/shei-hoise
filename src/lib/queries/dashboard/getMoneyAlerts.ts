@@ -33,7 +33,7 @@ const dayNumber = (isoDate: string): number => Math.floor(Date.parse(`${isoDate.
 
 interface LoadMoneyAlertsArgs {
   storeId: string;
-  /** Stores with branches: one branch's customer dues and COD. Supplier bills are store-wide. */
+  /** Stores with branches: one branch's customer dues, COD and supplier bills (the bills for goods it received). */
   branchId: string | null;
   withBranches: boolean;
   /** Which sources the person may see; a source they may not see is skipped, not shown as zero. */
@@ -56,7 +56,7 @@ export async function loadMoneyAlerts({ storeId, branchId, withBranches, canSeeB
 
   const bills = async () => {
     if (!canSeeBills) return;
-    const result = await getSupplierBills(storeId);
+    const result = await getSupplierBills(storeId, branchId);
     if (!result.success) return;
     const overdue = result.rows.filter((r) => r.left > EPSILON && r.overdue);
     const soon = result.rows.filter((r) => {

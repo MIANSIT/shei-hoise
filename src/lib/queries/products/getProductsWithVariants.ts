@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { ProductStatus } from "@/lib/types/enums";
 import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailabilityMap";
 import { searchProductIds } from "@/lib/queries/products/searchProductIds";
+import { getVariantOrderForProducts } from "@/lib/queries/products/variantOrderAction";
 
 /* =========================
    Types
@@ -305,6 +306,30 @@ export async function getProductsWithVariants({
   })) as ProductWithVariants[];
 
   if (branchId) await overlayBranchStock(products, branchId);
+
+  // Variants in the order the owner arranged them on the product form. Skipped for products
+  // with a single variant, and left as it was when no order is saved or it cannot be read.
+  const multiVariantIds = products.filter((p) => p.product_variants.length > 1).map((p) => p.id);
+  if (multiVariantIds.length > 0) {
+    try {
+      const order = await getVariantOrderForProducts(storeId, multiVariantIds);
+      if (Object.keys(order).length > 0) {
+        for (const product of products) {
+          if (product.product_variants.length < 2) continue;
+          product.product_variants = product.product_variants
+            .map((variant, index) => ({ variant, index }))
+            .sort((a, b) => {
+              const pa = order[a.variant.id] ?? Number.MAX_SAFE_INTEGER;
+              const pb = order[b.variant.id] ?? Number.MAX_SAFE_INTEGER;
+              return pa === pb ? a.index - b.index : pa - pb;
+            })
+            .map((entry) => entry.variant);
+        }
+      }
+    } catch {
+      // Keep the old order.
+    }
+  }
 
   // Bundles have no product_inventory row of their own — patch in the
   // computed "how many can I sell right now" so every downstream consumer

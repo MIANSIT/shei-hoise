@@ -124,6 +124,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
       ? [{ key: "delivery", label: t.admin.fsDelivery, how: pl.netDeliveryCost > 0 ? t.admin.fsDeliveryHow : t.admin.fsDeliveryGainHow, amount: formatMoney(Math.abs(pl.netDeliveryCost)) }]
       : []),
     ...(!isZero(vendorProfit) ? [{ key: "vendor", label: t.admin.fsVendorMargin, how: t.admin.fsVendorMarginHow, amount: formatMoney(vendorProfit) }] : []),
+    ...(!isZero(pl.otherIncome ?? 0) ? [{ key: "other", label: t.admin.fsOtherIncome, how: t.admin.fsOtherIncomeHow, amount: formatMoney(Math.abs(pl.otherIncome)) }] : []),
     {
       key: "net",
       label: isLoss ? t.admin.fsNetLoss : t.admin.fsNet,
@@ -139,6 +140,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
     if (key === "cogs" || key === "opex") return "−";
     if (key === "delivery") return pl.netDeliveryCost > 0 ? "−" : "+";
     if (key === "vendor") return "+";
+    if (key === "other") return (pl.otherIncome ?? 0) >= 0 ? "+" : "−";
     return "";
   };
 
@@ -189,7 +191,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
     {
       key: "payable",
       label: t.admin.fsPayable,
-      how: payable === null ? t.admin.fsNotShown : branchId ? `${t.admin.fsPayableHow}. ${t.admin.fsPayableStoreWide}` : t.admin.fsPayableHow,
+      how: payable === null ? t.admin.fsNotShown : branchId ? `${t.admin.fsPayableHow}. ${balance.payableByBranch ? t.admin.fsPayableByBranch : t.admin.fsPayableStoreWide}` : t.admin.fsPayableHow,
       amount: payable === null ? "—" : formatMoney(payable),
     },
     ...(loans > 0.005 ? [{ key: "loans", label: t.admin.fsLoans, how: t.admin.fsLoansHow, amount: formatMoney(loans) }] : []),

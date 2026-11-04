@@ -20,6 +20,7 @@ import {
 } from "@/lib/queries/supplier/supplierTypes";
 import {
   addSupplierEntry,
+  addSupplierPayments,
   deleteSupplierEntry,
   getSupplierBalances,
   getSupplierLedger,
@@ -156,7 +157,38 @@ export default function SuppliersPage() {
         funderId: values.funderId,
         funderTreatment: values.funderTreatment,
         branchId: values.branchId,
+        billBranchId: values.billBranchId,
         note: values.note,
+      });
+      if (!result.success) {
+        showError(result.error ?? t.admin.spFailed);
+        return;
+      }
+      success(t.admin.slSaved);
+      setEntryTarget(null);
+      await load();
+    } finally {
+      setEntrySaving(false);
+    }
+  };
+
+  const submitEntryMany = async (parts: SupplierEntryValues[]) => {
+    if (!storeId || !entryTarget) return;
+    setEntrySaving(true);
+    try {
+      const result = await addSupplierPayments(storeId, {
+        supplierId: entryTarget.supplier.id,
+        date: parts[0].date,
+        note: parts[0].note || undefined,
+        lines: parts.map((p) => ({
+          amount: p.amount,
+          paymentMethod: p.paymentMethod as "cash" | "mobile_banking" | "card" | "bank_transfer" | "online" | "other",
+          paidFrom: p.paidFrom,
+          branchId: p.branchId,
+          billBranchId: p.billBranchId,
+          funderId: p.funderId,
+          funderTreatment: p.funderTreatment,
+        })),
       });
       if (!result.success) {
         showError(result.error ?? t.admin.spFailed);
@@ -404,6 +436,7 @@ export default function SuppliersPage() {
         supplierName={entryTarget?.supplier.name ?? ""}
         saving={entrySaving}
         onSubmit={submitEntry}
+        onSubmitMany={submitEntryMany}
         onCancel={() => setEntryTarget(null)}
       />
 

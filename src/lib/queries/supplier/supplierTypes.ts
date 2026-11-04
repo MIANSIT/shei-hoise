@@ -38,12 +38,15 @@ export type SupplierEntryKind = "bill" | "payment";
 export interface SupplierLedgerEntry {
   id: string;
   supplierId: string;
-  kind: SupplierEntryKind;
+  /** A "credit" is goods returned to the supplier: it lowers what is owed but no money moves. */
+  kind: SupplierEntryKind | "credit";
   amount: number;
   /** YYYY-MM-DD */
   date: string;
   /** Payments only: how it was paid. */
   paymentMethod: string | null;
+  /** Payments from the shop's money in a store with branches: the branch whose money paid it. */
+  branchId?: string | null;
   note: string | null;
 }
 
@@ -58,8 +61,10 @@ export interface SupplierEntryInput {
   /** Payments paid from outside: who paid, and whether it counts as their capital or a loan to repay. */
   funderId?: string | null;
   funderTreatment?: "capital" | "loan" | null;
-  /** Payments from the shop's money, stores with branches: the branch it was paid from. */
+  /** Payments from the shop's money, stores with branches: the branch it was paid from. A bill typed by hand: the branch that received the goods. */
   branchId?: string | null;
+  /** Payments, stores with branches: the branch whose bills it pays. */
+  billBranchId?: string | null;
   note?: string;
 }
 
@@ -78,4 +83,21 @@ export function whatsappNumber(phone: string | null | undefined): string | null 
   if (digits.length < 8) return null;
   if (digits.startsWith("0") && digits.length === 11) return `88${digits}`;
   return digits;
+}
+
+/** A payment to a supplier split over several parts, each with its own branch, method and who paid. */
+export interface SupplierPaymentsInput {
+  supplierId: string;
+  /** YYYY-MM-DD */
+  date: string;
+  note?: string;
+  lines: {
+    amount: number;
+    paymentMethod?: "cash" | "mobile_banking" | "card" | "bank_transfer" | "online" | "other";
+    paidFrom?: "shop" | "outside";
+    branchId?: string | null;
+    billBranchId?: string | null;
+    funderId?: string | null;
+    funderTreatment?: "capital" | "loan" | null;
+  }[];
 }

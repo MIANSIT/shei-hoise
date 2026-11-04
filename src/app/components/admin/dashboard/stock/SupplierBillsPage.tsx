@@ -10,11 +10,14 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { usePermissions } from "@/lib/context/PermissionsContext";
+import { useBranches } from "@/lib/context/BranchContext";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { getSupplierBills, type SupplierBillRow } from "@/lib/queries/supplier/supplierBills";
 import type { BillSummary } from "@/lib/queries/supplier/supplierBillMath";
-import { addSupplierEntry } from "@/lib/queries/supplier/supplierLedger";
+import { addSupplierEntry, addSupplierPayments } from "@/lib/queries/supplier/supplierLedger";
+import { attachBillPhoto, getBillPhotoUrl, uploadBillPhoto } from "@/lib/queries/supplier/supplierBillPhotos";
 import { SupplierEntryModal, type SupplierEntryValues } from "./SupplierMoneyModals";
+import { ReturnToSupplierModal } from "./ReturnToSupplierModal";
 
 type Filter = "all" | "open" | "overdue" | "paid";
 
@@ -33,17 +36,47 @@ export default function SupplierBillsPage() {
   const money = (amount: number) => `${symbol}${n(Math.round(amount).toLocaleString())}`;
   const { success, error: showError } = useSheiNotification();
   const allowed = can("stock.supplier_money");
+  // Stores with branches: a bill belongs to the branch that received the goods; the header's branch shows only its bills.
+  const { enabled: branchesOn, loading: branchesLoading, selectedBranchId, branches } = useBranches();
+  const billBranchId = branchesOn ? selectedBranchId : null;
+  const branchNames = new Map(branches.map((b) => [b.id, b.name]));
 
   const [rows, setRows] = useState<SupplierBillRow[]>([]);
   const [summary, setSummary] = useState<BillSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("open");
+  const [photoBusy, setPhotoBusy] = useState<string | null>(null);
+  const [returnOpen, setReturnOpen] = useState(false);
+
+  const openPhoto = async (path: string) => {
+    if (!storeId) return;
+    const result = await getBillPhotoUrl(storeId, path);
+    if (!result.success) return showError(result.error);
+    window.open(result.url, "_blank", "noopener,noreferrer");
+  };
+
+  const addPhoto = async (purchaseId: string, file: File | undefined) => {
+    if (!storeId || !file) return;
+    setPhotoBusy(purchaseId);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const uploaded = await uploadBillPhoto(storeId, body);
+      if (!uploaded.success) return showError(uploaded.error);
+      const attached = await attachBillPhoto(storeId, purchaseId, uploaded.path);
+      if (!attached.success) return showError(attached.error);
+      success(t.admin.sbPhotoSaved);
+      await load();
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
   const [payTarget, setPayTarget] = useState<SupplierBillRow | null>(null);
   const [paySaving, setPaySaving] = useState(false);
 
   const load = useCallback(async () => {
     if (!storeId) return;
-    const result = await getSupplierBills(storeId);
+    const result = await getSupplierBills(storeId, billBranchId);
     if (!result.success) {
       showError(result.error || t.admin.sbLoadFailed);
       setLoading(false);
@@ -52,12 +85,13 @@ export default function SupplierBillsPage() {
     setRows(result.rows);
     setSummary(result.summary);
     setLoading(false);
-  }, [storeId, showError, t.admin.sbLoadFailed]);
+  }, [storeId, billBranchId, showError, t.admin.sbLoadFailed]);
 
   useEffect(() => {
+    if (branchesLoading) return;
     if (allowed) void load();
     else if (!userLoading) setLoading(false);
-  }, [allowed, load, userLoading]);
+  }, [allowed, load, userLoading, branchesLoading]);
 
   const visible = useMemo(
     () =>
@@ -81,7 +115,39 @@ export default function SupplierBillsPage() {
         funderId: values.funderId,
         funderTreatment: values.funderTreatment,
         branchId: values.branchId,
+        billBranchId: values.billBranchId,
         note: values.note,
+      });
+      if (!result.success) {
+        showError(result.error ?? t.admin.spFailed);
+        return;
+      }
+      success(t.admin.slSaved);
+      setPayTarget(null);
+      await load();
+    } finally {
+      setPaySaving(false);
+    }
+  };
+
+  // A payment split over several parts: saved together, each part from its own branch, method or investor.
+  const submitPayments = async (parts: SupplierEntryValues[]) => {
+    if (!storeId || !payTarget) return;
+    setPaySaving(true);
+    try {
+      const result = await addSupplierPayments(storeId, {
+        supplierId: payTarget.supplierId,
+        date: parts[0].date,
+        note: parts[0].note || undefined,
+        lines: parts.map((p) => ({
+          amount: p.amount,
+          paymentMethod: p.paymentMethod as "cash" | "mobile_banking" | "card" | "bank_transfer" | "online" | "other",
+          paidFrom: p.paidFrom,
+          branchId: p.branchId,
+          billBranchId: p.billBranchId,
+          funderId: p.funderId,
+          funderTreatment: p.funderTreatment,
+        })),
       });
       if (!result.success) {
         showError(result.error ?? t.admin.spFailed);
@@ -137,9 +203,12 @@ export default function SupplierBillsPage() {
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl">{t.admin.sbSub}</p>
         </div>
-        <Link href="/dashboard/stock/receive">
-          <Button type="primary">{t.admin.sbGoReceive}</Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => setReturnOpen(true)}>{t.admin.rtButton}</Button>
+          <Link href="/dashboard/stock/receive">
+            <Button type="primary">{t.admin.sbGoReceive}</Button>
+          </Link>
+        </div>
       </div>
 
       {summary && (
@@ -198,6 +267,7 @@ export default function SupplierBillsPage() {
                   <th className="py-2 px-3 font-semibold">{t.admin.sbColDate}</th>
                   <th className="py-2 px-3 font-semibold">{t.admin.sbColSupplier}</th>
                   <th className="py-2 px-3 font-semibold">{t.admin.sbColBill}</th>
+                  {branchesOn && !billBranchId && <th className="py-2 px-3 font-semibold">{t.admin.sbColBranch}</th>}
                   <th className="py-2 px-3 font-semibold">{t.admin.sbColDue}</th>
                   <th className="py-2 px-3 font-semibold text-right">{t.admin.sbColAmount}</th>
                   <th className="py-2 px-3 font-semibold text-right">{t.admin.sbColPaid}</th>
@@ -214,7 +284,32 @@ export default function SupplierBillsPage() {
                     <td className="py-2 px-3 text-foreground">
                       {r.billNo ?? "—"}
                       {r.legacy && <span className="block text-xs text-muted-foreground">{t.admin.sbLegacy}</span>}
+                      {r.purchaseId && (
+                        <span className="mt-0.5 flex flex-wrap items-center gap-2 text-xs">
+                          {r.attachment && (
+                            <button type="button" className="font-semibold text-indigo-600 hover:underline" onClick={() => void openPhoto(r.attachment as string)}>
+                              {t.admin.sbPhotoView}
+                            </button>
+                          )}
+                          <label className="cursor-pointer text-muted-foreground hover:text-foreground hover:underline">
+                            {photoBusy === r.purchaseId ? t.admin.sbPhotoUploading : r.attachment ? t.admin.sbPhotoReplace : t.admin.sbPhotoAdd}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={photoBusy !== null}
+                              onChange={(e) => {
+                                void addPhoto(r.purchaseId as string, e.target.files?.[0]);
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                        </span>
+                      )}
                     </td>
+                    {branchesOn && !billBranchId && (
+                      <td className="py-2 px-3 text-foreground">{r.branchId ? (branchNames.get(r.branchId) ?? "—") : t.admin.sbNoBranch}</td>
+                    )}
                     <td className="py-2 px-3 whitespace-nowrap text-foreground">{date(r.dueDate)}</td>
                     <td className="py-2 px-3 text-right tabular-nums text-foreground">{money(r.amount)}</td>
                     <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">{money(r.paid)}</td>
@@ -245,6 +340,8 @@ export default function SupplierBillsPage() {
 
       <p className="text-xs text-muted-foreground">{t.admin.sbFifoNote}</p>
 
+      <ReturnToSupplierModal open={returnOpen} onClose={() => setReturnOpen(false)} onSaved={() => void load()} money={money} />
+
       <SupplierEntryModal
         open={!!payTarget}
         kind="payment"
@@ -252,6 +349,8 @@ export default function SupplierBillsPage() {
         defaultAmount={payTarget?.left ?? null}
         saving={paySaving}
         onSubmit={submitPayment}
+        onSubmitMany={submitPayments}
+        defaultBillBranchId={payTarget?.branchId ?? null}
         onCancel={() => setPayTarget(null)}
       />
     </div>

@@ -36,6 +36,7 @@ const entrySchema = z.object({
   note: z.string().trim().max(300, "Note is too long").optional(),
   branchId: z.string().uuid().nullable().optional(),
   partnerId: z.string().uuid().nullable().optional(),
+  interestAmount: z.number().min(0, "Interest cannot be negative").max(1_000_000_000, "Amount is too large").optional(),
 });
 
 const countSchema = z.object({
@@ -134,6 +135,42 @@ export async function saveOpeningBalances(storeId: string, input: OpeningBalance
   }
 }
 
+/** The interest part of a loan repayment, saved as an expense named "Loan interest" paid from shop money. */
+async function saveLoanInterestExpense(
+  storeId: string,
+  input: { amount: number; date: string; method: string; branchId: string | null; note: string | null },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data: existing } = await supabaseAdmin
+    .from("expense_categories")
+    .select("id")
+    .eq("store_id", storeId)
+    .ilike("name", "Loan interest")
+    .limit(1)
+    .maybeSingle();
+  let categoryId: string | null = existing?.id ?? null;
+  if (!categoryId) {
+    const { data: created, error: categoryError } = await supabaseAdmin
+      .from("expense_categories")
+      .insert({ store_id: storeId, name: "Loan interest", description: "Interest paid on loans", is_default: false })
+      .select("id")
+      .single();
+    if (categoryError || !created) return { ok: false, error: categoryError?.message ?? "Could not create the Loan interest category" };
+    categoryId = created.id;
+  }
+  const { error } = await supabaseAdmin.from("expenses").insert({
+    store_id: storeId,
+    category_id: categoryId,
+    amount: input.amount,
+    title: "Loan interest",
+    expense_date: input.date,
+    payment_method: input.method,
+    paid_from: "shop",
+    notes: input.note,
+    ...(input.branchId ? { branch_id: input.branchId } : {}),
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 /**
  * Records money in (owner investment, loan received, other income) or money
  * out (loan repayment, equipment purchase). Expenses, supplier payments,
@@ -168,32 +205,57 @@ export async function addMoneyEntry(storeId: string, input: MoneyEntryInput): Pr
       partnerId = partner.id;
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("money_entries")
-      .insert({
-        store_id: storeId,
-        branch_id: branch.branchId,
-        kind: v.kind,
-        entry_type: v.entryType,
-        amount: v.amount,
-        payment_method: v.paymentMethod,
-        entry_date: v.date,
+    // A loan repayment can say how much of it is interest: that part is a cost (an expense), and
+    // only the rest lowers the loan.
+    const interest = v.entryType === "loan_repayment" ? Math.round((v.interestAmount ?? 0) * 100) / 100 : 0;
+    if (interest > v.amount + 0.005) return { success: false, error: "The interest cannot be more than the amount paid" };
+    const principal = Math.round((v.amount - interest) * 100) / 100;
+
+    let entryId: string | null = null;
+    if (principal > 0.005) {
+      const { data, error } = await supabaseAdmin
+        .from("money_entries")
+        .insert({
+          store_id: storeId,
+          branch_id: branch.branchId,
+          kind: v.kind,
+          entry_type: v.entryType,
+          amount: principal,
+          payment_method: v.paymentMethod,
+          entry_date: v.date,
+          note: v.note || null,
+          created_by: auth.actor.userId,
+          // Only sent when set, so a database without the column keeps working.
+          ...(partnerId ? { partner_id: partnerId } : {}),
+        })
+        .select("id")
+        .single();
+      if (error) return { success: false, error: error.message };
+      entryId = data?.id ?? null;
+    }
+
+    if (interest > 0.005) {
+      const expense = await saveLoanInterestExpense(storeId, {
+        amount: interest,
+        date: v.date,
+        method: v.paymentMethod,
+        branchId: branch.branchId,
         note: v.note || null,
-        created_by: auth.actor.userId,
-        // Only sent when set, so a database without the column keeps working.
-        ...(partnerId ? { partner_id: partnerId } : {}),
-      })
-      .select("id")
-      .single();
-    if (error) return { success: false, error: error.message };
+      });
+      if (!expense.ok) {
+        // Do not leave half of the repayment saved.
+        if (entryId) await supabaseAdmin.from("money_entries").delete().eq("id", entryId).eq("store_id", storeId);
+        return { success: false, error: expense.error };
+      }
+    }
 
     await logActivity(auth.actor, {
       action: "money.entry",
       branchId: branch.branchId,
       entityType: "money_entry",
-      entityId: data?.id ?? null,
-      summary: `${v.kind === "in" ? "Money in" : "Money out"} ৳${v.amount} (${v.entryType})`,
-      details: { entry_date: v.date, payment_method: v.paymentMethod, note: v.note ?? null },
+      entityId: entryId,
+      summary: `${v.kind === "in" ? "Money in" : "Money out"} ৳${v.amount} (${v.entryType})${interest > 0.005 ? `, of which interest ৳${interest}` : ""}`,
+      details: { entry_date: v.date, payment_method: v.paymentMethod, note: v.note ?? null, interest },
     });
     return { success: true };
   } catch (error) {

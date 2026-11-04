@@ -225,6 +225,9 @@ export async function exportProfitLossReportPDF(
     ...(Math.abs(report.vendorProfit) > 0.005
       ? [{ sign: "+", label: "Vendor profit", note: "Your share of vendor payments", value: report.vendorProfit, kind: "plain" as const }]
       : []),
+    ...(Math.abs(report.otherIncome) > 0.005
+      ? [{ sign: report.otherIncome < 0 ? "−" : "+", label: "Other income and cash differences", note: "Money Book other income and cash counted over, minus cash counted short", value: Math.abs(report.otherIncome), kind: report.otherIncome < 0 ? ("cost" as const) : ("plain" as const) }]
+      : []),
     { sign: "=", label: isLoss ? "Net loss" : "Net profit", note: "", value: report.netProfit, kind: "final" },
   ];
 

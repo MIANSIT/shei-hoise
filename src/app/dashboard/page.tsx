@@ -36,6 +36,7 @@ import { BranchComparison } from "@/app/components/admin/branches/BranchComparis
 import { MoneyAlerts } from "@/app/components/admin/dashboard/dashboardComponent/MoneyAlerts";
 import { MoneyPositionStrip } from "@/app/components/admin/dashboard/dashboardComponent/MoneyPositionStrip";
 import { useAccrualStatements } from "@/lib/hook/useAccrualStatements";
+import { useRecordDailyBalance } from "@/lib/hook/useRecordDailyBalance";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 
 /** One KPI card on the dashboard. */
@@ -171,6 +172,9 @@ export default function DashboardPage() {
     includeCash: isOwner,
     withBranches: branchesOn,
   });
+
+  // The owner's visits keep the balance history going (today's copy, at most hourly), on plans with the Balance Sheet.
+  useRecordDailyBalance({ storeId, branchId: dashboardBranchId, data: accrual, enabled: isOwner && balanceSheetAllowed });
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (userLoading || loadingSummary) {
@@ -623,6 +627,7 @@ export default function DashboardPage() {
               netProfit: accrual.pl.netProfit + vendorProfit,
               netChangePct: accrualNetChangePct,
               deliveryCost: accrual.pl.netDeliveryCost,
+              otherIncome: accrual.pl.otherIncome,
               accrual: true,
               collected: accrual.pl.collected,
               vendorSales,

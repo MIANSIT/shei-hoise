@@ -28,6 +28,8 @@ export interface ProfitLossReport {
   cogs: number;
   grossProfit: number;
   /** Order lines sold with no TP (accrual basis only; they count as free in cogs). */
+  /** Money Book other income and cash differences, already inside netProfit (accrual basis only). */
+  otherIncome: number;
   missingCostLines: number;
   /** What those lines sold for. */
   missingCostSales: number;
@@ -49,6 +51,7 @@ const EMPTY: ProfitLossReport = {
   additionalCharges: 0,
   cogs: 0,
   grossProfit: 0,
+  otherIncome: 0,
   missingCostLines: 0,
   missingCostSales: 0,
   totalExpenses: 0,
@@ -102,6 +105,7 @@ export async function getProfitLossReport(
       additionalCharges: 0,
       cogs: accrual.cogs,
       grossProfit: accrual.grossProfit,
+      otherIncome: accrual.otherIncome,
       missingCostLines: accrual.missingCostLines,
       missingCostSales: accrual.missingCostSales,
       totalExpenses: accrual.operatingExpenses,
@@ -132,6 +136,7 @@ export async function getProfitLossReport(
     additionalCharges: Number(data.additional_charges) || 0,
     cogs: Number(data.cogs) || 0,
     grossProfit: Number(data.gross_profit) || 0,
+    otherIncome: 0,
     missingCostLines: 0,
     missingCostSales: 0,
     totalExpenses: Number(data.total_expenses) || 0,

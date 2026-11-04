@@ -49,6 +49,8 @@ export interface ProfitStoryFigures {
   /** Stores that sell to vendors: money received from vendors this period, and what vendors still owe. */
   vendorReceived?: number;
   vendorDue?: number;
+  /** Accrual only: Money Book other income and cash differences, already inside netProfit. */
+  otherIncome?: number;
 }
 
 /** One branch's profit, shown in the card on "All branches". */
@@ -94,7 +96,7 @@ const BAR: Record<Step["tone"], string> = {
 export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount, accrual, missingCostLines = 0, missingCostSales = 0, collected, vendorReceived, vendorDue } = figures;
+  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount, accrual, missingCostLines = 0, missingCostSales = 0, collected, vendorReceived, vendorDue, otherIncome = 0 } = figures;
   // Per-day average of the sales figure the card leads with: every order when
   // known, else what was received.
   const showDailyAverage = dayCount !== undefined && dayCount > 0;
@@ -137,6 +139,13 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
     ...(Math.abs(vendorProfit) > 0.005
       ? [{ key: "vendor", label: t.admin.psVendor, hint: t.admin.psVendorHint, amount: vendorProfit, sign: "+" as const, tone: "bonus" as const }]
       : []),
+    ...(Math.abs(otherIncome) > 0.005
+      ? [
+          otherIncome > 0
+            ? { key: "other", label: t.admin.fsOtherIncome, hint: t.admin.fsOtherIncomeHow, amount: otherIncome, sign: "+" as const, tone: "bonus" as const }
+            : { key: "other", label: t.admin.fsOtherIncome, hint: t.admin.fsOtherIncomeHow, amount: -otherIncome, sign: "−" as const, tone: "cost" as const },
+        ]
+      : []),
   ];
   // Bars are measured against the biggest figure so every line is comparable.
   const scale = Math.max(
@@ -145,6 +154,7 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
     Math.abs(grossProfit),
     expenses,
     Math.abs(vendorProfit),
+    Math.abs(otherIncome),
     Math.abs(netProfit),
     Math.abs(deliveryCost ?? 0),
     1,

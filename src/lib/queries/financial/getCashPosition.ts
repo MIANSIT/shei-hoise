@@ -124,22 +124,27 @@ export async function getMoneyEntries(storeId: string, fromDate?: string): Promi
  * counts from its own start date; "all branches" adds them up. Equipment and
  * loans are the opening amounts plus what was bought or borrowed since, less
  * what was repaid.
+ * @param asOfDate YYYY-MM-DD: work it out as of the end of that day instead of today (an opening balance
+ *   saved after that day does not apply, so a day before the first opening balance has no position)
  * @returns the position, or null when no opening balance is saved for this scope
  */
 export async function getCashPosition(
   storeId: string,
   branchId: string | null,
   withBranches: boolean,
+  asOfDate?: string | null,
 ): Promise<CashPosition | null> {
-  const openings = (await getOpeningBalances(storeId)).filter((o) => (branchId ? o.branchId === branchId : true));
+  const openings = (await getOpeningBalances(storeId))
+    .filter((o) => (branchId ? o.branchId === branchId : true))
+    .filter((o) => !asOfDate || o.asOfDate <= asOfDate);
   if (openings.length === 0) return null;
 
-  const today = dhakaToday();
+  const today = asOfDate ?? dhakaToday();
   const earliest = openings.reduce((min, o) => (o.asOfDate < min ? o.asOfDate : min), openings[0].asOfDate);
-  const entries = await getMoneyEntries(storeId, earliest);
+  const entries = (await getMoneyEntries(storeId, earliest)).filter((e) => e.date <= today);
 
   // Costs and supplier payments an owner or investor paid, counted as a loan the business owes them.
-  const outsideLoans = (await getOutsidePayments(storeId, earliest)).filter((p) => p.treatment === "loan");
+  const outsideLoans = (await getOutsidePayments(storeId, earliest)).filter((p) => p.treatment === "loan" && p.date <= today);
 
   const branchKeys = [...new Set(openings.map((o) => o.branchId))];
   const left = new Map<MoneyMethod, { opening: number; moved: number }>(MONEY_METHODS.map((m) => [m, { opening: 0, moved: 0 }]));

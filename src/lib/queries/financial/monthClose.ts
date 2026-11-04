@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeForStore, logActivity, requireOwner } from "@/lib/permissions/server";
-import { MONEY_METHODS } from "./moneyBookTypes";
+import { balanceSchema, cashSchema, COUNT, MONEY } from "./monthCloseSchemas";
 import type { CloseMonthInput, MonthClose, MonthCloseResult, MonthClosesResult, MonthCloseSnapshot } from "./monthCloseTypes";
 
 /**
@@ -14,8 +14,6 @@ import type { CloseMonthInput, MonthClose, MonthCloseResult, MonthClosesResult, 
  * left out of what a non-owner receives.
  */
 
-const MONEY = z.number().finite().min(-1_000_000_000_000).max(1_000_000_000_000);
-const COUNT = z.number().finite().min(0).max(100_000_000);
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid month");
 
 const snapshotSchema = z.object({
@@ -30,28 +28,13 @@ const snapshotSchema = z.object({
     missingCostSales: MONEY,
     operatingExpenses: MONEY,
     netDeliveryCost: MONEY,
+    otherIncome: MONEY.optional(),
     netProfit: MONEY,
   }),
   vendorProfit: MONEY,
-  balance: z.object({
-    inventoryAtCost: MONEY,
-    inventoryAtSelling: MONEY,
-    inventoryUnits: COUNT,
-    itemsWithoutCost: COUNT,
-    customerDue: MONEY,
-    codWithCourier: MONEY,
-    accountsPayable: MONEY.nullable(),
-    supplierAdvance: MONEY,
-  }),
+  balance: balanceSchema,
   vendorDue: MONEY,
-  cash: z
-    .object({
-      methods: z.array(z.object({ method: z.enum(MONEY_METHODS), opening: MONEY, moved: MONEY, left: MONEY })).max(10),
-      total: MONEY,
-      fixedAssets: MONEY,
-      loans: MONEY,
-    })
-    .nullable(),
+  cash: cashSchema,
 });
 
 const closeSchema = z.object({

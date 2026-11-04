@@ -10,11 +10,15 @@ export interface RawBill {
   createdAt: string;
   amount: number;
   purchaseId: string | null;
+  /** The branch that received the goods; null when it was not recorded. */
+  branchId?: string | null;
 }
 
 export interface RawPayment {
   supplierId: string;
   amount: number;
+  /** The branch whose bills this payment (or credit) is applied to first; null = not tied to a branch, applied to the oldest bills. */
+  targetBranchId?: string | null;
 }
 
 /** What Receive stock saved about a purchase: the number on the paper bill and when it must be paid. */
@@ -22,6 +26,8 @@ export interface PurchaseMeta {
   billNo: string | null;
   /** YYYY-MM-DD */
   dueDate: string | null;
+  /** Storage path of the photo of the paper bill, if one was added. */
+  attachment?: string | null;
 }
 
 export interface BillRow {
@@ -40,6 +46,12 @@ export interface BillRow {
   ageDays: number;
   /** Entered before Receive stock existed: no bill number, due date or lines. */
   legacy: boolean;
+  /** The purchase behind the bill; null for a legacy bill. */
+  purchaseId: string | null;
+  /** Storage path of the photo of the paper bill; null when none. */
+  attachment: string | null;
+  /** The branch that received the goods; null for a bill with no branch (an older bill typed by hand). */
+  branchId: string | null;
 }
 
 export interface BillSummary {
@@ -57,13 +69,22 @@ export interface BillSummary {
 
 const EPSILON = 0.005;
 
+const addDaysToDate = (isoDate: string, days: number): string => {
+  const date = new Date(`${isoDate.slice(0, 10)}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
 const dayNumber = (isoDate: string): number => Math.floor(Date.parse(`${isoDate}T00:00:00Z`) / 86_400_000);
 
 /**
- * Works out, bill by bill, how much of each is paid. Payments are not tied to a
- * bill when they are entered, so each supplier's payments are applied to that
- * supplier's oldest bills first (first in, first out), the way a statement is
- * normally read. Payments above all bills are returned as an advance.
+ * Works out, bill by bill, how much of each is paid.
+ *
+ * A supplier's payments are applied to that supplier's bills oldest first (first in, first out), the way a
+ * statement is normally read, but a payment that names a branch is applied to that branch's bills first:
+ * branch A's bills are paid by the payments meant for branch A, oldest first. What a branch's payments
+ * cannot use (more than its bills, or a payment that names no branch, such as an investor's) is applied to
+ * the supplier's oldest bills in any branch. Payments above all bills are returned as an advance.
  * @param today the store's today, YYYY-MM-DD
  * @returns every bill with its paid and left amounts and status, plus the totals
  */
@@ -72,22 +93,55 @@ export function allocateSupplierPayments(
   payments: readonly RawPayment[],
   meta: Readonly<Record<string, PurchaseMeta>>,
   today: string,
+  /** The supplier's own pays-within days, used when a bill has no pay-by date; null = the supplier has no terms, so the bill is never due. */
+  termsDays: (supplierId: string) => number | null = () => null,
 ): { rows: BillRow[]; summary: BillSummary } {
-  const paidBySupplier = new Map<string, number>();
-  for (const p of payments) paidBySupplier.set(p.supplierId, (paidBySupplier.get(p.supplierId) ?? 0) + p.amount);
-
   const sorted = [...bills].sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date.localeCompare(b.date)));
-  const remaining = new Map(paidBySupplier);
   const todayNumber = dayNumber(today);
 
-  const rows: BillRow[] = sorted.map((bill) => {
-    const available = remaining.get(bill.supplierId) ?? 0;
-    const paid = Math.min(Math.max(available, 0), bill.amount);
-    remaining.set(bill.supplierId, available - paid);
+  // Per supplier: money meant for a branch's bills, and money meant for any bill (the pool).
+  const targeted = new Map<string, Map<string, number>>();
+  const pool = new Map<string, number>();
+  for (const p of payments) {
+    if (p.targetBranchId) {
+      const perBranch = targeted.get(p.supplierId) ?? new Map<string, number>();
+      perBranch.set(p.targetBranchId, (perBranch.get(p.targetBranchId) ?? 0) + p.amount);
+      targeted.set(p.supplierId, perBranch);
+    } else {
+      pool.set(p.supplierId, (pool.get(p.supplierId) ?? 0) + p.amount);
+    }
+  }
 
+  // Pass 1: a branch's own payments pay that branch's bills, oldest first.
+  const paidByBill = new Map<string, number>();
+  for (const bill of sorted) {
+    const perBranch = bill.branchId ? targeted.get(bill.supplierId) : undefined;
+    const have = bill.branchId && perBranch ? (perBranch.get(bill.branchId) ?? 0) : 0;
+    const take = Math.min(Math.max(have, 0), bill.amount);
+    if (take > 0 && bill.branchId && perBranch) perBranch.set(bill.branchId, have - take);
+    paidByBill.set(bill.id, take);
+  }
+  // What a branch could not use goes to the pool.
+  for (const [supplierId, perBranch] of targeted) {
+    for (const left of perBranch.values()) if (left > 0) pool.set(supplierId, (pool.get(supplierId) ?? 0) + left);
+  }
+  // Pass 2: the pool pays what is still open, oldest first, in any branch.
+  for (const bill of sorted) {
+    const available = pool.get(bill.supplierId) ?? 0;
+    const open = bill.amount - (paidByBill.get(bill.id) ?? 0);
+    const take = Math.min(Math.max(available, 0), Math.max(open, 0));
+    if (take > 0) {
+      pool.set(bill.supplierId, available - take);
+      paidByBill.set(bill.id, (paidByBill.get(bill.id) ?? 0) + take);
+    }
+  }
+
+  const rows: BillRow[] = sorted.map((bill) => {
+    const paid = paidByBill.get(bill.id) ?? 0;
     const left = Math.round((bill.amount - paid) * 100) / 100;
     const purchase = bill.purchaseId ? meta[bill.purchaseId] : undefined;
-    const dueDate = purchase?.dueDate ?? null;
+    const days = purchase?.dueDate ? null : termsDays(bill.supplierId);
+    const dueDate = purchase?.dueDate ?? (days ? addDaysToDate(bill.date, days) : null);
     const isOpen = left > EPSILON;
     const status: BillStatus = !isOpen ? "paid" : paid > EPSILON ? "part" : "unpaid";
 
@@ -104,15 +158,32 @@ export function allocateSupplierPayments(
       overdue: isOpen && dueDate !== null && dueDate < today,
       ageDays: isOpen ? Math.max(todayNumber - dayNumber(bill.date), 0) : 0,
       legacy: !bill.purchaseId,
+      purchaseId: bill.purchaseId ?? null,
+      attachment: purchase?.attachment ?? null,
+      branchId: bill.branchId ?? null,
     };
   });
 
+  let advance = 0;
+  for (const left of pool.values()) if (left > EPSILON) advance += left;
+  const summary = summarizeBillRows(rows, advance, today);
+  return { rows, summary };
+}
+
+/**
+ * The totals for a set of bills: what is owed, overdue, due in the next 7 days and ageing.
+ * Used for every bill, and for one branch's bills only (goods received at that branch).
+ * @param advance paid above all bills; only meaningful for the whole store, so a branch passes 0
+ * @param today the store's today, YYYY-MM-DD
+ */
+export function summarizeBillRows(rows: readonly BillRow[], advance: number, today: string): BillSummary {
+  const todayNumber = dayNumber(today);
   const inSevenDays = todayNumber + 7;
   const summary: BillSummary = {
     payable: 0,
     overdue: 0,
     dueSoon: 0,
-    advance: 0,
+    advance,
     openBills: 0,
     aging: { upTo30: 0, from31To60: 0, over60: 0 },
   };
@@ -126,17 +197,17 @@ export function allocateSupplierPayments(
     else if (row.ageDays <= 60) summary.aging.from31To60 += row.left;
     else summary.aging.over60 += row.left;
   }
-  for (const left of remaining.values()) if (left > EPSILON) summary.advance += left;
-
   const round = (n: number) => Math.round(n * 100) / 100;
-  summary.payable = round(summary.payable);
-  summary.overdue = round(summary.overdue);
-  summary.dueSoon = round(summary.dueSoon);
-  summary.advance = round(summary.advance);
-  summary.aging = {
-    upTo30: round(summary.aging.upTo30),
-    from31To60: round(summary.aging.from31To60),
-    over60: round(summary.aging.over60),
+  return {
+    ...summary,
+    payable: round(summary.payable),
+    overdue: round(summary.overdue),
+    dueSoon: round(summary.dueSoon),
+    advance: round(summary.advance),
+    aging: {
+      upTo30: round(summary.aging.upTo30),
+      from31To60: round(summary.aging.from31To60),
+      over60: round(summary.aging.over60),
+    },
   };
-  return { rows, summary };
 }

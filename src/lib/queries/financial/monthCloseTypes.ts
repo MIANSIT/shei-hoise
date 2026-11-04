@@ -4,7 +4,7 @@ import type { CashPosition } from "./moneyBookTypes";
 /** Everything the Balance Sheet page shows, saved when a month is closed. */
 export interface MonthCloseSnapshot {
   /** The month's Profit & Loss (without the daily trend). */
-  pl: Omit<AccrualProfitLoss, "trend">;
+  pl: Omit<AccrualProfitLoss, "trend" | "otherIncome"> & { otherIncome?: number };
   /** Margin made on vendor sales in the month; part of net profit. */
   vendorProfit: number;
   /** The balance at the moment of closing. */

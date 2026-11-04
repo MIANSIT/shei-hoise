@@ -75,6 +75,7 @@ export default function MoneyBookPage() {
   const [savingOpening, setSavingOpening] = useState(false);
 
   const [entryType, setEntryType] = useState<MoneyInType | MoneyOutType>("owner_investment");
+  const [entryInterest, setEntryInterest] = useState<number | null>(null);
   const [entryAmount, setEntryAmount] = useState<number | null>(null);
   const [entryMethod, setEntryMethod] = useState<MoneyMethod>("cash");
   const [entryDate, setEntryDate] = useState<Dayjs>(dayjs());
@@ -184,10 +185,12 @@ export default function MoneyBookPage() {
         note: entryNote.trim() || undefined,
         branchId: scopeBranch,
         partnerId: PARTNER_TYPES.has(entryType) ? entryPartner : null,
+        ...(entryType === "loan_repayment" && entryInterest ? { interestAmount: entryInterest } : {}),
       });
       if (!result.success) return showError(result.error ?? t.admin.mbkFailed);
       success(t.admin.mbkSaved);
       setEntryAmount(null);
+      setEntryInterest(null);
       setEntryNote("");
       setEntryPartner(null);
       await load();
@@ -369,6 +372,22 @@ export default function MoneyBookPage() {
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">{typeHint[entryType]}</p>
+            {entryType === "loan_repayment" && (
+              <div className="mt-3 sm:max-w-sm">
+                <label htmlFor="mbk-interest" className={label}>
+                  {t.admin.mbkInterest}
+                </label>
+                <InputNumber
+                  id="mbk-interest"
+                  min={0}
+                  precision={2}
+                  value={entryInterest}
+                  onChange={(v) => setEntryInterest(v === null ? null : Number(v))}
+                  style={BOX}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">{t.admin.mbkInterestHint}</p>
+              </div>
+            )}
             {PARTNER_TYPES.has(entryType) && partners.length > 0 && (
               <div className="mt-3 sm:max-w-sm">
                 <label htmlFor="mbk-who" className={label}>

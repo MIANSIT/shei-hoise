@@ -43,6 +43,8 @@ export interface MoneyEntryInput {
   branchId?: string | null;
   /** Owner money, a loan received or a loan repaid: who it was from or to. Optional. */
   partnerId?: string | null;
+  /** Loan repayment only: how much of `amount` is interest. It is saved as an expense; the rest lowers the loan. */
+  interestAmount?: number;
 }
 
 export interface OpeningBalancesInput {
@@ -86,4 +88,12 @@ export interface CashPosition {
   total: number;
   fixedAssets: number;
   loans: number;
+}
+
+/** Income that is not a sale (Money Book other income, cash over, minus cash short) for a period. */
+export interface OtherIncomeResult {
+  /** Net total for the period; negative when cash counted short outweighs the income. */
+  total: number;
+  /** Net per day, YYYY-MM-DD. */
+  byDay: Record<string, number>;
 }
