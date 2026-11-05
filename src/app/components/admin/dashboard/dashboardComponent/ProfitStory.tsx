@@ -49,6 +49,8 @@ export interface ProfitStoryFigures {
   /** Stores that sell to vendors: money received from vendors this period, and what vendors still owe. */
   vendorReceived?: number;
   vendorDue?: number;
+  /** Delivery billed to vendors in the period. It is owed by them but is not part of Vendor sales. */
+  vendorDelivery?: number;
   /** Accrual only: Money Book other income and cash differences, already inside netProfit. */
   otherIncome?: number;
 }
@@ -96,7 +98,7 @@ const BAR: Record<Step["tone"], string> = {
 export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, onOpenBranch }: ProfitStoryProps) {
   const t = useTranslation();
   const n = useLocalNum();
-  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount, accrual, missingCostLines = 0, missingCostSales = 0, collected, vendorReceived, vendorDue, otherIncome = 0 } = figures;
+  const { sales, grossProfit, expenses, vendorProfit, netProfit, netChangePct, deliveryCost, allSales, vendorSales, dayCount, accrual, missingCostLines = 0, missingCostSales = 0, collected, vendorReceived, vendorDue, vendorDelivery = 0, otherIncome = 0 } = figures;
   // Per-day average of the sales figure the card leads with: every order when
   // known, else what was received.
   const showDailyAverage = dayCount !== undefined && dayCount > 0;
@@ -288,11 +290,17 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${receivedPct}%` }} />
               </div>
               {showVendorMoney && (
-                <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-center">
+                <div className={`mt-3 grid gap-2 border-t border-border pt-3 text-center ${vendorDelivery > 0.005 ? "grid-cols-3" : "grid-cols-2"}`}>
                   <div className="min-w-0">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">{t.admin.receivedFromVendors}</div>
                     <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-emerald-700 dark:text-emerald-400">{formatMoney(vendorReceived ?? 0)}</div>
                   </div>
+                  {vendorDelivery > 0.005 && (
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">{t.admin.psVendorDelivery}</div>
+                      <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-sky-700 dark:text-sky-400">{formatMoney(vendorDelivery)}</div>
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">{t.admin.vendorDueOutstanding}</div>
                     <div className="text-base sm:text-sm md:text-lg break-words font-black tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(vendorDue ?? 0)}</div>

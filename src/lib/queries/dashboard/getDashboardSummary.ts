@@ -55,6 +55,8 @@ export interface DashboardSummaryPayload {
   /** Confirmed vendor orders in the period — added to store sales for total sales. */
   vendor_sales: number;
   prev_vendor_sales: number;
+  /** Delivery billed to vendors on those orders, shown apart from sales. */
+  vendor_delivery: number;
   /** Sales (all orders) / received / to collect — null when the database predates them. */
   sales_summary: SalesSummary | null;
   vendor_payments: {
@@ -125,6 +127,7 @@ export async function getDashboardSummary(
     vendor_payments: vendorPayments,
     vendor_sales: vendorSales.vendor_sales,
     prev_vendor_sales: vendorSales.prev_vendor_sales,
+    vendor_delivery: vendorSales.vendor_delivery,
     sales_summary: salesSummary,
   };
 }

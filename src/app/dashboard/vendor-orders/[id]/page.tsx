@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Button, Tag, Table, Spin, App } from "antd";
+import { Button, Tag, Table, Spin, App, Modal, InputNumber } from "antd";
 import { ExclamationCircleOutlined, DownloadOutlined, CheckCircleOutlined, EditOutlined, StopOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
@@ -13,6 +13,7 @@ import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById
 import { confirmVendorOrder } from "@/lib/queries/vendorOrder/confirmVendorOrder";
 import { cancelVendorOrder } from "@/lib/queries/vendorOrder/cancelVendorOrder";
 import { deleteVendorOrder } from "@/lib/queries/vendorOrder/deleteVendorOrder";
+import { updateVendorOrderDelivery } from "@/lib/queries/vendorOrder/updateVendorOrderDelivery";
 import { getStoreById } from "@/lib/queries/stores/getStoreById";
 import { getVendorInvoiceBalances } from "@/lib/queries/vendor/getVendorInvoiceBalances";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -93,6 +94,26 @@ export default function VendorOrderDetailPage() {
 
   const displayPaidAmount = liveBalance?.paid_allocated ?? Number(order?.paid_amount ?? 0);
   const displayDueAmount = liveBalance?.due_remaining ?? Number(order?.due_amount ?? 0);
+
+  // The delivery charge of a confirmed order can be set or changed without editing the whole order.
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [deliveryValue, setDeliveryValue] = useState(0);
+  const [savingDelivery, setSavingDelivery] = useState(false);
+  const handleSaveDelivery = async () => {
+    setSavingDelivery(true);
+    try {
+      const result = await updateVendorOrderDelivery(orderId, deliveryValue);
+      if (!result.ok) {
+        error(result.error);
+        return;
+      }
+      success("Delivery charge saved");
+      setDeliveryOpen(false);
+      await fetchOrder();
+    } finally {
+      setSavingDelivery(false);
+    }
+  };
 
   const handleConfirm = () => {
     modal.confirm({
@@ -377,6 +398,16 @@ export default function VendorOrderDetailPage() {
                   Dispatch More
                 </Button>
                 <Button
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    setDeliveryValue(Number(order.delivery_cost) || 0);
+                    setDeliveryOpen(true);
+                  }}
+                  className="rounded-xl h-9"
+                >
+                  Edit delivery charge
+                </Button>
+                <Button
                   danger
                   icon={<StopOutlined />}
                   loading={cancelling}
@@ -480,6 +511,27 @@ export default function VendorOrderDetailPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={deliveryOpen}
+        title="Edit delivery charge"
+        okText="Save"
+        confirmLoading={savingDelivery}
+        onOk={handleSaveDelivery}
+        onCancel={() => !savingDelivery && setDeliveryOpen(false)}
+        destroyOnHidden
+      >
+        <div className="space-y-2">
+          <label htmlFor="vo-delivery" className="block text-xs font-semibold text-muted-foreground">
+            Delivery charge billed to the vendor
+          </label>
+          <InputNumber id="vo-delivery" min={0} precision={2} value={deliveryValue} onChange={(v) => setDeliveryValue(v ?? 0)} style={{ width: "100%" }} />
+          <p className="m-0 text-xs text-muted-foreground">
+            It is added to the grand total and to what the vendor owes, and is shown apart from sales. New grand total:{" "}
+            {(Number(order.subtotal) + deliveryValue - Number(order.discount_amount)).toFixed(2)}.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -253,6 +253,7 @@ export default function DashboardPage() {
   const salesSummary = summary?.sales_summary ?? null;
   // Total sales = store sales + vendor sales; total profit likewise.
   const vendorSales = summary?.vendor_sales ?? 0;
+  const vendorDelivery = summary?.vendor_delivery ?? 0;
   const vendorProfit = summary?.vendor_profit ?? 0;
   const totalSales = (salesSummary?.sales ?? 0) + vendorSales;
   const prevTotalSales = (salesSummary?.prevSales ?? 0) + (summary?.prev_vendor_sales ?? 0);
@@ -661,6 +662,7 @@ export default function DashboardPage() {
               accrual: true,
               collected: accrual.pl.collected,
               vendorSales,
+              vendorDelivery,
               vendorReceived: metrics.vendorPayments.received,
               vendorDue: metrics.vendorPayments.totalDue,
               missingCostLines: accrual.pl.missingCostLines,
