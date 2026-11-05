@@ -31,6 +31,7 @@ import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIc
 import { ProductStatus } from "@/lib/types/enums";
 import dataService from "@/lib/queries/dataService";
 import { useBranches } from "@/lib/context/BranchContext";
+import { useTranslation } from "@/lib/hook/useTranslation";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -77,6 +78,7 @@ export default function AdminOrderDetails({
     useState<string>("no-variant");
   const [quantity, setQuantity] = useState(1);
   const [api, contextHolder] = notification.useNotification();
+  const t = useTranslation();
   const { icon: currencyIcon, loading: currencyLoading } =
     useUserCurrencyIcon();
 
@@ -273,6 +275,14 @@ export default function AdminOrderDetails({
       selectedVariantId !== "no-variant" && selectedVariant
         ? (selectedVariant.tp_price ?? null)
         : (selectedProduct.tp_price ?? null);
+    // A product with no TP cannot be added: its profit would be counted as free. Bundles take the TP of their parts.
+    if (selectedProduct.product_type !== "bundle" && !(Number(costPrice) > 0)) {
+      api.error({
+        message: t.admin.npBlockTitle,
+        description: t.admin.npBlockBody.replace("{name}", selectedVariantId !== "no-variant" && selectedVariant ? `${selectedProduct.name} · ${selectedVariant.variant_name}` : selectedProduct.name),
+      });
+      return;
+    }
 
     const variantDetails =
       selectedVariantId !== "no-variant" && selectedVariant

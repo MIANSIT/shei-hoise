@@ -344,6 +344,11 @@ export default function QuickSale() {
       ? getVariantAvailableQuantity(variant)
       : getAvailableQuantity(product);
     const costPrice = variant ? (variant.tp_price ?? null) : (product.tp_price ?? null);
+    // A product with no TP cannot be sold from here: its profit would be counted as free. Bundles take the TP of their parts.
+    if (product.product_type !== "bundle" && !(Number(costPrice) > 0)) {
+      notification.error({ message: t.admin.npBlockTitle, description: t.admin.npBlockBody.replace("{name}", variant ? `${product.name} · ${variant.variant_name}` : product.name) });
+      return;
+    }
     const flashItemKey = `${product.id}:${variant?.id ?? ""}`;
 
     // Mirrors the existing/new-item stock capping below, computed against the

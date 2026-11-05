@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
@@ -244,9 +245,9 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
               </span>
             )}
             {missingCostLines > 0 && (
-              <span className="rounded-full bg-amber-300/90 px-3 py-1 text-xs font-semibold text-amber-950">
+              <Link href="/dashboard/products/no-tp" className="rounded-full bg-amber-300/90 px-3 py-1 text-xs font-semibold text-amber-950 underline-offset-2 hover:underline">
                 {n(String(missingCostLines))} {t.admin.fsNoTpShort}
-              </span>
+              </Link>
             )}
             {netChangePct != null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">

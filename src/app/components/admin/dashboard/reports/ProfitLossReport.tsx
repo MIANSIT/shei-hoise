@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { DatePicker, Spin, Button, Popover, App, Alert } from "antd";
 import dayjs, { Dayjs } from "dayjs";
@@ -206,6 +207,11 @@ export default function ProfitLossReport() {
                 message={t.admin.fsMissingTp
                   .replace("{n}", String(report.missingCostLines))
                   .replace("{amount}", money(report.missingCostSales))}
+                action={
+                  <Link href="/dashboard/products/no-tp" className="text-xs font-semibold underline">
+                    {t.admin.npSeeList}
+                  </Link>
+                }
               />
             )}
             <ProfitStory

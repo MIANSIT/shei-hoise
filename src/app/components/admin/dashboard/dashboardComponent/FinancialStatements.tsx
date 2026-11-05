@@ -346,7 +346,10 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
                   <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
                     {t.admin.fsMissingTp.replace("{n}", n(String(pl.missingCostLines))).split("{amount}")[0]}
                     {formatMoney(pl.missingCostSales)}
-                    {t.admin.fsMissingTp.split("{amount}")[1]}
+                    {t.admin.fsMissingTp.split("{amount}")[1]}{" "}
+                    <Link href="/dashboard/products/no-tp" className="font-semibold underline">
+                      {t.admin.npSeeList}
+                    </Link>
                   </div>
                 )}
 
