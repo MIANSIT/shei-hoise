@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { calculateVendorCurrentDue } from "./calculateVendorDue";
+import { getVendorsOverviewStats } from "./getVendorsOverviewStats";
 
 export interface VendorPaymentStats {
   /** Cash collected from vendors within the selected period (vendor_payments.payment_date). */
@@ -25,7 +26,7 @@ export async function getVendorPaymentStatsForPeriod(
   periodEnd: string,
   prevPeriodStart: string,
   prevPeriodEnd: string,
-  /** Stores with branches: only money received at this branch. The due stays vendor-wide. */
+  /** Stores with branches: the money received at this branch, and the due for this branch's own dealings (what its orders sent out, less what came back and what was paid at it). */
   branchId?: string | null,
 ): Promise<VendorPaymentStats> {
   if (!storeId) return EMPTY;
@@ -74,15 +75,21 @@ export async function getVendorPaymentStatsForPeriod(
       .filter((p) => p.payment_date >= from && p.payment_date <= to)
       .reduce((sum, r) => sum + Number(r.amount), 0);
 
+  // One branch picked: the store-wide stock, settlements and delivery above minus only this branch's payments would
+  // overstate the due, so the branch's own due is used, the same figure the Vendors page and the Accounts tab show.
+  const branchDue = branchId ? (await getVendorsOverviewStats(storeId, branchId)).branch_due : undefined;
+
   return {
     received: sumInRange(periodStart, periodEnd),
     prev_received: sumInRange(prevPeriodStart, prevPeriodEnd),
-    total_due: calculateVendorCurrentDue({
-      unsettledStockValue: totalStockValue,
-      totalReceivable,
-      totalDeliveryCostInvoiced,
-      totalPaid,
-    }),
+    total_due:
+      branchDue ??
+      calculateVendorCurrentDue({
+        unsettledStockValue: totalStockValue,
+        totalReceivable,
+        totalDeliveryCostInvoiced,
+        totalPaid,
+      }),
     has_activity: true,
   };
 }
