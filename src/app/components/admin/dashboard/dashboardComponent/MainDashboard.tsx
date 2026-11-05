@@ -90,7 +90,7 @@ interface MainDashboardProps {
   /** Profit & Loss on one accounting basis (and the money position strip), shown above the snapshot. */
   statements?: React.ReactNode;
   /** Money alerts (bills due, old dues, courier cash, negative cash), shown under the stock and order alerts. */
-  moneyAlerts?: React.ReactNode;
+  moneyAlerts?: (scope: "sales" | "accounts") => React.ReactNode;
   /** The statements card already tells the profit story, so the older snapshot above the cards is left out. */
   hideProfitHero?: boolean;
   /** The P&L as a step-by-step story (sales → costs → net). Replaces the three-cell bar when given. */
@@ -417,7 +417,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
           </div>
         )}
 
-        {moneyAlerts}
+        {/* Each money alert shows once: customer dues and courier COD (money from sales) on Sales, bills and cash on Accounts. */}
+        {moneyAlerts?.(tab)}
 
         {tab === "accounts" ? (
           accountsView?.(() => setTab("sales"))

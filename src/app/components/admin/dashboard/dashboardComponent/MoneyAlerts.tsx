@@ -17,7 +17,12 @@ import {
 } from "@/lib/queries/dashboard/getMoneyAlerts";
 import type { CashPosition } from "@/lib/queries/financial/moneyBookTypes";
 
+/** Which tab the alerts are for: sales alerts are money from sales not collected yet; accounts alerts are what the business owes and holds. */
+export type MoneyAlertsScope = "sales" | "accounts";
+
 interface MoneyAlertsProps {
+  /** Each alert shows once: customer dues and courier COD on the Sales tab, supplier bills and low cash on the Accounts tab. */
+  scope: MoneyAlertsScope;
   storeId: string | null | undefined;
   /** Stores with branches: one branch's customer dues and COD; null = the whole store. */
   branchId: string | null;
@@ -37,20 +42,22 @@ const TONE: Record<MoneyAlert["severity"], string> = {
  * customer dues over 30 days, courier cash waiting over 7 days, and cash below zero. Shows
  * nothing when there is nothing to flag, and only the sources the person may see.
  */
-export function MoneyAlerts({ storeId, branchId, withBranches, cash, formatMoney }: MoneyAlertsProps) {
+export function MoneyAlerts({ scope, storeId, branchId, withBranches, cash, formatMoney }: MoneyAlertsProps) {
   const t = useTranslation();
   const n = useLocalNum();
   const { can } = usePermissions();
   const { allowed: stockAllowed } = useFeatureGate(storeId, "stock_management");
-  const canSeeBills = stockAllowed && can("stock.supplier_money");
-  const canSeeDues = can("customers.view");
-  const canSeeCod = can("cod.view");
+  // Only the sources of this tab are read.
+  const canSeeBills = scope === "accounts" && stockAllowed && can("stock.supplier_money");
+  const canSeeDues = scope === "sales" && can("customers.view");
+  const canSeeCod = scope === "sales" && can("cod.view");
+  const cashForScope = scope === "accounts" ? cash : null;
 
   const [alerts, setAlerts] = useState<MoneyAlert[]>([]);
   useEffect(() => {
     if (!storeId) return;
     let cancelled = false;
-    loadMoneyAlerts({ storeId, branchId, withBranches, canSeeBills, canSeeDues, canSeeCod, cash })
+    loadMoneyAlerts({ storeId, branchId, withBranches, canSeeBills, canSeeDues, canSeeCod, cash: cashForScope })
       .then((result) => {
         if (!cancelled) setAlerts(result);
       })
@@ -61,7 +68,7 @@ export function MoneyAlerts({ storeId, branchId, withBranches, cash, formatMoney
     return () => {
       cancelled = true;
     };
-  }, [storeId, branchId, withBranches, canSeeBills, canSeeDues, canSeeCod, cash]);
+  }, [storeId, branchId, withBranches, canSeeBills, canSeeDues, canSeeCod, cashForScope]);
 
   if (alerts.length === 0) return null;
 

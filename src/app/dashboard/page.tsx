@@ -605,15 +605,16 @@ export default function DashboardPage() {
       onTimePeriodChange={setTimePeriod}
       analyticsAllowed={analyticsAllowed}
       branchLabel={branchesOn ? (selectedBranch?.name ?? t.branches.allBranches) : undefined}
-      moneyAlerts={
+      moneyAlerts={(scope) => (
         <MoneyAlerts
+          scope={scope}
           storeId={storeId}
           branchId={dashboardBranchId}
           withBranches={branchesOn}
           cash={accrual?.cash ?? null}
           formatMoney={(amount: number) => renderCurrency(amount)}
         />
-      }
+      )}
       statements={
         // While developing, say why the statements are missing instead of silently showing the old cards.
         !accrual && accrualReady && accrualError && process.env.NODE_ENV !== "production" ? (
