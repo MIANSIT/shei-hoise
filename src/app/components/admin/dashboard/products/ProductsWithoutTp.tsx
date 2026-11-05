@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { OrderLinesWithoutCost } from "./OrderLinesWithoutCost";
 
 interface ProductRow {
   id: string;
@@ -101,6 +102,7 @@ export default function ProductsWithoutTp() {
           ))}
         </ul>
       )}
+      <OrderLinesWithoutCost />
     </div>
   );
 }

@@ -687,6 +687,11 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 --   receive_purchase(...) adds stock, sets weighted-average cost, adds the bill and any
 --     "paid now" payment in one transaction. service_role only.
 
+-- Order line cost — 20261205000000_order_line_cost_snapshot.sql. Triggers only: fill_order_item_cost (BEFORE INSERT on
+--   order_items fills a missing cost_price from the variant or product TP), backfill_order_costs_from_product / _variant
+--   (AFTER UPDATE OF tp_price: a TP added where there was none fills old lines of that product or variant that have no
+--   cost, closed months skipped, never blocks the TP save).
+
 -- Month close — 20261120000000_add_period_closes.sql. One new table:
 --   period_closes(id, store_id, branch_id NULL = whole store, period_start, period_end,
 --     snapshot jsonb (Profit & Loss + balance + vendor figures + cash at the moment of

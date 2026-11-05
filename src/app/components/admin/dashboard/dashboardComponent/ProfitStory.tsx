@@ -245,9 +245,11 @@ export function ProfitStory({ figures, periodLabel, formatMoney, branchProfits, 
               </span>
             )}
             {missingCostLines > 0 && (
-              <Link href="/dashboard/products/no-tp" className="rounded-full bg-amber-300/90 px-3 py-1 text-xs font-semibold text-amber-950 underline-offset-2 hover:underline">
-                {n(String(missingCostLines))} {t.admin.fsNoTpShort}
-              </Link>
+              <span className="rounded-full bg-amber-300/90 px-3 py-1 text-xs font-semibold text-amber-950">
+                <Link href="/dashboard/products/no-tp" className="text-amber-950 underline-offset-2 hover:underline" style={{ color: "inherit" }}>
+                  {n(String(missingCostLines))} {t.admin.fsNoTpShort}
+                </Link>
+              </span>
             )}
             {netChangePct != null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
