@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, DatePicker, Popconfirm, Segmented, Select, Spin } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
-import { Lock, Printer } from "lucide-react";
+import { Download, Loader2, Lock } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useBranches } from "@/lib/context/BranchContext";
 import { usePermissions } from "@/lib/context/PermissionsContext";
@@ -25,6 +25,8 @@ import { getDashboardPeriodRange } from "@/lib/utils/dashboardPeriods";
 import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
 import type { TimePeriod } from "@/lib/hook/useDashboardMetrics";
 import { FinancialStatements } from "@/app/components/admin/dashboard/dashboardComponent/FinancialStatements";
+import { useInvoiceData } from "@/lib/hook/useInvoiceData";
+import { exportBalanceSheetPDF } from "@/lib/utils/exportBalanceSheetPdf";
 
 /**
  * The financial statements on their own page, every line explained. The
@@ -188,6 +190,45 @@ export default function BalanceSheetPage() {
   const shownVendorProfit = selectedClose && !onSavedDate ? selectedClose.snapshot.vendorProfit : vendorProfit;
   const shownPeriodLabel = selectedClose && !onSavedDate ? formatMonthLabel(selectedClose.periodEnd, lang) : periodLabel;
 
+  // A real A4 document, not the browser's print of the whole screen (menu, scrollbars and all).
+  const { storeData } = useInvoiceData({ storeId: storeId ?? undefined });
+  const [exporting, setExporting] = useState(false);
+  const handleDownloadPdf = async () => {
+    if (!shown || exporting) return;
+    setExporting(true);
+    try {
+      const savedNote = savedDay
+        ? `This is the balance saved on ${dayjs(savedDay.date).format("DD-MM-YYYY")} at ${dayjs(savedDay.savedAt).format("HH:mm")}.`
+        : estimate
+          ? estimate.fromHistory
+            ? `This balance was worked out from the records of ${dayjs(estimate.date).format("DD-MM-YYYY")}, exact as the records stand today.`
+            : `ESTIMATE: this balance for ${dayjs(estimate.date).format("DD-MM-YYYY")} was worked out from dated records. Some things, such as when an order was delivered or what a product cost that day, were not recorded then, so it is not exact.`
+          : selectedClose
+            ? `Saved copy of a closed month, closed on ${dayjs(selectedClose.closedAt).format("DD-MM-YYYY HH:mm")}. It never changes.`
+            : null;
+      await exportBalanceSheetPDF({
+        storeName: storeData?.store_name ?? "Store",
+        scopeLabel: branchesOn ? (selectedBranch?.name ?? null) : null,
+        data: shown,
+        vendorProfit: shownVendorProfit,
+        periodLabel: selectedClose && !onSavedDate ? formatMonthLabel(selectedClose.periodEnd, "en") : onSavedDate ? periodLabel : periodLabel,
+        balanceAsOf: onSavedDate
+          ? dayjs(historyDate ?? undefined).format("DD-MM-YYYY")
+          : selectedClose
+            ? `end of ${formatMonthLabel(selectedClose.periodEnd, "en")}`
+            : dayjs().format("DD-MM-YYYY"),
+        notice: savedNote,
+        currencySymbol: typeof CurrencyIcon === "string" ? CurrencyIcon : "",
+        branchView: !!branchId,
+      });
+    } catch (err) {
+      console.error("Balance sheet PDF failed:", err);
+      showError(t.admin.bsPdfFailed);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleReopen = async () => {
     if (!storeId || !selectedClose) return;
     const result = await reopenMonth(storeId, selectedClose.id);
@@ -275,7 +316,12 @@ export default function BalanceSheetPage() {
             }}
             disabledDate={(d) => d.isAfter(dayjs(), "day")}
           />
-          <Button icon={<Printer size={14} />} onClick={() => window.print()} className="flex items-center gap-2">
+          <Button
+            icon={exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            onClick={() => void handleDownloadPdf()}
+            disabled={!shown || exporting}
+            className="flex items-center gap-2"
+          >
             {t.admin.bsPrint}
           </Button>
         </div>

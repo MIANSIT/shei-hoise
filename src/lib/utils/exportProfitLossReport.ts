@@ -48,13 +48,13 @@ async function loadBengaliFontBase64(): Promise<string | null> {
   return bengaliFontBase64Cache;
 }
 
-function hasBengaliChar(text: string): boolean {
+export function hasBengaliChar(text: string): boolean {
   return /[ঀ-৿]/.test(text);
 }
 
 type JsPDFInstance = InstanceType<typeof import("jspdf").jsPDF>;
 
-async function registerBengaliFontBrowser(pdf: JsPDFInstance): Promise<boolean> {
+export async function registerBengaliFontBrowser(pdf: JsPDFInstance): Promise<boolean> {
   const base64 = await loadBengaliFontBase64();
   if (!base64) return false;
   try {
@@ -66,7 +66,7 @@ async function registerBengaliFontBrowser(pdf: JsPDFInstance): Promise<boolean> 
   }
 }
 
-function applyBengaliFontBrowser(pdf: JsPDFInstance, text: string, bengaliLoaded: boolean): void {
+export function applyBengaliFontBrowser(pdf: JsPDFInstance, text: string, bengaliLoaded: boolean): void {
   if (bengaliLoaded && hasBengaliChar(text)) {
     pdf.setFont("NotoSansBengali", "normal");
   }
