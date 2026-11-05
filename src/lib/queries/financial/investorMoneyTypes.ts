@@ -19,12 +19,20 @@ export type PayFrom = "business" | "investor";
 export const START_METHODS = ["cash", "mobile_banking", "bank_transfer"] as const;
 export type StartMethod = (typeof START_METHODS)[number];
 
+/** From this month on (YYYY-MM), the profit share is this percent. */
+export interface InvestorRate {
+  fromMonth: string;
+  pct: number;
+}
+
 export interface InvestorDeal {
   id: string;
   partnerId: string;
   kind: InvestorKind;
-  /** Profit share only: the percent of each month's profit. */
+  /** Profit share only: the percent the deal started with. Later changes are in `rates`. */
   profitSharePct: number | null;
+  /** Profit share only: changes of the percent, each from a month on. */
+  rates?: readonly InvestorRate[];
   note: string | null;
 }
 
@@ -129,11 +137,19 @@ export interface PayInvestorBackInput {
   amount: number;
   /** Loan only: how much of amount is interest. */
   interestAmount?: number;
-  payFrom: PayFrom;
+  /** The method used when part of the payment comes from business cash. */
   method: StartMethod;
   branchId?: string | null;
   date: string;
   note?: string;
+}
+
+export interface ChangeSharePercentInput {
+  dealId: string;
+  /** The new percent. */
+  pct: number;
+  /** YYYY-MM: the first month the new percent applies to. */
+  fromMonth: string;
 }
 
 export interface PayProfitShareInput {

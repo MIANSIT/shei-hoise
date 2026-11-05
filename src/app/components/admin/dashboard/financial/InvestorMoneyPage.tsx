@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { notFound } from "next/navigation";
 import dayjs, { type Dayjs } from "dayjs";
 import { Button, DatePicker, Input, InputNumber, Popconfirm, Select, Spin } from "antd";
 import { Trash2, Wallet } from "lucide-react";
@@ -10,14 +11,16 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useBranches } from "@/lib/context/BranchContext";
 import { usePermissions } from "@/lib/context/PermissionsContext";
-import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
-import { addInvestorMoney, deleteInvestorEntry, getInvestorOverview, saveStartingCash } from "@/lib/queries/financial/investorMoney";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
+import { addInvestorMoney, deleteInvestorEntry, deleteInvestorPerson, getInvestorOverview, saveStartingCash } from "@/lib/queries/financial/investorMoney";
+import { currentPct } from "@/lib/queries/financial/investorMath";
 import { getCashPosition } from "@/lib/queries/financial/getCashPosition";
 import { START_METHODS, type InvestorKind, type InvestorOverview, type StartMethod } from "@/lib/queries/financial/investorMoneyTypes";
 import type { CashPosition } from "@/lib/queries/financial/moneyBookTypes";
 import { InvestorPayModal, type InvestorPayTarget } from "./InvestorPayModal";
 import { ProfitShareCard } from "./ProfitShareCard";
+import { ChangeSharePercentModal, type ChangeSharePercentTarget } from "./ChangeSharePercentModal";
 
 const BOX = { width: "100%" } as const;
 const NEW_PERSON = "__new__";
@@ -32,8 +35,11 @@ export default function InvestorMoneyPage() {
   const n = useLocalNum();
   const { storeId, loading: userLoading } = useCurrentUser();
   const { isOwner } = usePermissions();
-  const { allowed: investorAllowed, loading: gateLoading } = useFeatureGate(storeId, "investor_money");
-  const { enabled: branchesOn, activeBranches, workBranchId } = useBranches();
+  // Two plan features: opening_cash is the starting cash (cash in hand), investor_money is everything about investors.
+  const { allowed: openingAllowed, loading: openingLoading } = useFeatureGate(storeId, "opening_cash");
+  const { allowed: investorAllowed, loading: investorLoading } = useFeatureGate(storeId, "investor_money");
+  const gateLoading = openingLoading || investorLoading;
+  const { enabled: branchesOn } = useBranches();
   const { icon: currencyIconRaw } = useUserCurrencyIcon();
   const symbol = typeof currencyIconRaw === "string" ? currencyIconRaw : "৳";
   const money = useCallback(
@@ -46,9 +52,9 @@ export default function InvestorMoneyPage() {
   const [overview, setOverview] = useState<InvestorOverview | null>(null);
   const [position, setPosition] = useState<CashPosition | null>(null);
   const [payTarget, setPayTarget] = useState<InvestorPayTarget | null>(null);
+  const [pctTarget, setPctTarget] = useState<ChangeSharePercentTarget | null>(null);
 
-  // Starting cash form.
-  const [startBranch, setStartBranch] = useState<string | null>(null);
+  // Starting cash form. It is for the whole store: investor money and Business cash are not kept branch by branch.
   const [startAmounts, setStartAmounts] = useState<Partial<Record<StartMethod, number | null>>>({});
   const [startDate, setStartDate] = useState<Dayjs>(dayjs());
   const [savingStart, setSavingStart] = useState(false);
@@ -80,18 +86,13 @@ export default function InvestorMoneyPage() {
     void load();
   }, [load]);
 
-  // A branch store counts the starting cash branch by branch: start on the branch you work in.
-  useEffect(() => {
-    if (branchesOn && !startBranch) setStartBranch(workBranchId ?? activeBranches[0]?.id ?? null);
-  }, [branchesOn, startBranch, workBranchId, activeBranches]);
-
   // Show the saved numbers for the picked branch when changing the starting cash.
   useEffect(() => {
     if (!overview) return;
-    const rows = overview.start.filter((r) => (branchesOn ? r.branchId === startBranch : r.branchId === null));
+    const rows = overview.start.filter((r) => r.branchId === null);
     setStartAmounts(Object.fromEntries(rows.map((r) => [r.method, r.amount])));
     if (rows.length > 0) setStartDate(dayjs(rows[0].asOfDate));
-  }, [overview, startBranch, branchesOn]);
+  }, [overview]);
 
   const methodLabel: Record<StartMethod, string> = {
     cash: t.admin.mbkCashInHand,
@@ -113,12 +114,11 @@ export default function InvestorMoneyPage() {
 
   const saveStart = async () => {
     if (!storeId) return;
-    if (branchesOn && !startBranch) return showError(t.admin.mbkNeedBranch);
     setSavingStart(true);
     try {
       const amounts: Partial<Record<StartMethod, number>> = {};
       for (const m of START_METHODS) amounts[m] = startAmounts[m] ?? 0;
-      const result = await saveStartingCash(storeId, { asOfDate: startDate.format("YYYY-MM-DD"), branchId: branchesOn ? startBranch : null, amounts });
+      const result = await saveStartingCash(storeId, { asOfDate: startDate.format("YYYY-MM-DD"), branchId: null, amounts });
       if (!result.success) return showError(result.error ?? t.admin.invFailed);
       success(t.admin.invStartSaved);
       await load();
@@ -155,6 +155,22 @@ export default function InvestorMoneyPage() {
     }
   };
 
+  const removePerson = async (id: string) => {
+    if (!storeId) return;
+    const result = await deleteInvestorPerson(storeId, id);
+    if (!result.success) return showError(result.error ?? t.admin.invFailed);
+    success(t.admin.invPersonDeleted);
+    await load();
+  };
+
+  /** The first month money was put in and the latest month a share was paid for, for a deal. */
+  const shareMonths = (dealId: string): { firstMonth: string | null; lastPaidMonth: string | null } => {
+    const mine = (overview?.entries ?? []).filter((e) => e.dealId === dealId);
+    const puts = mine.filter((e) => e.type === "put_in").map((e) => e.date.slice(0, 7)).sort();
+    const paid = mine.filter((e) => e.type === "profit_share_paid" && e.periodMonth).map((e) => e.periodMonth as string).sort();
+    return { firstMonth: puts[0] ?? null, lastPaidMonth: paid[paid.length - 1] ?? null };
+  };
+
   const removeEntry = async (id: string) => {
     if (!storeId) return;
     const result = await deleteInvestorEntry(storeId, id);
@@ -176,6 +192,8 @@ export default function InvestorMoneyPage() {
       </div>
     );
   }
+  // Without either feature the page does not exist for this store: no locked page, no upsell.
+  if (!openingAllowed && !investorAllowed) notFound();
   if (!isOwner) return <div className="p-6 text-sm text-muted-foreground">{t.admin.invOwnerOnly}</div>;
 
   const card = "rounded-2xl border border-border bg-card p-4 sm:p-5";
@@ -186,21 +204,6 @@ export default function InvestorMoneyPage() {
 
   const startForm = (
     <div className="space-y-3">
-      {branchesOn && (
-        <div className="max-w-xs">
-          <label htmlFor="inv-start-branch" className={label}>
-            {t.admin.mbkBranch}
-          </label>
-          <Select
-            id="inv-start-branch"
-            style={BOX}
-            placeholder={t.admin.mbkBranchPh}
-            value={startBranch ?? undefined}
-            onChange={setStartBranch}
-            options={activeBranches.map((b) => ({ value: b.id, label: b.name }))}
-          />
-        </div>
-      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {START_METHODS.map((m) => (
           <div key={m}>
@@ -245,30 +248,45 @@ export default function InvestorMoneyPage() {
         <div className="flex justify-center py-16">
           <Spin size="large" />
         </div>
-      ) : !started ? (
-        <section className={card}>
-          <h2 className="m-0 text-base font-bold text-foreground">{t.admin.invSetupTitle}</h2>
-          <p className="mb-4 mt-1 text-sm text-muted-foreground">{t.admin.invSetupHelp}</p>
-          {startForm}
-        </section>
       ) : (
         <>
+          <section className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+            <h2 className="m-0 text-base font-bold text-foreground">{t.admin.invExplainTitle}</h2>
+            <ul className="m-0 mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              {openingAllowed && <li>{t.admin.invExplain1}</li>}
+              {investorAllowed && <li>{t.admin.invExplain2}</li>}
+              {investorAllowed && <li>{t.admin.invExplain3}</li>}
+            </ul>
+          </section>
+
+          {!started ? (
+            openingAllowed ? (
+              <section className={card}>
+                <h2 className="m-0 text-base font-bold text-foreground">{t.admin.invSetupTitle}</h2>
+                <p className="mb-4 mt-1 text-sm text-muted-foreground">{t.admin.invSetupHelp}</p>
+                {startForm}
+              </section>
+            ) : null
+          ) : (
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {openingAllowed && (
             <div className="rounded-2xl border border-border border-t-4 border-t-teal-500 bg-card p-4 sm:p-5">
               <p className="m-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.admin.invBusinessCash}</p>
               <p className="m-0 mt-1 text-2xl font-extrabold tabular-nums text-foreground">{position ? money(position.total) : "—"}</p>
               <p className="m-0 mt-1 text-xs text-muted-foreground">{t.admin.invBusinessCashHint}</p>
             </div>
+            )}
+            {investorAllowed && (
             <div className="rounded-2xl border border-border border-t-4 border-t-violet-500 bg-card p-4 sm:p-5">
               <p className="m-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.admin.invAccount}</p>
               <p className="m-0 mt-1 text-2xl font-extrabold tabular-nums text-foreground">{money(overview?.positions.accountTotal ?? 0)}</p>
               <p className="m-0 mt-1 text-xs text-muted-foreground">{t.admin.invAccountHint}</p>
             </div>
+            )}
           </section>
+          )}
 
-          {!investorAllowed ? (
-            <p className="rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">{t.admin.invNotInPlan}</p>
-          ) : (
+          {investorAllowed && (
             <>
               <section className={card}>
                 <h2 className="m-0 text-base font-bold text-foreground">{t.admin.invAddTitle}</h2>
@@ -370,6 +388,8 @@ export default function InvestorMoneyPage() {
                 <p className="m-0 mt-2 text-[11px] text-muted-foreground">{t.admin.invAddNote}</p>
               </section>
 
+              {started && (
+              <>
               <section className={card}>
                 <h2 className="m-0 text-base font-bold text-foreground">{t.admin.invPeopleTitle}</h2>
                 {withDeals.length === 0 ? (
@@ -383,18 +403,25 @@ export default function InvestorMoneyPage() {
                             {p.partner.name}{" "}
                             <span className="text-xs font-normal text-muted-foreground">({p.partner.kind === "owner" ? t.admin.fndKindOwner : t.admin.fndKindInvestor})</span>
                           </p>
-                          <p className="m-0 text-xs text-muted-foreground">
-                            {t.admin.invInAccount} <b className="tabular-nums text-foreground">{money(p.available)}</b>
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <p className="m-0 text-xs text-muted-foreground">
+                              {t.admin.invInAccount} <b className="tabular-nums text-foreground">{money(p.available)}</b>
+                            </p>
+                            <Popconfirm title={t.admin.invDeletePersonConfirm.replace("{name}", p.partner.name)} okText={t.admin.mbkDelete} onConfirm={() => removePerson(p.partner.id)}>
+                              <button type="button" aria-label={t.admin.invDeletePerson} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-rose-600">
+                                <Trash2 size={14} />
+                              </button>
+                            </Popconfirm>
+                          </div>
                         </div>
                         <ul className="mt-2 list-none divide-y divide-border p-0">
-                          {p.deals.map((d) => {
+                          {p.deals.filter((d) => d.putIn > 0 || d.paidBack > 0 || d.sharePaid > 0).map((d) => {
                             const isLoan = d.deal.kind === "loan";
                             return (
                               <li key={d.deal.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                                 <div className="min-w-0">
                                   <p className="m-0 font-medium text-foreground">
-                                    {isLoan ? t.admin.invKindLoan : d.deal.kind === "profit_share" ? t.admin.invDealShare.replace("{pct}", String(d.deal.profitSharePct)) : t.admin.invKindPayback}
+                                    {isLoan ? t.admin.invKindLoan : d.deal.kind === "profit_share" ? t.admin.invDealShare.replace("{pct}", String(currentPct(d.deal))) : t.admin.invKindPayback}
                                   </p>
                                   <p className="m-0 text-xs text-muted-foreground">
                                     {t.admin.invDealLine
@@ -404,10 +431,23 @@ export default function InvestorMoneyPage() {
                                       .replace("{leftLabel}", isLoan ? t.admin.invLeftOwed : t.admin.invLeftCapital)}
                                     {d.deal.kind === "profit_share" ? ` · ${t.admin.invSharesPaid.replace("{amount}", money(d.sharePaid))}` : ""}
                                   </p>
+                                  {d.deal.kind === "profit_share" && (d.deal.rates?.length ?? 0) > 0 && (
+                                    <p className="m-0 text-[11px] text-muted-foreground">
+                                      {t.admin.invRateStart.replace("{pct}", String(d.deal.profitSharePct))}
+                                      {(d.deal.rates ?? []).map((r) => ` · ${t.admin.invRateFrom.replace("{pct}", String(r.pct)).replace("{month}", dayjs(`${r.fromMonth}-01`).format("MMM YYYY"))}`).join("")}
+                                    </p>
+                                  )}
                                 </div>
-                                <Button size="small" disabled={d.left <= 0.005} onClick={() => setPayTarget({ mode: "payback", partner: p, deal: d })}>
-                                  {isLoan ? t.admin.invRepay : t.admin.invPayBack}
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  {d.deal.kind === "profit_share" && (
+                                    <Button size="small" onClick={() => setPctTarget({ partner: p, deal: d, ...shareMonths(d.deal.id) })}>
+                                      {t.admin.invChangePct}
+                                    </Button>
+                                  )}
+                                  <Button size="small" disabled={d.left <= 0.005} onClick={() => setPayTarget({ mode: "payback", partner: p, deal: d })}>
+                                    {isLoan ? t.admin.invRepay : t.admin.invPayBack}
+                                  </Button>
+                                </div>
                               </li>
                             );
                           })}
@@ -415,6 +455,25 @@ export default function InvestorMoneyPage() {
                       </li>
                     ))}
                   </ul>
+                )}
+                {partners.some((p) => p.deals.length === 0) && (
+                  <div className="mt-4 border-t border-border pt-3">
+                    <p className="m-0 mb-2 text-xs font-semibold text-muted-foreground">{t.admin.invNoMoneyPeople}</p>
+                    <ul className="m-0 list-none divide-y divide-border p-0">
+                      {partners
+                        .filter((p) => p.deals.length === 0)
+                        .map((p) => (
+                          <li key={p.partner.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                            <span className="text-foreground">{p.partner.name}</span>
+                            <Popconfirm title={t.admin.invDeletePersonConfirm.replace("{name}", p.partner.name)} okText={t.admin.mbkDelete} onConfirm={() => removePerson(p.partner.id)}>
+                              <button type="button" aria-label={t.admin.invDeletePerson} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-rose-600">
+                                <Trash2 size={14} />
+                              </button>
+                            </Popconfirm>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
                 )}
               </section>
 
@@ -455,16 +514,21 @@ export default function InvestorMoneyPage() {
                   </ul>
                 )}
               </details>
+              </>
+              )}
             </>
           )}
 
-          <details className={card}>
-            <summary className="cursor-pointer select-none text-sm font-semibold text-foreground">{t.admin.invChangeStart}</summary>
-            <div className="mt-3">{startForm}</div>
-          </details>
+          {started && openingAllowed && (
+            <details className={card}>
+              <summary className="cursor-pointer select-none text-sm font-semibold text-foreground">{t.admin.invChangeStart}</summary>
+              <div className="mt-3">{startForm}</div>
+            </details>
+          )}
         </>
       )}
 
+      {storeId && <ChangeSharePercentModal storeId={storeId} target={pctTarget} onClose={() => setPctTarget(null)} onDone={() => { setPctTarget(null); void load(); }} />}
       {storeId && <InvestorPayModal storeId={storeId} target={payTarget} money={money} onClose={() => setPayTarget(null)} onDone={() => { setPayTarget(null); void load(); }} />}
     </div>
   );

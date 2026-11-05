@@ -11,6 +11,7 @@ import { ShippingManager } from "@/app/components/shipping/ShippingManager";
 import { getStoreMediaUrl } from "@/lib/utils/store/storeMediaCache";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { saveStartingCash } from "@/lib/queries/financial/investorMoney";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getStartingCash } from "@/lib/queries/financial/getCashPosition";
 import {
   SETUP_STEP_IDS,
@@ -112,6 +113,7 @@ export default function CompleteSetupWizard({
   const [mobileAtStart, setMobileAtStart] = useState("");
   const [bankAtStart, setBankAtStart] = useState("");
   const [startCashSaved, setStartCashSaved] = useState(true);
+  const { allowed: openingCashAllowed } = useFeatureGate(store.id, "opening_cash");
   useEffect(() => {
     let cancelled = false;
     getStartingCash(store.id)
@@ -184,7 +186,7 @@ export default function CompleteSetupWizard({
       free_shipping_threshold: freeShippingAt === "" ? null : Number(freeShippingAt),
     });
     // Typed starting cash is saved with the settings; a failure here never blocks the step (it can be added later).
-    if (ok && !startCashSaved && (cashAtStart || mobileAtStart || bankAtStart)) {
+    if (ok && openingCashAllowed && !startCashSaved && (cashAtStart || mobileAtStart || bankAtStart)) {
       const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
       const result = await saveStartingCash(store.id, {
         asOfDate: today,
@@ -476,7 +478,7 @@ export default function CompleteSetupWizard({
               />
             </div>
 
-            {!startCashSaved && (
+            {openingCashAllowed && !startCashSaved && (
               <div className="mt-8">
                 <h3 className="mb-1 text-base font-semibold text-foreground">{t.completeSetup.startCashHeading}</h3>
                 <p className="mb-4 max-w-lg text-sm text-muted-foreground">{t.completeSetup.startCashSub}</p>

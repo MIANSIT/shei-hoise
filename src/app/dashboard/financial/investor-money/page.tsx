@@ -1,10 +1,6 @@
-import FeatureGatedPage from "@/app/components/admin/common/FeatureGatedPage";
 import InvestorMoneyPage from "@/app/components/admin/dashboard/financial/InvestorMoneyPage";
 
+/** Hidden (not found) unless the plan has opening_cash or investor_money; the page itself shows only the parts the plan has. */
 export default function InvestorMoneyRoute() {
-  return (
-    <FeatureGatedPage featureKey="money_tracker">
-      <InvestorMoneyPage />
-    </FeatureGatedPage>
-  );
+  return <InvestorMoneyPage />;
 }

@@ -3,10 +3,14 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeForStoreAny, logActivity, requireOwner } from "@/lib/permissions/server";
-import { loadInvestorState, type InvestorState } from "./investorLedger";
+import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
+import { loadInvestorState, seedStartingCash, type InvestorState } from "./investorLedger";
+import { currentPct } from "./investorMath";
 import {
   START_METHODS,
   type AddInvestorMoneyInput,
+  type ChangeSharePercentInput,
   type InvestorAvailable,
   type InvestorOverview,
   type InvestorResult,
@@ -51,7 +55,6 @@ const payBackSchema = z.object({
   dealId: z.string().uuid(),
   amount: AMOUNT,
   interestAmount: z.number().min(0, "Interest cannot be negative").max(1_000_000_000, "Amount is too large").optional(),
-  payFrom: z.enum(["business", "investor"]),
   method: METHOD,
   branchId: z.string().uuid().nullable().optional(),
   date: DATE,
@@ -71,6 +74,17 @@ const shareSchema = z.object({
 
 const round2 = (v: number): number => Math.round(v * 100) / 100;
 
+/**
+ * The owner, on a plan that has the feature: opening_cash for the starting cash, investor_money for everything
+ * about investors. The server checks it as well as the page, so a hidden feature cannot be used by calling it directly.
+ */
+async function ownerWithFeature(storeId: string, feature: "opening_cash" | "investor_money") {
+  const auth = await requireOwner({ storeId });
+  if (!auth.ok) return auth;
+  if (!hasFeature(await getStoreFeatureSubscription(storeId), feature)) return { ok: false as const, error: "This is not part of your plan" };
+  return auth;
+}
+
 /** The store's today (Asia/Dhaka) as YYYY-MM-DD. */
 function dhakaToday(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -79,22 +93,13 @@ function dhakaToday(): string {
 const money = (value: number): string => round2(value).toLocaleString("en-BD");
 
 /**
- * A store with branches keeps its business cash branch by branch, so a payment from business cash has to say
- * which one. The id comes from the browser, so it must be this store's.
- * @returns the branch id to save (null for a store without branches), or an error
+ * Investor money is for the whole store, so a branch is optional. When one is named it must be this store's own.
+ * @returns the branch id, null for the whole store, or false when the id is not this store's branch
  */
-async function resolveBranch(
-  storeId: string,
-  branchId: string | null | undefined,
-): Promise<{ ok: true; branchId: string | null } | { ok: false; error: string }> {
-  if (branchId) {
-    const { data: branch } = await supabaseAdmin.from("store_branches").select("id").eq("id", branchId).eq("store_id", storeId).maybeSingle();
-    if (!branch) return { ok: false, error: "Branch not found" };
-    return { ok: true, branchId: branch.id };
-  }
-  const { count } = await supabaseAdmin.from("store_branches").select("id", { count: "exact", head: true }).eq("store_id", storeId);
-  if ((count ?? 0) > 0) return { ok: false, error: "Choose which branch's money paid this" };
-  return { ok: true, branchId: null };
+async function optionalBranch(storeId: string, branchId: string | null | undefined): Promise<string | null | false> {
+  if (!branchId) return null;
+  const { data } = await supabaseAdmin.from("store_branches").select("id").eq("id", branchId).eq("store_id", storeId).maybeSingle();
+  return data ? (data.id as string) : false;
 }
 
 /** The date must fall between the day the system started and today. */
@@ -152,15 +157,16 @@ export async function getInvestorAvailable(storeId: string): Promise<InvestorAva
  */
 export async function saveStartingCash(storeId: string, input: StartingCashInput): Promise<InvestorResult> {
   try {
-    const auth = await requireOwner({ storeId });
+    const auth = await ownerWithFeature(storeId, "opening_cash");
     if (!auth.ok) return { success: false, error: auth.error };
     const parsed = startSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the amounts" };
     const v = parsed.data;
     if (v.asOfDate > dhakaToday()) return { success: false, error: "The date cannot be in the future" };
 
-    const branch = await resolveBranch(storeId, v.branchId);
-    if (!branch.ok) return { success: false, error: branch.error };
+    // The starting cash is for the whole store unless a branch is named.
+    const branch = await optionalBranch(storeId, v.branchId);
+    if (branch === false) return { success: false, error: "Branch not found" };
 
     // Moving the start date later than an entry would leave that entry outside the new system.
     const { data: firstEntry } = await supabaseAdmin
@@ -175,7 +181,7 @@ export async function saveStartingCash(storeId: string, input: StartingCashInput
     }
 
     let existingQuery = supabaseAdmin.from("money_start").select("id, method").eq("store_id", storeId);
-    existingQuery = branch.branchId ? existingQuery.eq("branch_id", branch.branchId) : existingQuery.is("branch_id", null);
+    existingQuery = branch ? existingQuery.eq("branch_id", branch) : existingQuery.is("branch_id", null);
     const { data: existing, error: readError } = await existingQuery;
     if (readError) return { success: false, error: readError.message };
     const idByMethod = new Map(((existing ?? []) as { id: string; method: string }[]).map((r) => [r.method, r.id]));
@@ -183,7 +189,7 @@ export async function saveStartingCash(storeId: string, input: StartingCashInput
     for (const method of START_METHODS) {
       const row = {
         store_id: storeId,
-        branch_id: branch.branchId,
+        branch_id: branch,
         method,
         amount: round2(v.amounts[method] ?? 0),
         as_of_date: v.asOfDate,
@@ -199,7 +205,7 @@ export async function saveStartingCash(storeId: string, input: StartingCashInput
 
     await logActivity(auth.actor, {
       action: "investor.starting_cash",
-      branchId: branch.branchId,
+      branchId: branch,
       entityType: "money_start",
       entityId: null,
       summary: `Starting cash saved as of ${v.asOfDate}`,
@@ -218,15 +224,31 @@ export async function saveStartingCash(storeId: string, input: StartingCashInput
  */
 export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyInput): Promise<InvestorResult> {
   try {
-    const auth = await requireOwner({ storeId });
+    const auth = await ownerWithFeature(storeId, "investor_money");
     if (!auth.ok) return { success: false, error: auth.error };
     const parsed = addSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the details" };
     const v = parsed.data;
 
-    const state = await loadInvestorState(storeId);
+    let state = await loadInvestorState(storeId);
+    // Money can be added before any starting cash is typed: the system then starts on that day with a starting
+    // cash of zero, which can be changed on the same page later.
+    if (!state.goLive) {
+      if (v.date > dhakaToday()) return { success: false, error: "The date cannot be in the future" };
+      const seedError = await seedStartingCash(storeId, auth.actor.userId, v.date, {});
+      if (seedError) return { success: false, error: seedError };
+      state = await loadInvestorState(storeId);
+    }
     const dateError = checkDate(v.date, state);
     if (dateError) return { success: false, error: dateError };
+
+    // What this call created, so a failed save leaves nothing behind (a person with no money, or an empty deal).
+    let createdPartnerId: string | null = null;
+    let createdDealId: string | null = null;
+    const undoCreated = async () => {
+      if (createdDealId) await supabaseAdmin.from("investor_deals").delete().eq("id", createdDealId).eq("store_id", storeId);
+      if (createdPartnerId) await supabaseAdmin.from("money_partners").delete().eq("id", createdPartnerId).eq("store_id", storeId);
+    };
 
     let partner: MoneyPartner | undefined = v.partnerId ? state.partners.find((p) => p.id === v.partnerId) : undefined;
     if (v.partnerId && !partner) return { success: false, error: "That person is not on the list" };
@@ -241,10 +263,11 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
         return { success: false, error: error.message };
       }
       partner = data as MoneyPartner;
+      createdPartnerId = partner.id;
     }
 
     const pct = v.kind === "profit_share" ? round2(v.profitSharePct ?? 0) : null;
-    const deal = state.deals.find((d) => d.partnerId === partner.id && d.kind === v.kind && (d.profitSharePct ?? null) === pct);
+    const deal = state.deals.find((d) => d.partnerId === partner.id && d.kind === v.kind && (d.kind !== "profit_share" || currentPct(d) === pct));
     let dealId = deal?.id ?? null;
     if (!dealId) {
       const { data, error } = await supabaseAdmin
@@ -252,8 +275,12 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
         .insert({ store_id: storeId, partner_id: partner.id, kind: v.kind, profit_share_pct: pct, created_by: auth.actor.userId })
         .select("id")
         .single();
-      if (error || !data) return { success: false, error: error?.message ?? "Could not save" };
+      if (error || !data) {
+        await undoCreated();
+        return { success: false, error: error?.message ?? "Could not save" };
+      }
       dealId = data.id as string;
+      createdDealId = dealId;
     }
 
     const { data: entry, error } = await supabaseAdmin
@@ -269,7 +296,10 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
       })
       .select("id")
       .single();
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      await undoCreated();
+      return { success: false, error: error.message };
+    }
 
     await logActivity(auth.actor, {
       action: "investor.put_in",
@@ -329,7 +359,7 @@ async function saveLoanInterestExpense(
  */
 export async function payInvestorBack(storeId: string, input: PayInvestorBackInput): Promise<InvestorResult> {
   try {
-    const auth = await requireOwner({ storeId });
+    const auth = await ownerWithFeature(storeId, "investor_money");
     if (!auth.ok) return { success: false, error: auth.error };
     const parsed = payBackSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the details" };
@@ -359,35 +389,50 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
           : `${position.partner.name} has ${money(dealPosition.left)} invested here. You cannot pay back more.`,
       };
     }
-    if (v.payFrom === "investor" && v.amount > position.available + 0.005) {
-      return { success: false, error: `${position.partner.name} has ${money(Math.max(position.available, 0))} in the Investor account. Pay from business cash instead.` };
+    // The investor's own money goes back first: it is taken from their Investor account, up to what they still have
+    // there, and only the rest comes from business cash. So paying back always lowers the Investor account, and
+    // business cash only pays what the account cannot.
+    const fromAccount = round2(Math.min(Math.max(position.available, 0), principal));
+    const fromBusiness = round2(principal - fromAccount);
+
+    const branchId = await optionalBranch(storeId, v.branchId);
+    if (branchId === false) return { success: false, error: "Branch not found" };
+
+    const entryType = isLoan ? "repay" : "pay_back";
+    const created: string[] = [];
+    const undo = async () => {
+      if (created.length > 0) await supabaseAdmin.from("investor_entries").delete().in("id", created).eq("store_id", storeId);
+    };
+    for (const part of [
+      { amount: fromAccount, payFrom: "investor" as const },
+      { amount: fromBusiness, payFrom: "business" as const },
+    ]) {
+      if (part.amount <= 0.005) continue;
+      const { data, error } = await supabaseAdmin
+        .from("investor_entries")
+        .insert({
+          store_id: storeId,
+          deal_id: deal.id,
+          entry_type: entryType,
+          amount: part.amount,
+          entry_date: v.date,
+          pay_from: part.payFrom,
+          payment_method: part.payFrom === "business" ? v.method : null,
+          branch_id: part.payFrom === "business" ? branchId : null,
+          note: v.note || null,
+          created_by: auth.actor.userId,
+        })
+        .select("id")
+        .single();
+      if (error || !data) {
+        // Do not leave half of the payment saved.
+        await undo();
+        return { success: false, error: error?.message ?? "Could not save" };
+      }
+      created.push(data.id as string);
     }
 
-    let branchId: string | null = null;
-    if (v.payFrom === "business") {
-      const branch = await resolveBranch(storeId, v.branchId);
-      if (!branch.ok) return { success: false, error: branch.error };
-      branchId = branch.branchId;
-    }
-
-    const { data: entry, error } = await supabaseAdmin
-      .from("investor_entries")
-      .insert({
-        store_id: storeId,
-        deal_id: deal.id,
-        entry_type: isLoan ? "repay" : "pay_back",
-        amount: principal,
-        entry_date: v.date,
-        pay_from: v.payFrom,
-        payment_method: v.payFrom === "business" ? v.method : null,
-        branch_id: branchId,
-        note: v.note || null,
-        created_by: auth.actor.userId,
-      })
-      .select("id")
-      .single();
-    if (error) return { success: false, error: error.message };
-
+    // Interest is a cost of the business, so it is paid from business cash.
     if (interest > 0.005) {
       const expense = await saveLoanInterestExpense(storeId, {
         amount: interest,
@@ -395,11 +440,10 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
         method: v.method,
         branchId,
         note: v.note || null,
-        investorId: v.payFrom === "investor" ? position.partner.id : null,
+        investorId: null,
       });
       if (!expense.ok) {
-        // Do not leave half of the payment saved.
-        if (entry?.id) await supabaseAdmin.from("investor_entries").delete().eq("id", entry.id).eq("store_id", storeId);
+        await undo();
         return { success: false, error: expense.error };
       }
     }
@@ -408,9 +452,9 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
       action: "investor.pay_back",
       branchId,
       entityType: "investor_entry",
-      entityId: entry?.id ?? null,
-      summary: `Paid ${position.partner.name} back ৳${money(v.amount)} (${isLoan ? "loan" : "investment"}) from ${v.payFrom === "business" ? "business cash" : "the Investor account"}${interest > 0.005 ? `, of which interest ৳${money(interest)}` : ""}`,
-      details: { entry_date: v.date, interest, pay_from: v.payFrom },
+      entityId: created[0] ?? null,
+      summary: `Paid ${position.partner.name} back ৳${money(v.amount)} (${isLoan ? "loan" : "investment"}): ৳${money(fromAccount)} from the Investor account, ৳${money(fromBusiness)} from business cash${interest > 0.005 ? `, of which interest ৳${money(interest)}` : ""}`,
+      details: { entry_date: v.date, interest, from_account: fromAccount, from_business: fromBusiness },
     });
     return { success: true };
   } catch (error) {
@@ -425,7 +469,7 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
  */
 export async function payProfitShare(storeId: string, input: PayProfitShareInput): Promise<InvestorResult> {
   try {
-    const auth = await requireOwner({ storeId });
+    const auth = await ownerWithFeature(storeId, "investor_money");
     if (!auth.ok) return { success: false, error: auth.error };
     const parsed = shareSchema.safeParse(input);
     if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the details" };
@@ -443,12 +487,8 @@ export async function payProfitShare(storeId: string, input: PayProfitShareInput
       return { success: false, error: `${position.partner.name} has ${money(Math.max(position.available, 0))} in the Investor account. Pay from business cash instead.` };
     }
 
-    let branchId: string | null = null;
-    if (v.payFrom === "business") {
-      const branch = await resolveBranch(storeId, v.branchId);
-      if (!branch.ok) return { success: false, error: branch.error };
-      branchId = branch.branchId;
-    }
+    const branchId = await optionalBranch(storeId, v.branchId);
+    if (branchId === false) return { success: false, error: "Branch not found" };
 
     const { data: entry, error } = await supabaseAdmin
       .from("investor_entries")
@@ -490,7 +530,7 @@ export async function payProfitShare(storeId: string, input: PayProfitShareInput
  */
 export async function deleteInvestorEntry(storeId: string, entryId: string): Promise<InvestorResult> {
   try {
-    const auth = await requireOwner({ storeId });
+    const auth = await ownerWithFeature(storeId, "investor_money");
     if (!auth.ok) return { success: false, error: auth.error };
     if (!z.string().uuid().safeParse(entryId).success) return { success: false, error: "Entry not found" };
 
@@ -515,6 +555,101 @@ export async function deleteInvestorEntry(storeId: string, entryId: string): Pro
       entityType: "investor_entry",
       entityId: entryId,
       summary: `Deleted an investor entry of ৳${money(entry.amount)} (${entry.type})`,
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete" };
+  }
+}
+
+const changePctSchema = z.object({
+  dealId: z.string().uuid(),
+  pct: z.number().gt(0, "Enter a percent above zero").max(100, "A share cannot be more than 100%"),
+  fromMonth: MONTH,
+});
+
+/**
+ * Changes a profit share percent from a month on. Months before it keep the old percent, and a month that already
+ * has a share paid cannot be changed, so what was paid always matches the percent it was worked out with.
+ * @returns success, or why it failed
+ */
+export async function changeProfitSharePercent(storeId: string, input: ChangeSharePercentInput): Promise<InvestorResult> {
+  try {
+    const auth = await ownerWithFeature(storeId, "investor_money");
+    if (!auth.ok) return { success: false, error: auth.error };
+    const parsed = changePctSchema.safeParse(input);
+    if (!parsed.success) return { success: false, error: parsed.error.issues[0]?.message ?? "Check the details" };
+    const v = parsed.data;
+
+    const state = await loadInvestorState(storeId);
+    const deal = state.deals.find((d) => d.id === v.dealId);
+    if (!deal || deal.kind !== "profit_share") return { success: false, error: "That profit share was not found" };
+    if (v.fromMonth > dhakaToday().slice(0, 7)) return { success: false, error: "The new percent can start this month at the latest" };
+
+    const mine = state.entries.filter((e) => e.dealId === deal.id);
+    const firstMonth = mine.filter((e) => e.type === "put_in").map((e) => e.date.slice(0, 7)).sort()[0];
+    if (firstMonth && v.fromMonth < firstMonth) return { success: false, error: `This investment started in ${firstMonth}. Choose that month or a later one.` };
+    const paidMonths = mine.filter((e) => e.type === "profit_share_paid" && e.periodMonth).map((e) => e.periodMonth as string).sort();
+    const lastPaid = paidMonths[paidMonths.length - 1];
+    if (lastPaid && v.fromMonth <= lastPaid) return { success: false, error: `A share was already paid for ${lastPaid}. Choose a later month.` };
+
+    // One change per month: choosing the same month again replaces it.
+    const { error: clearError } = await supabaseAdmin.from("investor_deal_rates").delete().eq("deal_id", deal.id).eq("store_id", storeId).eq("from_month", v.fromMonth);
+    if (clearError) return { success: false, error: clearError.message };
+    const { error } = await supabaseAdmin
+      .from("investor_deal_rates")
+      .insert({ store_id: storeId, deal_id: deal.id, from_month: v.fromMonth, profit_share_pct: round2(v.pct), created_by: auth.actor.userId });
+    if (error) return { success: false, error: error.message };
+
+    const name = state.partners.find((p) => p.id === deal.partnerId)?.name ?? "";
+    await logActivity(auth.actor, {
+      action: "investor.share_percent",
+      entityType: "investor_deal",
+      entityId: deal.id,
+      summary: `Changed ${name}'s profit share to ${round2(v.pct)}% from ${v.fromMonth}`,
+    });
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to save" };
+  }
+}
+
+/**
+ * Deletes a person who has no money records. Someone who put money in, was paid back, or paid an expense or supplier
+ * bill from the Investor account is kept, so your books stay complete: delete their entries first, or leave them.
+ * @returns success, or why it failed
+ */
+export async function deleteInvestorPerson(storeId: string, partnerId: string): Promise<InvestorResult> {
+  try {
+    const auth = await ownerWithFeature(storeId, "investor_money");
+    if (!auth.ok) return { success: false, error: auth.error };
+    if (!z.string().uuid().safeParse(partnerId).success) return { success: false, error: "That person was not found" };
+
+    const state = await loadInvestorState(storeId);
+    const partner = state.partners.find((p) => p.id === partnerId);
+    if (!partner) return { success: false, error: "That person was not found" };
+
+    const dealIds = new Set(state.deals.filter((d) => d.partnerId === partnerId).map((d) => d.id));
+    if (state.entries.some((e) => dealIds.has(e.dealId))) {
+      return { success: false, error: `${partner.name} has money records. Delete their entries in History first, or keep them for your books.` };
+    }
+    // Payments made from this person's account, also from before the system started.
+    const [{ count: expenseCount }, { count: ledgerCount }] = await Promise.all([
+      supabaseAdmin.from("expenses").select("id", { count: "exact", head: true }).eq("store_id", storeId).eq("funder_id", partnerId),
+      supabaseAdmin.from("supplier_ledger").select("id", { count: "exact", head: true }).eq("store_id", storeId).eq("funder_id", partnerId),
+    ]);
+    if ((expenseCount ?? 0) > 0 || (ledgerCount ?? 0) > 0) {
+      return { success: false, error: `${partner.name} paid expenses or supplier bills from the Investor account, so they cannot be deleted.` };
+    }
+
+    const { error } = await supabaseAdmin.from("money_partners").delete().eq("id", partnerId).eq("store_id", storeId);
+    if (error) return { success: false, error: error.message };
+
+    await logActivity(auth.actor, {
+      action: "investor.person_delete",
+      entityType: "money_partner",
+      entityId: partnerId,
+      summary: `Deleted ${partner.name} from the investor list`,
     });
     return { success: true };
   } catch (error) {

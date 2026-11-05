@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { notFound } from "next/navigation";
 import { App, Button, Input, Spin, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { ArrowDown, ArrowUp, Building2, MapPin, Pencil, Phone, Power, Trash2 } from "lucide-react";
-import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { BranchFormModal } from "@/app/components/admin/branches/BranchFormModal";
 import { BranchAssignmentSetting } from "@/app/components/admin/branches/BranchAssignmentSetting";
@@ -44,7 +44,8 @@ export default function BranchesPage() {
       </div>
     );
   }
-  if (!setup?.featureEnabled) return <FeatureLocked title={<MenuLabel labelKey="menuBranches" />} />;
+  // Without multi_branch the page does not exist for this store: no locked page, no upsell.
+  if (!setup?.featureEnabled) notFound();
 
   const header = (
     <div className="flex items-center gap-3">

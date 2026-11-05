@@ -138,6 +138,11 @@ export default function SidebarMenu({
   const resolvedMenu = useMemo<MenuItem[]>(() => {
     if (permissionsLoading) return [];
 
+    // A node needs its plan feature, or any one of several; with none set it always shows.
+    const hasRequiredFeatures = (item: MenuItem): boolean =>
+      (!item.requiredFeature || hasFeature(subscription, item.requiredFeature)) &&
+      (!item.requiredAnyFeature || item.requiredAnyFeature.some((key) => hasFeature(subscription, key)));
+
     const isAllowed = (item: MenuItem): boolean => {
       if (isOwner) return true;
       if (item.ownerOnly) return false;
@@ -151,7 +156,7 @@ export default function SidebarMenu({
     };
 
     return sideMenu
-      .filter((item) => !item.requiredFeature || hasFeature(subscription, item.requiredFeature))
+      .filter((item) => hasRequiredFeatures(item))
       .filter((item) => !item.hideWhenSetupComplete || (!setupCompleted && isOwner))
       .filter(isAllowed)
       .map((item) =>
@@ -160,7 +165,7 @@ export default function SidebarMenu({
               ...item,
               children: item.children.filter(
                 (child) =>
-                  (!child.requiredFeature || hasFeature(subscription, child.requiredFeature)) &&
+                  hasRequiredFeatures(child) &&
                   isAllowed(child),
               ),
             }

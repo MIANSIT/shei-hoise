@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { getPartnerAvailable } from "./investorLedger";
+import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
+import { hasFeature } from "@/lib/utils/planFeatures";
 import type { FunderTreatment } from "./moneyPartnerTypes";
 
 /** A payment from the Investor account, to check against what that person still has in it. */
@@ -32,6 +34,7 @@ export async function resolveFunder(
   if (paidFrom !== "outside") return { ok: true, funderId: null, treatment: null };
   // Nothing is being paid, so there is no account to take from.
   if (check && check.amount <= 0) return { ok: true, funderId: null, treatment: null };
+  if (!hasFeature(await getStoreFeatureSubscription(storeId), "investor_money")) return { ok: false, error: "The Investor account is not part of your plan" };
   if (!funderId) return { ok: false, error: "Choose whose Investor account money was used" };
   const { data } = await supabaseAdmin
     .from("money_partners")

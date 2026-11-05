@@ -68,6 +68,22 @@ export function computeInvestorPositions(
 }
 
 /**
+ * The profit share percent that applies to a month: the latest change at or before that month, or the percent the
+ * deal started with.
+ */
+export function ratePctFor(deal: InvestorDeal, month: string): number {
+  let pct = deal.profitSharePct ?? 0;
+  const rates = [...(deal.rates ?? [])].sort((a, b) => (a.fromMonth < b.fromMonth ? -1 : a.fromMonth > b.fromMonth ? 1 : 0));
+  for (const r of rates) if (r.fromMonth <= month) pct = r.pct;
+  return pct;
+}
+
+/** The percent a profit-share deal has now. */
+export function currentPct(deal: InvestorDeal): number {
+  return ratePctFor(deal, "9999-12");
+}
+
+/**
  * The profit share due for one month: the deal's percent of that month's profit.
  * A loss gives zero, and months before the deal's first put-in give zero.
  * @param monthProfit net profit of the month, as the Sales tab shows it

@@ -5,8 +5,8 @@ import dayjs, { type Dayjs } from "dayjs";
 import { DatePicker, Input, InputNumber, Modal, Radio, Select } from "antd";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
-import { useBranches } from "@/lib/context/BranchContext";
 import { payInvestorBack, payProfitShare } from "@/lib/queries/financial/investorMoney";
+import { ratePctFor } from "@/lib/queries/financial/investorMath";
 import { START_METHODS, type DealPosition, type PartnerPosition, type PayFrom, type StartMethod } from "@/lib/queries/financial/investorMoneyTypes";
 
 const BOX = { width: "100%" } as const;
@@ -31,12 +31,10 @@ interface InvestorPayModalProps {
 export function InvestorPayModal({ storeId, target, money, onClose, onDone }: InvestorPayModalProps) {
   const t = useTranslation();
   const { success, error: showError } = useSheiNotification();
-  const { enabled: branchesOn, activeBranches, workBranchId } = useBranches();
   const [amount, setAmount] = useState<number | null>(null);
   const [interest, setInterest] = useState<number | null>(null);
   const [payFrom, setPayFrom] = useState<PayFrom>("business");
   const [method, setMethod] = useState<StartMethod>("cash");
-  const [branchId, setBranchId] = useState<string | null>(null);
   const [date, setDate] = useState<Dayjs>(dayjs());
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -47,10 +45,9 @@ export function InvestorPayModal({ storeId, target, money, onClose, onDone }: In
     setInterest(null);
     setPayFrom("business");
     setMethod("cash");
-    setBranchId(workBranchId ?? activeBranches[0]?.id ?? null);
     setDate(dayjs());
     setNote("");
-  }, [target, workBranchId, activeBranches]);
+  }, [target]);
 
   if (!target) return null;
   const { partner, deal } = target;
@@ -68,21 +65,18 @@ export function InvestorPayModal({ storeId, target, money, onClose, onDone }: In
 
   const save = async () => {
     if (amount === null || amount <= 0) return showError(t.admin.invNeedAmount);
-    if (payFrom === "business" && branchesOn && !branchId) return showError(t.admin.invNeedBranch);
     setSaving(true);
     try {
       const common = {
         dealId: deal.deal.id,
         amount,
-        payFrom,
         method,
-        branchId: payFrom === "business" && branchesOn ? branchId : null,
         date: date.format("YYYY-MM-DD"),
         note: note || undefined,
       };
       const result =
         target.mode === "share"
-          ? await payProfitShare(storeId, { ...common, month: target.month })
+          ? await payProfitShare(storeId, { ...common, payFrom, month: target.month })
           : await payInvestorBack(storeId, { ...common, ...(isLoan && interest ? { interestAmount: interest } : {}) });
       if (!result.success) return showError(result.error ?? t.admin.invFailed);
       success(t.admin.invSaved);
@@ -103,7 +97,7 @@ export function InvestorPayModal({ storeId, target, money, onClose, onDone }: In
           </p>
         )}
         {target.mode === "share" && (
-          <p className="m-0 text-xs text-muted-foreground">{t.admin.invShareHint.replace("{pct}", String(deal.deal.profitSharePct ?? 0))}</p>
+          <p className="m-0 text-xs text-muted-foreground">{t.admin.invShareHint.replace("{pct}", String(ratePctFor(deal.deal, target.month)))}</p>
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -123,15 +117,29 @@ export function InvestorPayModal({ storeId, target, money, onClose, onDone }: In
         </div>
         {target.mode === "payback" && isLoan && <p className="m-0 text-[11px] text-muted-foreground">{t.admin.invInterestHint}</p>}
 
-        <div>
-          <span className={label}>{t.admin.invPayFrom}</span>
-          <Radio.Group value={payFrom} onChange={(e) => setPayFrom(e.target.value as PayFrom)} className="flex flex-col gap-1">
-            <Radio value="business">{t.admin.invFromBusiness}</Radio>
-            <Radio value="investor">
-              {t.admin.invFromInvestor} · {t.admin.invAvailable.replace("{amount}", money(Math.max(partner.available, 0)))}
-            </Radio>
-          </Radio.Group>
-        </div>
+        {target.mode === "share" ? (
+          <div>
+            <span className={label}>{t.admin.invPayFrom}</span>
+            <Radio.Group value={payFrom} onChange={(e) => setPayFrom(e.target.value as PayFrom)} className="flex flex-col gap-1">
+              <Radio value="business">{t.admin.invFromBusiness}</Radio>
+              <Radio value="investor">
+                {t.admin.invFromInvestor} · {t.admin.invAvailable.replace("{amount}", money(Math.max(partner.available, 0)))}
+              </Radio>
+            </Radio.Group>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            {(() => {
+              // The investor's own money goes back first: the Investor account, then business cash for the rest.
+              const principal = Math.max((amount ?? 0) - (isLoan ? (interest ?? 0) : 0), 0);
+              const fromAccount = Math.min(Math.max(partner.available, 0), principal);
+              return t.admin.invSplitLine
+                .replace("{account}", money(fromAccount))
+                .replace("{business}", money(Math.max(principal - fromAccount, 0)))
+                .replace("{name}", partner.partner.name);
+            })()}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -140,21 +148,6 @@ export function InvestorPayModal({ storeId, target, money, onClose, onDone }: In
             </label>
             <Select id="inv-pay-method" style={BOX} value={method} onChange={setMethod} options={START_METHODS.map((m) => ({ value: m, label: methodLabel[m] }))} />
           </div>
-          {payFrom === "business" && branchesOn && (
-            <div>
-              <label htmlFor="inv-pay-branch" className={label}>
-                {t.admin.rcPaidBranch}
-              </label>
-              <Select
-                id="inv-pay-branch"
-                style={BOX}
-                placeholder={t.admin.moChooseBranch}
-                value={branchId ?? undefined}
-                onChange={setBranchId}
-                options={activeBranches.map((b) => ({ value: b.id, label: b.name }))}
-              />
-            </div>
-          )}
           <div>
             <label htmlFor="inv-pay-date" className={label}>
               {t.admin.mbkDate}

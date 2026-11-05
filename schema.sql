@@ -672,6 +672,8 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 --     pay_from [business|investor] (null for put_in), payment_method, branch_id, period_month 'YYYY-MM' (profit_share_paid
 --     only), note, created_by, created_at)
 --   Payments from the Investor account on expenses and supplier bills keep using paid_from = 'outside' + funder_id.
+--   investor_deal_rates (id, store_id, deal_id, from_month 'YYYY-MM', profit_share_pct, created_by, created_at) — 20261204000000_investor_share_rates.sql:
+--     a change of a profit share percent from a month on; unique per deal and month. branch_money_transfers — 20261203000000; store_cod_settlements.payment_method — 20261202000000.
 --   Owner-only SELECT policies; writes through owner-only server actions.
 
 -- Purchases — 20261114000000_add_purchases.sql. One delivery from one supplier.

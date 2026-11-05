@@ -6,7 +6,7 @@ import { Button } from "antd";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { getAccrualProfitLoss } from "@/lib/queries/dashboard/getAccrualStatements";
 import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
-import { profitShareDue } from "@/lib/queries/financial/investorMath";
+import { profitShareDue, ratePctFor } from "@/lib/queries/financial/investorMath";
 import type { InvestorEntry, InvestorOverview } from "@/lib/queries/financial/investorMoneyTypes";
 import type { InvestorPayTarget } from "./InvestorPayModal";
 
@@ -79,14 +79,14 @@ export function ProfitShareCard({ storeId, overview, money, onPay }: ProfitShare
         {shareDeals.map(({ partner, deal }) =>
           months.map((m) => {
             const profit = profits[m.month] ?? 0;
-            const due = profitShareDue(deal.deal.profitSharePct ?? 0, profit, m.month, firstPutIn(deal.deal.id));
+            const due = profitShareDue(ratePctFor(deal.deal, m.month), profit, m.month, firstPutIn(deal.deal.id));
             const paid = paidFor(deal.deal.id, m.month);
             const remaining = Math.max(Math.round((due - paid) * 100) / 100, 0);
             return (
               <li key={`${deal.deal.id}-${m.month}`} className="flex flex-wrap items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
                 <div className="min-w-0">
                   <p className="m-0 text-sm font-semibold text-foreground">
-                    {partner.partner.name} · {deal.deal.profitSharePct}% · {dayjs(`${m.month}-01`).format("MMM YYYY")}
+                    {partner.partner.name} · {ratePctFor(deal.deal, m.month)}% · {dayjs(`${m.month}-01`).format("MMM YYYY")}
                   </p>
                   <p className="m-0 text-xs text-muted-foreground">
                     {loaded
@@ -98,7 +98,7 @@ export function ProfitShareCard({ storeId, overview, money, onPay }: ProfitShare
                   </p>
                 </div>
                 <Button size="small" disabled={!loaded || remaining <= 0} onClick={() => onPay({ mode: "share", partner, deal, month: m.month, due: remaining })}>
-                  {remaining > 0 ? t.admin.invPayShare.replace("{amount}", money(remaining)) : t.admin.invSharePaid}
+                  {remaining > 0 ? t.admin.invPayShare.replace("{amount}", money(remaining)) : due <= 0 ? t.admin.invShareNone : t.admin.invSharePaid}
                 </Button>
               </li>
             );

@@ -101,6 +101,16 @@ export async function loadInvestorState(
     note: d.note,
   }));
 
+  // Changes of a profit share percent. Before migration 20261204 the read fails and every deal keeps its starting percent.
+  const { data: rateRows } = await supabaseAdmin.from("investor_deal_rates").select("deal_id, from_month, profit_share_pct").eq("store_id", storeId);
+  const ratesByDeal = new Map<string, { fromMonth: string; pct: number }[]>();
+  for (const r of (rateRows ?? []) as { deal_id: string; from_month: string; profit_share_pct: number }[]) {
+    const list = ratesByDeal.get(r.deal_id) ?? [];
+    list.push({ fromMonth: r.from_month, pct: Number(r.profit_share_pct) });
+    ratesByDeal.set(r.deal_id, list);
+  }
+  for (const d of deals) d.rates = (ratesByDeal.get(d.id) ?? []).sort((a, b) => (a.fromMonth < b.fromMonth ? -1 : 1));
+
   let entries: InvestorEntry[] = [];
   const spends: InvestorSpendRecord[] = [];
   if (goLive) {

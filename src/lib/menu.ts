@@ -70,6 +70,8 @@ export interface MenuItem {
   // feature enabled — unlike every other gated feature in this app, which
   // keeps its nav link visible and only locks the page itself.
   requiredFeature?: string;
+  // Like requiredFeature, but the node shows when the plan has ANY of these features.
+  requiredAnyFeature?: readonly string[];
   // When true, SidebarMenu hides this node once stores.setup_completed_at
   // is set (post-signup "finish setting up your store" nudge).
   hideWhenSetupComplete?: boolean;
@@ -177,8 +179,7 @@ export const sideMenu: MenuItem[] = [
     ],
   },
   {
-    // Every page about money in and out: what customers owe, what couriers
-    // paid over, and what the shop spent.
+    // Where the business's money is and where it stands: the money tracker, the balance sheet and investor money.
     title: "Financial",
     labelKey: "menuFinancial",
     icon: DollarSign,
@@ -186,9 +187,25 @@ export const sideMenu: MenuItem[] = [
       // Hidden from the sidebar (and locked on the page) unless the plan has money_tracker.
       { title: "Money Overview", labelKey: "menuMoneyOverview", href: "/dashboard/financial/money", icon: PiggyBank, requiredFeature: "money_tracker" },
       { title: "Balance Sheet", labelKey: "menuBalanceSheet", href: "/dashboard/balance-sheet", icon: Scale, requiredFeature: "balance_sheet" },
-      { title: "Investor Money", labelKey: "menuInvestorMoney", href: "/dashboard/financial/investor-money", icon: Landmark, requiredFeature: "money_tracker", ownerOnly: true },
+      { title: "Investor Money", labelKey: "menuInvestorMoney", href: "/dashboard/financial/investor-money", icon: Landmark, requiredAnyFeature: ["opening_cash", "investor_money"], ownerOnly: true },
+    ],
+  },
+  {
+    // Money that is owed to the shop and not in hand yet: customers who have not paid, and couriers holding COD cash.
+    title: "To Collect",
+    labelKey: "menuToCollect",
+    icon: HandCoins,
+    children: [
       { title: "Customer Dues", labelKey: "menuCustomerDues", href: "/dashboard/customers/dues", icon: Wallet },
       { title: "COD Settlements", labelKey: "menuCodSettlements", href: "/dashboard/cod-settlements", icon: HandCoins },
+    ],
+  },
+  {
+    // What the shop spends.
+    title: "Expenses",
+    labelKey: "menuExpensesGroup",
+    icon: CreditCard,
+    children: [
       { title: "Expense", labelKey: "menuExpense", href: "/dashboard/expense", icon: CreditCard },
       { title: "Category", labelKey: "menuCategory", href: "/dashboard/expense/category", icon: BarChart2 },
     ],

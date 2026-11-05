@@ -174,11 +174,13 @@ CREATE POLICY "investor_entries_owner_select" ON "public"."investor_entries" FOR
 
 -- A closed month stays closed: investor entries dated in it cannot be added, changed or deleted until the
 -- month is reopened (same rule as expenses and supplier payments, 20261121000000_lock_closed_months.sql).
--- Skipped when that migration is not applied yet, so this file can run in any order.
+-- The lock goes on only when both of its functions exist; otherwise any lock left on the table is taken off, so a
+-- database without that migration never fails when money is added.
 DO $$
 BEGIN
-  IF to_regprocedure('public.enforce_closed_period()') IS NOT NULL THEN
-    EXECUTE 'DROP TRIGGER IF EXISTS "trg_closed_period" ON "public"."investor_entries"';
+  EXECUTE 'DROP TRIGGER IF EXISTS "trg_closed_period" ON "public"."investor_entries"';
+  IF to_regprocedure('public.enforce_closed_period()') IS NOT NULL
+     AND to_regprocedure('public.is_period_closed(uuid, uuid, date)') IS NOT NULL THEN
     EXECUTE 'CREATE TRIGGER "trg_closed_period" BEFORE INSERT OR UPDATE OR DELETE ON "public"."investor_entries" FOR EACH ROW EXECUTE FUNCTION "public"."enforce_closed_period"(''entry_date'')';
   END IF;
 END $$;

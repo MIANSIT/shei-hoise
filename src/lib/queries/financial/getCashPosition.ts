@@ -218,22 +218,26 @@ export async function getCashPosition(
       if (balance) left.get(balance)!.moved += row.left;
     }
     for (const p of paid) {
-      if (p.branchId === key && p.date > asOf) left.get(p.method)!.moved -= p.amount;
+      // A store-wide starting cash (no branch) counts every payment made from business cash; a branch's own
+      // starting cash counts only the payments that branch made.
+      if ((key === null || p.branchId === key) && p.date > asOf) left.get(p.method)!.moved -= p.amount;
     }
   }
 
   // Money sent between branches and not confirmed yet has left the sender and is in no branch, but it is still the
   // business's money: the whole-store total counts it.
-  if (!branchId && withBranches) {
+  // Only for branches that count their own cash: a store-wide count never takes a transfer out in the first place.
+  const countedBranches = new Set(branchKeys.filter((k): k is string => k !== null));
+  if (!branchId && withBranches && countedBranches.size > 0) {
     const { data: transit } = await supabase
       .from("branch_money_transfers")
-      .select("amount, payment_method")
+      .select("amount, payment_method, from_branch_id")
       .eq("store_id", storeId)
       .eq("status", "sent")
       .lte("transfer_date", today);
-    for (const r of (transit ?? []) as { amount: number; payment_method: string }[]) {
+    for (const r of (transit ?? []) as { amount: number; payment_method: string; from_branch_id: string }[]) {
       const balance = left.get(r.payment_method as StartMethod);
-      if (balance) balance.moved += Number(r.amount);
+      if (balance && countedBranches.has(r.from_branch_id)) balance.moved += Number(r.amount);
     }
   }
 
