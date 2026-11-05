@@ -642,6 +642,8 @@ export default function DashboardPage() {
             netProfit: accrual ? accrual.pl.netProfit + vendorProfit : expenseMetrics.netProfit,
           }}
           onOpenSales={openSales}
+          timePeriod={timePeriod}
+          onTimePeriodChange={setTimePeriod}
         />
       )}
       profitStory={{

@@ -107,7 +107,7 @@ interface MainDashboardProps {
 type DashboardTab = "sales" | "accounts";
 
 // ─── Period Selector ──────────────────────────────────────────────────────────
-const PeriodSelector: React.FC<{
+export const PeriodSelector: React.FC<{
   value: TimePeriod;
   onChange: (v: TimePeriod) => void;
 }> = ({ value, onChange }) => {
@@ -365,7 +365,8 @@ const MainDashboard: React.FC<MainDashboardProps> = ({
               </span>
             )}
           </div>
-          <PeriodSelector value={timePeriod} onChange={onTimePeriodChange} />
+          {/* The Accounts tab puts its own period choice beside the parts it changes; its top box is always as of today. */}
+          {tab === "sales" && <PeriodSelector value={timePeriod} onChange={onTimePeriodChange} />}
         </div>
         {accountsView && (
           <div className="max-w-400 mx-auto px-3 sm:px-6 pb-2 flex gap-2" role="tablist" aria-label={t.admin.businessOverview}>

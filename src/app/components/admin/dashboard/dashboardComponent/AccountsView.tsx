@@ -7,6 +7,8 @@ import { useTranslation } from "@/lib/hook/useTranslation";
 import type { AccrualStatementsData } from "@/lib/hook/useAccrualStatements";
 import { getMoneyOverview, type MoneyOverview } from "@/lib/queries/financial/getMoneyOverview";
 import { SectionHeader, Card } from "./OrderFlowBlocks";
+import { PeriodSelector } from "./MainDashboard";
+import type { TimePeriod } from "@/lib/hook/useDashboardMetrics";
 
 interface AccountsViewProps {
   data: AccrualStatementsData | null;
@@ -25,6 +27,9 @@ interface AccountsViewProps {
   /** The same period from the selling side, so the two tabs can be read together. */
   trading: { sales: number; grossProfit: number; netProfit: number };
   onOpenSales: () => void;
+  /** The period for Money moved and the trading summary. The top box is always as of today. */
+  timePeriod: TimePeriod;
+  onTimePeriodChange: (period: TimePeriod) => void;
 }
 
 interface LineProps {
@@ -71,6 +76,8 @@ export function AccountsView({
   balanceSheetAllowed,
   trading,
   onOpenSales,
+  timePeriod,
+  onTimePeriodChange,
 }: AccountsViewProps) {
   const t = useTranslation();
   const [moved, setMoved] = useState<MoneyOverview | null>(null);
@@ -187,7 +194,12 @@ export function AccountsView({
       {/* MONEY MOVED IN THE PERIOD */}
       {moved && (
         <div>
-          <SectionHeader title={`${t.admin.acMoved} · ${periodLabel}`} sub={t.admin.acMovedSub} accentClass="bg-emerald-500" />
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <SectionHeader title={`${t.admin.acMoved} · ${periodLabel}`} sub={t.admin.acMovedSub} accentClass="bg-emerald-500" />
+            <div className="mb-3 sm:mb-4">
+              <PeriodSelector value={timePeriod} onChange={onTimePeriodChange} />
+            </div>
+          </div>
           <Card className="p-3 sm:p-5">
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
