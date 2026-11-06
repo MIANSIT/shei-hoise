@@ -34,8 +34,11 @@ export async function getVendorOrderableProducts(
   search?: string,
   /** Stores with branches: show this branch's stock instead of the store-wide total. */
   branchId?: string | null,
+  /** Exactly these products (and their variants), whatever the search and however many there are. Used to show the stock of a draft's own lines. */
+  productIds?: readonly string[],
 ): Promise<VendorOrderableProduct[]> {
   if (!storeId) return [];
+  const only = productIds && productIds.length > 0 ? [...new Set(productIds)] : null;
 
   let query = supabase
     .from("products")
@@ -58,11 +61,12 @@ export async function getVendorOrderableProducts(
       )
     `,
     )
-    .eq("store_id", storeId)
-    .eq("status", "active")
-    .limit(50);
+    .eq("store_id", storeId);
 
-  if (search?.trim()) {
+  // The first 50 active products for the picker, or exactly the products asked for (a draft's own lines).
+  query = only ? query.in("id", only).limit(only.length) : query.eq("status", "active").limit(50);
+
+  if (!only && search?.trim()) {
     query = query.or(`name.ilike.%${search.trim()}%,sku.ilike.%${search.trim()}%`);
   }
 

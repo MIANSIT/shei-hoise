@@ -24,6 +24,9 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { getVendorDashboardStats } from "@/lib/queries/vendor/getVendorDashboardStats";
 import { getVendorOrderableProducts } from "@/lib/queries/vendorOrder/getVendorOrderableProducts";
+import { useBranches } from "@/lib/context/BranchContext";
+import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPicker";
+import { useTranslation } from "@/lib/hook/useTranslation";
 import { getVendorOrderById } from "@/lib/queries/vendorOrder/getVendorOrderById";
 import { updateVendorOrder } from "@/lib/queries/vendorOrder/updateVendorOrder";
 import { vendorOrderTotalsSchema } from "@/lib/schema/vendorOrderSchema";
@@ -45,6 +48,10 @@ export default function EditVendorOrderPage() {
   const router = useRouter();
 
   const { storeId, loading: userLoading } = useCurrentUser();
+  // Stores with branches: stock is shown for the branch you work at, like when the order was made.
+  const t = useTranslation();
+  const { enabled: branchesOn, workBranchId } = useBranches();
+  const stockBranchId = branchesOn ? workBranchId : null;
   const { loading: featureLoading, allowed } = useFeatureGate(storeId, "vendor_flow");
   const { success, error } = useSheiNotification();
 
@@ -92,7 +99,12 @@ export default function EditVendorOrderPage() {
           return;
         }
 
-        const products = await getVendorOrderableProducts(storeId, "");
+        // The picker's first products, and the draft's own products: the stock of a line must not depend on whether its
+        // product is among the picker's first 50.
+        const [products, draftProducts] = await Promise.all([
+          getVendorOrderableProducts(storeId, "", stockBranchId),
+          getVendorOrderableProducts(storeId, "", stockBranchId, (order.items ?? []).map((item) => item.product_id)),
+        ]);
 
         setProductOptions(products);
         setVendorId(order.vendor_id);
@@ -110,7 +122,7 @@ export default function EditVendorOrderPage() {
 
         // Build warehouse_stock map from product options
         const stockMap = new Map(
-          products.map((p) => [`${p.product_id}::${p.variant_id ?? ""}`, p.warehouse_stock]),
+          [...products, ...draftProducts].map((p) => [`${p.product_id}::${p.variant_id ?? ""}`, p.warehouse_stock]),
         );
 
         const draftItems: DraftLineItem[] = (order.items ?? []).map((item) => {
@@ -151,20 +163,42 @@ export default function EditVendorOrderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId, userLoading, orderId]);
 
+  // Picking another branch to send from refreshes the stock of every line (and the picker) for that branch. The lines
+  // stay: a draft moves no stock until it is confirmed, and confirming sends from the branch picked then.
+  useEffect(() => {
+    if (!storeId || pageLoading || !branchesOn) return;
+    let cancelled = false;
+    const ids = items.map((i) => i.product_id);
+    Promise.all([
+      getVendorOrderableProducts(storeId, "", stockBranchId),
+      ids.length > 0 ? getVendorOrderableProducts(storeId, "", stockBranchId, ids) : Promise.resolve([] as VendorOrderableProduct[]),
+    ]).then(([options, own]) => {
+      if (cancelled) return;
+      setProductOptions(options);
+      const stock = new Map([...options, ...own].map((p) => [`${p.product_id}::${p.variant_id ?? ""}`, p.warehouse_stock]));
+      setItems((prev) => prev.map((i) => ({ ...i, warehouse_stock: stock.get(i.key) ?? 0 })));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // Only a change of branch reloads; the lines are read once when it runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockBranchId]);
+
   const searchProducts = useCallback(
     async (term: string) => {
       if (!storeId) return;
       const requestId = ++searchRequestIdRef.current;
       setProductSearchLoading(true);
       try {
-        const rows = await getVendorOrderableProducts(storeId, term);
+        const rows = await getVendorOrderableProducts(storeId, term, stockBranchId);
         if (requestId !== searchRequestIdRef.current) return;
         setProductOptions(rows);
       } finally {
         if (requestId === searchRequestIdRef.current) setProductSearchLoading(false);
       }
     },
-    [storeId],
+    [storeId, stockBranchId],
   );
 
   const handleProductSearch = useCallback(
@@ -431,6 +465,7 @@ export default function EditVendorOrderPage() {
             <p className="text-xs text-muted-foreground m-0">
               {vendorName} · Draft — changes will not move stock until confirmed
             </p>
+            <WorkBranchPicker label={t.branches.vendorSendFromLabel} />
           </div>
         </div>
       </div>
