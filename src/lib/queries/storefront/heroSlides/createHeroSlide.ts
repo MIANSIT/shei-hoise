@@ -14,6 +14,8 @@ const MAX_SLIDES = 10;
 export async function createHeroSlide(
   file: File,
   fields: HeroSlideFieldsType,
+  /** Optional taller image shown on phones only. */
+  mobileFile: File | null = null,
 ): Promise<{ success: true; slide: HeroSlide } | { success: false; error: string }> {
   const storeResult = await getAuthorizedStoreId("storefront.add");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
@@ -37,6 +39,16 @@ export async function createHeroSlide(
     return { success: false, error: err instanceof Error ? err.message : "Failed to upload slide image" };
   }
 
+  let mobileUploaded: { url: string; path: string } | null = null;
+  if (mobileFile) {
+    try {
+      mobileUploaded = await uploadHeroSlideImage(mobileFile, storeId);
+    } catch (err) {
+      await supabaseAdmin.storage.from(HERO_SLIDE_BUCKET).remove([uploaded.path]);
+      return { success: false, error: err instanceof Error ? err.message : "Failed to upload phone image" };
+    }
+  }
+
   const { data: maxSort } = await supabaseAdmin
     .from("store_hero_slides")
     .select("sort_order")
@@ -51,6 +63,8 @@ export async function createHeroSlide(
     .insert({
       store_id: storeId,
       image_url: uploaded.url,
+      // Only sent when there is one, so a database without the column yet can still add slides.
+      ...(mobileUploaded ? { mobile_image_url: mobileUploaded.url } : {}),
       headline: payload.headline ?? null,
       subtext: payload.subtext ?? null,
       button_text: payload.button_text ?? null,
@@ -65,7 +79,9 @@ export async function createHeroSlide(
     .single();
 
   if (error || !data) {
-    await supabaseAdmin.storage.from(HERO_SLIDE_BUCKET).remove([uploaded.path]);
+    await supabaseAdmin.storage
+      .from(HERO_SLIDE_BUCKET)
+      .remove([uploaded.path, ...(mobileUploaded ? [mobileUploaded.path] : [])]);
     return { success: false, error: error?.message ?? "Failed to save slide" };
   }
 

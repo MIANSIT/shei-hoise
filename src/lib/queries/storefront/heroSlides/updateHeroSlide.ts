@@ -14,6 +14,8 @@ export async function updateHeroSlide(
   slideId: string,
   fields: HeroSlideFieldsType,
   file: File | null,
+  /** A new phone image, or `remove` to go back to the normal image on phones. Omit to leave it as it is. */
+  mobile?: { file: File | null; remove: boolean },
 ): Promise<{ success: true; slide: HeroSlide } | { success: false; error: string }> {
   const storeResult = await getAuthorizedStoreId("storefront.edit");
   if (!storeResult.ok) return { success: false, error: storeResult.error };
@@ -23,7 +25,7 @@ export async function updateHeroSlide(
   // belongs to the caller's own store.
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("store_hero_slides")
-    .select("id, store_id, image_url")
+    .select("*")
     .eq("id", slideId)
     .maybeSingle();
 
@@ -45,10 +47,27 @@ export async function updateHeroSlide(
     }
   }
 
+  const oldMobileUrl = (existing as { mobile_image_url?: string | null }).mobile_image_url ?? null;
+  let mobileChange: { mobile_image_url: string | null } | null = null;
+  let mobileUploadedPath: string | null = null;
+  if (mobile?.file) {
+    try {
+      const uploaded = await uploadHeroSlideImage(mobile.file, storeId);
+      mobileChange = { mobile_image_url: uploaded.url };
+      mobileUploadedPath = uploaded.path;
+    } catch (err) {
+      if (uploadedPath) await supabaseAdmin.storage.from(HERO_SLIDE_BUCKET).remove([uploadedPath]);
+      return { success: false, error: err instanceof Error ? err.message : "Failed to upload phone image" };
+    }
+  } else if (mobile?.remove && oldMobileUrl) {
+    mobileChange = { mobile_image_url: null };
+  }
+
   const { data, error } = await supabaseAdmin
     .from("store_hero_slides")
     .update({
       image_url: imageUrl,
+      ...(mobileChange ?? {}),
       headline: payload.headline ?? null,
       subtext: payload.subtext ?? null,
       button_text: payload.button_text ?? null,
@@ -65,13 +84,15 @@ export async function updateHeroSlide(
     .single();
 
   if (error || !data) {
-    if (uploadedPath) await supabaseAdmin.storage.from(HERO_SLIDE_BUCKET).remove([uploadedPath]);
+    const toRemove = [uploadedPath, mobileUploadedPath].filter((p): p is string => Boolean(p));
+    if (toRemove.length > 0) await supabaseAdmin.storage.from(HERO_SLIDE_BUCKET).remove(toRemove);
     return { success: false, error: error?.message ?? "Failed to update slide" };
   }
 
   // Only remove the old file once the new row is safely saved, and only if
   // the image actually changed.
   if (file) await deleteHeroSlideImage(existing.image_url);
+  if (mobileChange) await deleteHeroSlideImage(oldMobileUrl);
 
   return { success: true, slide: data as HeroSlide };
 }

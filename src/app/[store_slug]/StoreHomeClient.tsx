@@ -781,7 +781,7 @@ function TrustStrip({
   });
 
   return (
-    <div className="bg-white dark:bg-gray-900/40 border-b border-stone-100 dark:border-gray-800/60">
+    <div className="hidden sm:block bg-white dark:bg-gray-900/40 border-b border-stone-100 dark:border-gray-800/60">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-5 gap-x-3">
           {items.map((item, i) => (

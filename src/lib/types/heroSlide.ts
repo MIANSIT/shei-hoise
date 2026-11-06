@@ -16,6 +16,8 @@ export interface HeroSlide {
   id: string;
   store_id: string;
   image_url: string;
+  /** null = phones use image_url. */
+  mobile_image_url: string | null;
   headline: string | null;
   subtext: string | null;
   button_text: string | null;

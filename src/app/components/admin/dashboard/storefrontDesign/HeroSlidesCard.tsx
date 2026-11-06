@@ -148,19 +148,23 @@ export function HeroSlidesCard() {
     setModalOpen(true);
   };
 
-  const handleSubmit = async (values: SlideFormValues, file: File | null) => {
+  const handleSubmit = async (
+    values: SlideFormValues,
+    file: File | null,
+    mobile: { file: File | null; remove: boolean },
+  ) => {
     setSubmitting(true);
     try {
       if (mode === "create") {
         if (!file) return;
-        const result = await createHeroSlide(file, { ...values, is_active: values.is_active });
+        const result = await createHeroSlide(file, { ...values, is_active: values.is_active }, mobile.file);
         if (!result.success) {
           notify.error(result.error);
           return;
         }
         notify.success("Slide added");
       } else if (editingSlide) {
-        const result = await updateHeroSlide(editingSlide.id, { ...values, is_active: values.is_active }, file);
+        const result = await updateHeroSlide(editingSlide.id, { ...values, is_active: values.is_active }, file, mobile);
         if (!result.success) {
           notify.error(result.error);
           return;

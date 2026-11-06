@@ -10,7 +10,7 @@ export async function deleteHeroSlide(slideId: string): Promise<{ success: boole
 
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("store_hero_slides")
-    .select("id, store_id, image_url")
+    .select("*")
     .eq("id", slideId)
     .maybeSingle();
 
@@ -28,6 +28,7 @@ export async function deleteHeroSlide(slideId: string): Promise<{ success: boole
   if (error) return { success: false, error: error.message };
 
   await deleteHeroSlideImage(existing.image_url);
+  await deleteHeroSlideImage((existing as { mobile_image_url?: string | null }).mobile_image_url);
 
   return { success: true };
 }

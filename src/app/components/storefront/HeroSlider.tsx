@@ -87,7 +87,8 @@ export function HeroSlider({ slides, storeName }: HeroSliderProps) {
 
   return (
     <section
-      style={{ "--hero-ratio": ratios[slides[current].id] ?? 16 / 5 } as CSSProperties}
+      // Phones: the shape of the image shown there (the slide's own phone image if it has one, else the normal image).
+      style={{ "--hero-ratio": ratios[slides[current].mobile_image_url ? `m-${slides[current].id}` : slides[current].id] ?? 16 / 5 } as CSSProperties}
       className="relative w-full aspect-(--hero-ratio) sm:aspect-16/5 sm:min-h-64 overflow-hidden bg-muted"
     >
       {slides.map((slide, i) => {
@@ -102,12 +103,28 @@ export function HeroSlider({ slides, storeName }: HeroSliderProps) {
           key={slide.id}
           className={`absolute inset-0 transition-opacity duration-700 ${i === current ? "opacity-100 z-1" : "opacity-0 pointer-events-none"}`}
         >
+          {slide.mobile_image_url && (
+            // A taller image made for phones; the normal image is then shown from tablet size up.
+            <Image
+              src={slide.mobile_image_url}
+              alt={slide.headline || `${storeName} – featured offer ${i + 1}`}
+              fill
+              priority={i === 0}
+              className="object-cover object-center sm:hidden"
+              sizes="100vw"
+              onLoad={(e) => {
+                const { naturalWidth, naturalHeight } = e.currentTarget;
+                if (!naturalWidth || !naturalHeight) return;
+                setRatios((r) => (r[`m-${slide.id}`] ? r : { ...r, [`m-${slide.id}`]: naturalWidth / naturalHeight }));
+              }}
+            />
+          )}
           <Image
             src={slide.image_url}
             alt={slide.headline || `${storeName} – featured offer ${i + 1}`}
             fill
             priority={i === 0}
-            className="object-cover object-center"
+            className={`object-cover object-center ${slide.mobile_image_url ? "max-sm:hidden" : ""}`}
             sizes="100vw"
             onLoad={(e) => {
               const { naturalWidth, naturalHeight } = e.currentTarget;

@@ -67,7 +67,7 @@ interface SlideFormModalProps {
   mode: ModalMode;
   editingSlide: HeroSlide | null;
   submitting: boolean;
-  onSubmit: (values: SlideFormValues, file: File | null) => void;
+  onSubmit: (values: SlideFormValues, file: File | null, mobile: { file: File | null; remove: boolean }) => void;
   onCancel: () => void;
 }
 
@@ -82,11 +82,16 @@ export default function SlideFormModal({
   const [form] = Form.useForm<SlideFormValues>();
   const [file, setFile] = useState<File | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [mobileFile, setMobileFile] = useState<File | null>(null);
+  // The uploader's remove button sends null: on a slide that had a phone image, that means "take it away".
+  const [removeMobile, setRemoveMobile] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setFile(null);
     setImageError(null);
+    setMobileFile(null);
+    setRemoveMobile(false);
     if (mode === "edit" && editingSlide) {
       form.setFieldsValue({
         headline: editingSlide.headline ?? undefined,
@@ -111,7 +116,7 @@ export default function SlideFormModal({
     }
     try {
       const values = await form.validateFields();
-      onSubmit(values, file);
+      onSubmit(values, file, { file: mobileFile, remove: removeMobile && !mobileFile });
     } catch {
       /* inline errors shown by Ant Design */
     }
@@ -156,6 +161,9 @@ export default function SlideFormModal({
     >
       <div className="px-6 pt-5 pb-2">
         <ImageUploader
+          // The uploader keeps its own preview, so it is rebuilt every time the form opens: adding a second slide must not
+          // start with the first slide's image.
+          key={`${open ? "open" : "closed"}-${mode}-${editingSlide?.id ?? "new"}`}
           value={editingSlide?.image_url}
           onChange={(f) => {
             setFile(f);
@@ -165,6 +173,22 @@ export default function SlideFormModal({
           aspectHint="16:5 recommended"
         />
         {imageError && <p className="mt-1 text-xs text-destructive">{imageError}</p>}
+
+        <div className="mt-4">
+          <ImageUploader
+            key={`mobile-${open ? "open" : "closed"}-${mode}-${editingSlide?.id ?? "new"}`}
+            value={editingSlide?.mobile_image_url ?? undefined}
+            onChange={(f) => {
+              setMobileFile(f);
+              setRemoveMobile(f === null);
+            }}
+            label="Phone Image (optional)"
+            aspectHint="4:5 recommended"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            A taller picture just for phones. If you skip it, phones show the Slide Image above.
+          </p>
+        </div>
 
         <Form form={form} layout="vertical" className="mt-4">
           <Form.Item name="headline" label="Headline (optional)">
