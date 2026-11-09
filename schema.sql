@@ -668,7 +668,7 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 --     updated_at); unique per store, branch and method. The earliest as_of_date is the day the new system started.
 --   investor_deals (id, store_id, partner_id -> money_partners, kind [loan|profit_share|payback], profit_share_pct
 --     (profit_share only), note, created_by, created_at)
---   investor_entries (id, store_id, deal_id, entry_type [put_in|repay|pay_back|profit_share_paid], amount, entry_date,
+--   investor_entries (id, store_id, deal_id, entry_type [put_in|previous_in|repay|pay_back|profit_share_paid|interest], amount, entry_date,
 --     pay_from [business|investor] (null for put_in), payment_method, branch_id, period_month 'YYYY-MM' (profit_share_paid
 --     only), note, created_by, created_at)
 --   Payments from the Investor account on expenses and supplier bills keep using paid_from = 'outside' + funder_id.

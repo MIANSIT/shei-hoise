@@ -145,7 +145,7 @@ export function AccountsView({
         </div>
         <div className="p-4 sm:p-6">
           {cash && <Line sign="+" label={t.admin.acBusinessCash} hint={t.admin.acCashHint} amount={formatMoney(cash.total)} />}
-          {cash && investorAccount > 0.005 && <Line sign="+" label={t.admin.acInvestor} hint={t.admin.acInvestorHint} amount={formatMoney(investorAccount)} />}
+          {cash && Math.abs(investorAccount) > 0.005 && <Line sign="+" label={t.admin.acInvestor} hint={t.admin.acInvestorHint} amount={formatMoney(investorAccount)} />}
           <Line
             sign="+"
             label={t.admin.acStock}

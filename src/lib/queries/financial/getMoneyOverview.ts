@@ -117,7 +117,7 @@ export interface MoneyOverview {
     codWithCourier: number;
     /** What vendors owe the store: store-wide, or for the picked branch's own vendor sales, returns and payments. */
     vendorDue: number;
-    /** customerDue + codWithCourier, the same as the dashboard's Pending Amount. What vendors owe is kept apart. */
+    /** customerDue + codWithCourier + vendorDue: everything still to come in. */
     total: number;
   };
 }
@@ -455,7 +455,7 @@ export async function getMoneyOverview(
         customerDue,
         codWithCourier,
         vendorDue,
-        total: customerDue + codWithCourier,
+        total: customerDue + codWithCourier + vendorDue,
       },
     };
   } catch (error) {

@@ -119,7 +119,7 @@ export async function loadInvestorState(
         .from("investor_entries")
         .select("id, deal_id, entry_type, amount, entry_date, pay_from, payment_method, branch_id, period_month, note")
         .eq("store_id", storeId)
-        .gte("entry_date", goLive)
+        .or(`entry_date.gte.${goLive},entry_type.eq.previous_in`)
         .order("id")
         .range(from, to),
     );

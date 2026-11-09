@@ -102,7 +102,7 @@ async function getInvestorTotals(storeId: string, goLive: string, today: string)
         .from("investor_entries")
         .select("id, deal_id, entry_type, amount, entry_date, pay_from, payment_method, branch_id, period_month, note")
         .eq("store_id", storeId)
-        .gte("entry_date", goLive)
+        .or(`entry_date.gte.${goLive},entry_type.eq.previous_in`)
         .lte("entry_date", today)
         .order("id")
         .range(from, to),
@@ -162,8 +162,7 @@ async function getInvestorTotals(storeId: string, goLive: string, today: string)
  *
  * Business cash on each method = the starting cash + what Money Overview works out AFTER the start date
  * (sales and dues collected, vendor payments, minus expenses, supplier payments, refunds, withdrawals, plus or
- * minus transfers; payments from the Investor account are not part of it) - investor repayments and profit
- * shares paid from business cash. The starting cash is what was held at the end of the start date, so a count
+ * minus transfers). Investor money in or out is never part of it. The starting cash is what was held at the end of the start date, so a count
  * taken today with today's date does not count today's sales twice. Each branch counts from its own start date;
  * "all branches" adds them up.
  *
@@ -187,21 +186,6 @@ export async function getCashPosition(
   const today = asOfDate ?? dhakaToday();
   const earliest = starts.reduce((min, o) => (o.asOfDate < min ? o.asOfDate : min), starts[0].asOfDate);
 
-  // Investor repayments and profit shares paid from business cash take money from one branch's balance.
-  const { data: paidRows } = await supabase
-    .from("investor_entries")
-    .select("amount, entry_date, payment_method, branch_id")
-    .eq("store_id", storeId)
-    .eq("pay_from", "business")
-    .gte("entry_date", earliest)
-    .lte("entry_date", today);
-  const paid = ((paidRows ?? []) as { amount: number; entry_date: string; payment_method: string | null; branch_id: string | null }[]).map((r) => ({
-    amount: Number(r.amount),
-    date: r.entry_date,
-    method: (r.payment_method ?? "cash") as StartMethod,
-    branchId: r.branch_id,
-  }));
-
   const branchKeys = [...new Set(starts.map((o) => o.branchId))];
   const left = new Map<StartMethod, { opening: number; moved: number }>(START_METHODS.map((m) => [m, { opening: 0, moved: 0 }]));
 
@@ -216,11 +200,6 @@ export async function getCashPosition(
     for (const row of overview?.byMethod ?? []) {
       const balance = balanceFor(row.method);
       if (balance) left.get(balance)!.moved += row.left;
-    }
-    for (const p of paid) {
-      // A store-wide starting cash (no branch) counts every payment made from business cash; a branch's own
-      // starting cash counts only the payments that branch made.
-      if ((key === null || p.branchId === key) && p.date > asOf) left.get(p.method)!.moved -= p.amount;
     }
   }
 

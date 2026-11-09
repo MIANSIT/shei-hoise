@@ -19,6 +19,9 @@ import {
   Trash2,
   ArrowRightLeft,
   Undo2,
+  HandCoins,
+  Send,
+  Store,
 } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -28,6 +31,8 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { BranchMoneyTransfers } from "./BranchMoneyTransfers";
+import { PreviousInvestmentModal } from "./PreviousInvestmentModal";
+import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import {
   getMoneyOverview,
   type MoneyMethodKey,
@@ -142,6 +147,8 @@ export default function MoneyOverview() {
   const [wDate, setWDate] = useState<Dayjs>(dayjs());
   const [wNotes, setWNotes] = useState("");
   const [wBranch, setWBranch] = useState<string | null>(null);
+  const [earlierOpen, setEarlierOpen] = useState(false);
+  const { allowed: investorAllowed } = useFeatureGate(user?.store_id ?? "", "investor_money");
 
   const fromDate = range[0].format("YYYY-MM-DD");
   const toDate = range[1].format("YYYY-MM-DD");
@@ -395,6 +402,14 @@ export default function MoneyOverview() {
       amount: pending.codWithCourier,
       href: "/dashboard/cod-settlements",
     },
+    {
+      key: "vendors",
+      icon: <Store size={18} />,
+      label: t.admin.moPendingVendors,
+      hint: reportBranchId ? t.admin.moPendingVendorsStoreWide : t.admin.moPendingVendorsHint,
+      amount: pending.vendorDue,
+      href: "/dashboard/vendors",
+    },
   ];
 
   return (
@@ -434,6 +449,26 @@ export default function MoneyOverview() {
               <Undo2 size={15} aria-hidden="true" />
               {t.admin.moRecordRefund}
             </button>
+            {branchesOn && (
+              <button
+                type="button"
+                onClick={() => document.getElementById("branch-transfers")?.scrollIntoView({ behavior: "smooth" })}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-1.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                <Send size={15} aria-hidden="true" />
+                {t.admin.moSendToBranch}
+              </button>
+            )}
+            {isOwner && investorAllowed && (
+              <button
+                type="button"
+                onClick={() => setEarlierOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-1.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+              >
+                <HandCoins size={15} aria-hidden="true" />
+                {t.admin.moAddEarlier}
+              </button>
+            )}
             {isOwner && (
               <>
                 <button
@@ -867,6 +902,8 @@ export default function MoneyOverview() {
           </>
         )}
       </div>
+
+      {user?.store_id && <PreviousInvestmentModal storeId={user.store_id} open={earlierOpen} onClose={() => setEarlierOpen(false)} />}
 
       <Modal
         open={withdrawOpen}

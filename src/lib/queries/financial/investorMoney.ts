@@ -6,7 +6,7 @@ import { authorizeForStoreAny, logActivity, requireOwner } from "@/lib/permissio
 import { getStoreFeatureSubscription } from "@/lib/utils/getStoreFeatureSubscription";
 import { hasFeature } from "@/lib/utils/planFeatures";
 import { loadInvestorState, seedStartingCash, type InvestorState } from "./investorLedger";
-import { currentPct } from "./investorMath";
+import { currentPct, firstShareMonth } from "./investorMath";
 import {
   START_METHODS,
   type AddInvestorMoneyInput,
@@ -29,7 +29,6 @@ import type { MoneyPartner } from "./moneyPartnerTypes";
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid date");
 const MONTH = z.string().regex(/^\d{4}-\d{2}$/, "Choose a valid month");
 const AMOUNT = z.number().positive("Enter an amount above zero").max(1_000_000_000, "Amount is too large");
-const METHOD = z.enum(START_METHODS);
 
 const startSchema = z.object({
   asOfDate: DATE,
@@ -47,6 +46,7 @@ const addSchema = z
     amount: AMOUNT,
     date: DATE,
     note: z.string().trim().max(300, "Note is too long").optional(),
+    previous: z.boolean().optional(),
   })
   .refine((v) => v.kind !== "profit_share" || (v.profitSharePct ?? 0) > 0, { message: "Enter the profit share percent" })
   .refine((v) => v.partnerId || (v.newPersonName ?? "").length > 0, { message: "Choose a person or enter a name" });
@@ -55,8 +55,6 @@ const payBackSchema = z.object({
   dealId: z.string().uuid(),
   amount: AMOUNT,
   interestAmount: z.number().min(0, "Interest cannot be negative").max(1_000_000_000, "Amount is too large").optional(),
-  method: METHOD,
-  branchId: z.string().uuid().nullable().optional(),
   date: DATE,
   note: z.string().trim().max(300, "Note is too long").optional(),
 });
@@ -65,9 +63,6 @@ const shareSchema = z.object({
   dealId: z.string().uuid(),
   month: MONTH,
   amount: AMOUNT,
-  payFrom: z.enum(["business", "investor"]),
-  method: METHOD,
-  branchId: z.string().uuid().nullable().optional(),
   date: DATE,
   note: z.string().trim().max(300, "Note is too long").optional(),
 });
@@ -173,6 +168,7 @@ export async function saveStartingCash(storeId: string, input: StartingCashInput
       .from("investor_entries")
       .select("entry_date")
       .eq("store_id", storeId)
+      .neq("entry_type", "previous_in")
       .order("entry_date", { ascending: true })
       .limit(1)
       .maybeSingle();
@@ -219,7 +215,8 @@ export async function saveStartingCash(storeId: string, input: StartingCashInput
 
 /**
  * Adds money a person gave: a loan, an investment that shares profit, or an investment that is paid back.
- * The Investor account goes up; sales and profit do not change.
+ * The Investor account goes up; sales and profit do not change. Money put in earlier (`previous`) can have any past
+ * date and only counts as owed to the person, because it is already in the business.
  * @returns success, or why it failed
  */
 export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyInput): Promise<InvestorResult> {
@@ -235,11 +232,12 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
     // cash of zero, which can be changed on the same page later.
     if (!state.goLive) {
       if (v.date > dhakaToday()) return { success: false, error: "The date cannot be in the future" };
-      const seedError = await seedStartingCash(storeId, auth.actor.userId, v.date, {});
+      const seedError = await seedStartingCash(storeId, auth.actor.userId, v.previous ? dhakaToday() : v.date, {});
       if (seedError) return { success: false, error: seedError };
       state = await loadInvestorState(storeId);
     }
-    const dateError = checkDate(v.date, state);
+    if (v.previous && v.date > dhakaToday()) return { success: false, error: "The date cannot be in the future" };
+    const dateError = v.previous ? null : checkDate(v.date, state);
     if (dateError) return { success: false, error: dateError };
 
     // What this call created, so a failed save leaves nothing behind (a person with no money, or an empty deal).
@@ -288,7 +286,7 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
       .insert({
         store_id: storeId,
         deal_id: dealId,
-        entry_type: "put_in",
+        entry_type: v.previous ? "previous_in" : "put_in",
         amount: round2(v.amount),
         entry_date: v.date,
         note: v.note || null,
@@ -302,10 +300,10 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
     }
 
     await logActivity(auth.actor, {
-      action: "investor.put_in",
+      action: v.previous ? "investor.previous_in" : "investor.put_in",
       entityType: "investor_entry",
       entityId: entry?.id ?? null,
-      summary: `${partner.name} put in ৳${money(v.amount)} (${v.kind === "loan" ? "loan" : v.kind === "profit_share" ? `investment, ${pct}% profit share` : "investment, payback"})`,
+      summary: `${partner.name} ${v.previous ? "had put in earlier" : "put in"} ৳${money(v.amount)} (${v.kind === "loan" ? "loan" : v.kind === "profit_share" ? `investment, ${pct}% profit share` : "investment, payback"})`,
       details: { entry_date: v.date, kind: v.kind, profit_share_pct: pct },
     });
     return { success: true };
@@ -314,47 +312,10 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
   }
 }
 
-/** The interest part of a loan payment, saved as an expense named "Loan interest". */
-async function saveLoanInterestExpense(
-  storeId: string,
-  input: { amount: number; date: string; method: string; branchId: string | null; note: string | null; investorId: string | null },
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { data: existing } = await supabaseAdmin
-    .from("expense_categories")
-    .select("id")
-    .eq("store_id", storeId)
-    .ilike("name", "Loan interest")
-    .limit(1)
-    .maybeSingle();
-  let categoryId: string | null = existing?.id ?? null;
-  if (!categoryId) {
-    const { data: created, error: categoryError } = await supabaseAdmin
-      .from("expense_categories")
-      .insert({ store_id: storeId, name: "Loan interest", description: "Interest paid on loans", is_default: false })
-      .select("id")
-      .single();
-    if (categoryError || !created) return { ok: false, error: categoryError?.message ?? "Could not create the Loan interest category" };
-    categoryId = created.id;
-  }
-  const { error } = await supabaseAdmin.from("expenses").insert({
-    store_id: storeId,
-    category_id: categoryId,
-    amount: input.amount,
-    title: "Loan interest",
-    expense_date: input.date,
-    payment_method: input.method,
-    // Paid from the Investor account: it takes from that person's money. Otherwise it is a business cost.
-    paid_from: input.investorId ? "outside" : "shop",
-    notes: input.note,
-    ...(input.investorId ? { funder_id: input.investorId, funder_treatment: "capital" } : {}),
-    ...(!input.investorId && input.branchId ? { branch_id: input.branchId } : {}),
-  });
-  return error ? { ok: false, error: error.message } : { ok: true };
-}
-
 /**
- * Pays an investor back. A loan is repaid in parts (the interest part is a cost); an investment is paid back in
- * any amount and the capital left is shown. It is paid from business cash or from the Investor account.
+ * Pays an investor back. A loan is repaid in parts, with optional interest; an investment is paid back in any amount
+ * and the capital left is shown. It all comes out of the Investor account, which can go below zero, so Business cash,
+ * sales and profit never change.
  * @returns success, or why it failed
  */
 export async function payInvestorBack(storeId: string, input: PayInvestorBackInput): Promise<InvestorResult> {
@@ -389,23 +350,14 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
           : `${position.partner.name} has ${money(dealPosition.left)} invested here. You cannot pay back more.`,
       };
     }
-    // The investor's own money goes back first: it is taken from their Investor account, up to what they still have
-    // there, and only the rest comes from business cash. So paying back always lowers the Investor account, and
-    // business cash only pays what the account cannot.
-    const fromAccount = round2(Math.min(Math.max(position.available, 0), principal));
-    const fromBusiness = round2(principal - fromAccount);
 
-    const branchId = await optionalBranch(storeId, v.branchId);
-    if (branchId === false) return { success: false, error: "Branch not found" };
-
-    const entryType = isLoan ? "repay" : "pay_back";
     const created: string[] = [];
     const undo = async () => {
       if (created.length > 0) await supabaseAdmin.from("investor_entries").delete().in("id", created).eq("store_id", storeId);
     };
     for (const part of [
-      { amount: fromAccount, payFrom: "investor" as const },
-      { amount: fromBusiness, payFrom: "business" as const },
+      { amount: principal, type: isLoan ? "repay" : "pay_back" },
+      { amount: interest, type: "interest" },
     ]) {
       if (part.amount <= 0.005) continue;
       const { data, error } = await supabaseAdmin
@@ -413,12 +365,10 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
         .insert({
           store_id: storeId,
           deal_id: deal.id,
-          entry_type: entryType,
+          entry_type: part.type,
           amount: part.amount,
           entry_date: v.date,
-          pay_from: part.payFrom,
-          payment_method: part.payFrom === "business" ? v.method : null,
-          branch_id: part.payFrom === "business" ? branchId : null,
+          pay_from: "investor",
           note: v.note || null,
           created_by: auth.actor.userId,
         })
@@ -432,29 +382,12 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
       created.push(data.id as string);
     }
 
-    // Interest is a cost of the business, so it is paid from business cash.
-    if (interest > 0.005) {
-      const expense = await saveLoanInterestExpense(storeId, {
-        amount: interest,
-        date: v.date,
-        method: v.method,
-        branchId,
-        note: v.note || null,
-        investorId: null,
-      });
-      if (!expense.ok) {
-        await undo();
-        return { success: false, error: expense.error };
-      }
-    }
-
     await logActivity(auth.actor, {
       action: "investor.pay_back",
-      branchId,
       entityType: "investor_entry",
       entityId: created[0] ?? null,
-      summary: `Paid ${position.partner.name} back ৳${money(v.amount)} (${isLoan ? "loan" : "investment"}): ৳${money(fromAccount)} from the Investor account, ৳${money(fromBusiness)} from business cash${interest > 0.005 ? `, of which interest ৳${money(interest)}` : ""}`,
-      details: { entry_date: v.date, interest, from_account: fromAccount, from_business: fromBusiness },
+      summary: `Paid ${position.partner.name} back ৳${money(v.amount)} (${isLoan ? "loan" : "investment"}) from the Investor account${interest > 0.005 ? `, of which interest ৳${money(interest)}` : ""}`,
+      details: { entry_date: v.date, interest },
     });
     return { success: true };
   } catch (error) {
@@ -463,8 +396,8 @@ export async function payInvestorBack(storeId: string, input: PayInvestorBackInp
 }
 
 /**
- * Pays a profit share for one month. It is a split of profit already made, so profit does not change. It is paid
- * from business cash or from the Investor account.
+ * Pays a profit share for one month. It comes out of the Investor account, which can go below zero, so Business cash
+ * and profit do not change.
  * @returns success, or why it failed
  */
 export async function payProfitShare(storeId: string, input: PayProfitShareInput): Promise<InvestorResult> {
@@ -483,12 +416,6 @@ export async function payProfitShare(storeId: string, input: PayProfitShareInput
     if (!deal || deal.kind !== "profit_share") return { success: false, error: "That profit share was not found" };
     const position = state.positions.partners.find((p) => p.partner.id === deal.partnerId);
     if (!position) return { success: false, error: "That profit share was not found" };
-    if (v.payFrom === "investor" && v.amount > position.available + 0.005) {
-      return { success: false, error: `${position.partner.name} has ${money(Math.max(position.available, 0))} in the Investor account. Pay from business cash instead.` };
-    }
-
-    const branchId = await optionalBranch(storeId, v.branchId);
-    if (branchId === false) return { success: false, error: "Branch not found" };
 
     const { data: entry, error } = await supabaseAdmin
       .from("investor_entries")
@@ -498,9 +425,7 @@ export async function payProfitShare(storeId: string, input: PayProfitShareInput
         entry_type: "profit_share_paid",
         amount: round2(v.amount),
         entry_date: v.date,
-        pay_from: v.payFrom,
-        payment_method: v.payFrom === "business" ? v.method : null,
-        branch_id: branchId,
+        pay_from: "investor",
         period_month: v.month,
         note: v.note || null,
         created_by: auth.actor.userId,
@@ -511,11 +436,10 @@ export async function payProfitShare(storeId: string, input: PayProfitShareInput
 
     await logActivity(auth.actor, {
       action: "investor.profit_share",
-      branchId,
       entityType: "investor_entry",
       entityId: entry?.id ?? null,
-      summary: `Paid ${position.partner.name} a profit share of ৳${money(v.amount)} for ${v.month} from ${v.payFrom === "business" ? "business cash" : "the Investor account"}`,
-      details: { entry_date: v.date, month: v.month, pay_from: v.payFrom },
+      summary: `Paid ${position.partner.name} a profit share of ৳${money(v.amount)} for ${v.month} from the Investor account`,
+      details: { entry_date: v.date, month: v.month },
     });
     return { success: true };
   } catch (error) {
@@ -544,6 +468,12 @@ export async function deleteInvestorEntry(storeId: string, entryId: string): Pro
       const dealPosition = position?.deals.find((d) => d.deal.id === entry.dealId);
       if (!position || !dealPosition || position.available - entry.amount < -0.005 || dealPosition.putIn - dealPosition.paidBack - entry.amount < -0.005) {
         return { success: false, error: "This money has already been paid back or spent, so it cannot be removed." };
+      }
+    }
+    if (entry.type === "previous_in") {
+      const deal = state.positions.partners.flatMap((p) => p.deals).find((d) => d.deal.id === entry.dealId);
+      if (!deal || deal.putIn - deal.paidBack - entry.amount < -0.005) {
+        return { success: false, error: "This money has already been paid back, so it cannot be removed." };
       }
     }
 
@@ -587,7 +517,7 @@ export async function changeProfitSharePercent(storeId: string, input: ChangeSha
     if (v.fromMonth > dhakaToday().slice(0, 7)) return { success: false, error: "The new percent can start this month at the latest" };
 
     const mine = state.entries.filter((e) => e.dealId === deal.id);
-    const firstMonth = mine.filter((e) => e.type === "put_in").map((e) => e.date.slice(0, 7)).sort()[0];
+    const firstMonth = firstShareMonth(mine, deal.id, state.goLive);
     if (firstMonth && v.fromMonth < firstMonth) return { success: false, error: `This investment started in ${firstMonth}. Choose that month or a later one.` };
     const paidMonths = mine.filter((e) => e.type === "profit_share_paid" && e.periodMonth).map((e) => e.periodMonth as string).sort();
     const lastPaid = paidMonths[paidMonths.length - 1];
