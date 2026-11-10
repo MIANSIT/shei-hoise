@@ -16,12 +16,8 @@ export const bundleItemSchema = z.object({
 export const bundleSchema = z.object({
   id: z.string().uuid().optional(),
   store_id: z.string().uuid(),
-  category_id: z
-    .string()
-    .nullable()
-    .refine((val) => val !== null && val !== "", {
-      message: "Category is required",
-    }),
+  /** Every category the bundle sits in; the first is its main category. */
+  category_ids: z.array(z.string().uuid()).min(1, "Choose at least one category"),
   name: z.string().min(1, "Bundle name is required"),
   slug: z.string().min(1, "Slug is required"),
   description: z.string().min(1, "Description is required"),

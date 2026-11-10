@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { bundleSchema, BundleType } from "@/lib/schema/bundleSchema";
 import { useAddBundleDraftStore } from "@/lib/store/addBundleDraftStore";
 import FormField from "@/app/components/admin/dashboard/products/addProducts/FormField";
+import { CategoryMultiSelect } from "@/app/components/admin/dashboard/products/addProducts/CategoryMultiSelect";
 import ProductImages from "@/app/components/admin/dashboard/products/addProducts/ProductImages";
 import BundleComponentsInline from "./BundleComponentsInline";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
     const initialValues = React.useMemo<BundleType>(
       () => ({
         store_id: storeId,
-        category_id: null,
+        category_ids: [],
         name: "",
         slug: "",
         description: "",
@@ -218,14 +219,12 @@ const AddBundleForm = forwardRef<AddBundleFormRef, AddBundleFormProps>(
                 <FormField name="slug" control={control} readOnly placeholder="auto-generated-from-name" />
               </div>
               <div>
-                <FieldLabel label="Category" required />
-                <FormField
-                  name="category_id"
-                  as="select"
+                <FieldLabel label="Categories" required />
+                <CategoryMultiSelect
+                  name="category_ids"
                   control={control}
-                  required
-                  placeholder={activeCategories.length ? "Choose a category" : "Add a category first"}
-                  options={activeCategories.map((c) => ({ value: c.id, label: c.name }))}
+                  categories={activeCategories}
+                  placeholder={activeCategories.length ? "Choose categories — the first is the main one" : "Add a category first"}
                 />
               </div>
               <div>

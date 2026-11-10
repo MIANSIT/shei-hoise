@@ -15,6 +15,8 @@ export interface OrderProduct {
   variant_name?: string | null;
   /** The product/variant's tp_price at the moment it was added to the order — snapshot, not looked up live at report time. */
   cost_price?: number | null;
+  /** Quick Sale: the per-unit price printed on the invoice when it differs from unit_price; the difference is booked as an additional charge. */
+  invoice_unit_price?: number | null;
   /** Bundle lines only: option_group_id -> chosen bundle_item id, resolved during bundle explosion. */
   bundle_selections?: Record<string, string> | null;
 }
@@ -67,6 +69,8 @@ export interface OrderItem {
   variant_details: any;
   /** Cost at the moment of sale — null for orders placed before this was tracked. */
   cost_price?: number | null;
+  /** Quick Sale: the per-unit price printed on the invoice — see OrderProduct.invoice_unit_price. */
+  invoice_unit_price?: number | null;
   products?: OrderItemProduct | null;
   product_variants?: OrderItemVariant | null;
   discounted_price?: number;

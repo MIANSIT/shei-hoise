@@ -10,6 +10,7 @@ import { useForm, FieldErrors, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productSchema, ProductType } from "@/lib/schema/productSchema";
 import FormField from "./FormField";
+import { CategoryMultiSelect } from "./CategoryMultiSelect";
 import { RichTextController } from "@/app/components/admin/dashboard/store-settings/storeCard/RichEditor";
 import ProductImages from "./ProductImages";
 import ProductVariantsInline from "./ProductVariantsInline";
@@ -164,7 +165,7 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
     const initialValues = React.useMemo<ProductType>(
       () => ({
         store_id: storeId,
-        category_id: null,
+        category_ids: [],
         name: "",
         slug: "",
         description: "",
@@ -569,27 +570,16 @@ const AddProductForm = forwardRef<AddProductFormRef, AddProductFormProps>(
                   required
                   tooltip={t.admin.addProductCategoryTooltip}
                 />
-                <FormField
-                  name="category_id"
-                  as="select"
+                <CategoryMultiSelect
+                  name="category_ids"
                   control={control}
-                  required
+                  categories={activeCategories}
                   placeholder={
                     hasCategories
                       ? t.admin.addProductChooseCat
                       : t.admin.addProductNoCatFirst
                   }
-                  options={[
-                    ...activeCategories.map((c) => ({
-                      value: c.id,
-                      label: c.name,
-                    })),
-                    { value: "create_new", label: t.admin.addProductCreateNewCat },
-                  ]}
-                  onChange={(value) => {
-                    if (value === "create_new")
-                      window.location.href = "/dashboard/products/category";
-                  }}
+                  createNewLabel={t.admin.addProductCreateNewCat}
                 />
                 {!hasCategories && (
                   <p className="mt-1.5 text-xs text-rose-500">

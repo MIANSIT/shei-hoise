@@ -90,7 +90,8 @@ export async function createBundle(bundle: BundleType) {
       .from("products")
       .insert({
         store_id: bundle.store_id,
-        category_id: bundle.category_id,
+        // category_id (the main one) is set from this by a database trigger.
+        category_ids: bundle.category_ids,
         name: bundle.name.trim(),
         slug: bundle.slug.trim(),
         description: bundle.description.trim(),

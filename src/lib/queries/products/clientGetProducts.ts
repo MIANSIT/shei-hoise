@@ -120,7 +120,8 @@ export async function clientGetProducts(
     // Apply category filter — resolved by slug, so a renamed category doesn't
     // break links already shared with a ?category= in them. Older links (and
     // any caller still passing a display name) still resolve via the name
-    // fallback below. Several categories are OR-ed together.
+    // fallback below. Several categories are OR-ed together, and a product
+    // matches through any of its categories, not just its main one.
     const requestedCategories = (Array.isArray(categorySlug) ? categorySlug : categorySlug ? [categorySlug] : [])
       .filter((value) => value && value !== "all");
     let categoryIds: string[] = [];
@@ -140,7 +141,7 @@ export async function clientGetProducts(
         })
         .filter((id): id is string => !!id);
 
-      if (categoryIds.length > 0) query = query.in("category_id", categoryIds);
+      if (categoryIds.length > 0) query = query.overlaps("category_ids", categoryIds);
     }
 
     // A typed search resolves matching ids itself (substring or

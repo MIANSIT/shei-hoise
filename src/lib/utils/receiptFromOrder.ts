@@ -5,6 +5,7 @@ import { getStorePublicUrl } from "./productQr";
 import { PAYMENT_LABELS } from "./paymentLabels";
 import { resolveOrderInvoiceDate } from "./orderInvoiceDate";
 import { branchReceiptLines, type InvoiceBranch } from "./invoiceStore";
+import { invoiceTotals, invoiceUnitPrice } from "./invoicePrice";
 
 /**
  * Rebuilds the same 58mm thermal receipt Quick Sale printed at checkout,
@@ -49,6 +50,10 @@ export async function buildReceiptPdfSetForOrder(
   const customerAddress =
     order.channel === "pos" ? null : [addressLine, shipping?.city, shipping?.country].filter(Boolean).join(", ") || null;
 
+  // A Quick Sale line sold at a changed price prints that price; its extra
+  // moves out of the extra-charge line so the total stays the same.
+  const printed = invoiceTotals(order.order_items, order.subtotal, order.additional_charges ?? 0);
+
   return generateReceiptPdfSet({
     customerBlock: { name: customerName, phone: customerPhone, address: customerAddress, memberNumber: memberNumber ?? null },
     storeName: storeData.store_name,
@@ -63,13 +68,13 @@ export async function buildReceiptPdfSetForOrder(
         item.product_name +
         (item.variant_details?.variant_name ? ` (${item.variant_details.variant_name})` : ""),
       qty: item.quantity,
-      amount: item.total_price,
+      amount: invoiceUnitPrice(item) * item.quantity,
     })),
-    subtotal: order.subtotal,
+    subtotal: printed.subtotal,
     // discount_amount is the order's whole discount; the membership's part is shown on its own line.
     discount: Math.max(0, (order.discount_amount ?? 0) - (order.membership_discount ?? 0)),
     memberDiscount: order.membership_discount ?? 0,
-    additionalCharges: order.additional_charges ?? 0,
+    additionalCharges: printed.additionalCharges,
     deliveryCharge: order.shipping_fee ?? 0,
     tax: order.tax_amount ?? 0,
     total: order.total_amount,

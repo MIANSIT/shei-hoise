@@ -42,6 +42,7 @@ export async function getBundleBySlug(
       free_delivery,
       status,
       category_id,
+      category_ids,
       product_images(id, image_url, alt_text, sort_order, is_primary),
       bundle_items!bundle_items_bundle_product_id_fkey(id, component_product_id, component_variant_id, quantity_needed, option_group_id, option_group_label)
     `
@@ -72,7 +73,7 @@ export async function getBundleBySlug(
     status: data.status,
     featured: data.featured === true,
     free_delivery: data.free_delivery === true,
-    category_id: data.category_id ?? null,
+    category_ids: data.category_ids?.length ? data.category_ids : data.category_id ? [data.category_id] : [],
     images: images.map((img) => ({
       imageUrl: img.image_url,
       altText: img.alt_text ?? undefined,

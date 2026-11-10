@@ -62,7 +62,10 @@ export interface ProductWithVariants {
   featured: boolean;
   /** Waives the delivery fee for any order containing this product. */
   free_delivery: boolean;
+  /** The main category — first of category_ids. */
   category_id: string | null;
+  /** Every category the product sits in, main one first. */
+  category_ids: string[];
   category?: Category | null;
   product_images: ProductImage[];
   product_variants: ProductVariant[];
@@ -152,6 +155,7 @@ export async function getProductsWithVariants({
       sale_starts_at,
       sale_ends_at,
       category_id,
+      category_ids,
       product_type,
       categories (id, name),
       product_images (
@@ -281,6 +285,7 @@ export async function getProductsWithVariants({
     sale_starts_at: p.sale_starts_at ?? null,
     sale_ends_at: p.sale_ends_at ?? null,
     category_id: p.category_id,
+    category_ids: p.category_ids ?? (p.category_id ? [p.category_id] : []),
     category: p.categories
       ? { id: p.categories.id, name: p.categories.name }
       : null,

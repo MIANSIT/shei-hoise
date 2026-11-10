@@ -687,6 +687,11 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 --   receive_purchase(...) adds stock, sets weighted-average cost, adds the bill and any
 --     "paid now" payment in one transaction. service_role only.
 
+-- Invoice price — 20261209000000_order_item_invoice_price.sql:
+--   order_items."invoice_unit_price" numeric(10,2) NULL — the per-unit price printed on the invoice when a
+--   Quick Sale line was sold at a changed MRP. unit_price keeps the product's own price; the difference
+--   ((invoice_unit_price - unit_price) * quantity) is part of orders.additional_charges.
+
 -- Order line cost — 20261205000000_order_line_cost_snapshot.sql. Triggers only: fill_order_item_cost (BEFORE INSERT on
 --   order_items fills a missing cost_price from the variant or product TP), backfill_order_costs_from_product / _variant
 --   (AFTER UPDATE OF tp_price: a TP added where there was none fills old lines of that product or variant that have no
@@ -907,6 +912,9 @@ CREATE TABLE IF NOT EXISTS "public"."products" (
     "tp_price" numeric,
     "free_delivery" boolean DEFAULT false NOT NULL,
     "sort_order" integer,
+    -- Every category the product sits in, main one first; category_id mirrors
+    -- category_ids[1] (see migration 20261210000000).
+    "category_ids" uuid[] DEFAULT '{}' NOT NULL,
     CONSTRAINT "products_status_check" CHECK ((("status")::"text" = ANY (ARRAY[('draft'::character varying)::"text", ('active'::character varying)::"text", ('inactive'::character varying)::"text", ('archived'::character varying)::"text"])))
 );
 
@@ -1657,6 +1665,79 @@ CREATE INDEX "idx_expenses_user_id" ON "public"."expenses" USING "btree" ("store
 
 
 CREATE INDEX "idx_products_store_id_sort_order" ON "public"."products" USING "btree" ("store_id", "sort_order");
+
+CREATE INDEX "products_category_ids_gin_idx" ON "public"."products" USING "gin" ("category_ids");
+
+CREATE OR REPLACE FUNCTION "public"."sync_product_category_ids"()
+RETURNS trigger
+LANGUAGE plpgsql
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF cardinality(NEW.category_ids) = 0 AND NEW.category_id IS NOT NULL THEN
+      NEW.category_ids := ARRAY[NEW.category_id];
+    END IF;
+  ELSIF NEW.category_ids IS DISTINCT FROM OLD.category_ids THEN
+    NULL; -- the list was written: it is the source of truth
+  ELSIF NEW.category_id IS DISTINCT FROM OLD.category_id THEN
+    -- Only the main category was written (older code): swap it in, keep the rest.
+    NEW.category_ids :=
+      (CASE WHEN NEW.category_id IS NULL THEN '{}'::uuid[] ELSE ARRAY[NEW.category_id] END)
+      || array_remove(array_remove(OLD.category_ids, OLD.category_id), NEW.category_id);
+  ELSE
+    RETURN NEW;
+  END IF;
+
+  NEW.category_ids := COALESCE((
+    SELECT array_agg(c ORDER BY pos)
+      FROM (SELECT c, min(ord) AS pos
+              FROM unnest(NEW.category_ids) WITH ORDINALITY AS u(c, ord)
+             WHERE c IS NOT NULL
+             GROUP BY c) s
+  ), '{}'::uuid[]);
+  NEW.category_id := NEW.category_ids[1];
+
+  IF EXISTS (
+    SELECT 1 FROM unnest(NEW.category_ids) AS c
+     WHERE NOT EXISTS (
+       SELECT 1 FROM public.categories k WHERE k.id = c AND k.store_id = NEW.store_id
+     )
+  ) THEN
+    RAISE EXCEPTION 'A selected category does not belong to this store. Refresh the page and choose the categories again.'
+      USING ERRCODE = '23503';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS "products_sync_category_ids" ON "public"."products";
+CREATE TRIGGER "products_sync_category_ids"
+  BEFORE INSERT OR UPDATE OF "category_ids", "category_id" ON "public"."products"
+  FOR EACH ROW EXECUTE FUNCTION "public"."sync_product_category_ids"();
+
+-- A deleted category drops out of every product that listed it. (A product's
+-- main category still can't be deleted — products_category_id_fkey blocks
+-- that exactly as before.)
+CREATE OR REPLACE FUNCTION "public"."remove_deleted_category_from_products"()
+RETURNS trigger
+LANGUAGE plpgsql
+SET "search_path" TO 'public'
+AS $$
+BEGIN
+  UPDATE public.products
+     SET category_ids = array_remove(category_ids, OLD.id)
+   WHERE store_id = OLD.store_id
+     AND category_ids @> ARRAY[OLD.id];
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS "categories_remove_from_products" ON "public"."categories";
+CREATE TRIGGER "categories_remove_from_products"
+  AFTER DELETE ON "public"."categories"
+  FOR EACH ROW EXECUTE FUNCTION "public"."remove_deleted_category_from_products"();
 
 
 

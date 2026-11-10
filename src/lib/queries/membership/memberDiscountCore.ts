@@ -74,7 +74,7 @@ export async function computeMemberDiscount(
         .order("id")
         .range(from, to) as unknown as PromiseLike<{ data: { id: string; parent_id: string | null }[] | null; error: { message: string } | null }>,
     ),
-    supabaseAdmin.from("products").select("id, category_id").eq("store_id", storeId).in("id", productIds),
+    supabaseAdmin.from("products").select("id, category_ids").eq("store_id", storeId).in("id", productIds),
   ]);
 
   const benefits = ((benefitsRes.data ?? []) as BenefitRow[]).map((b) => ({
@@ -105,17 +105,18 @@ export async function computeMemberDiscount(
     return ids;
   });
 
-  const categoryByProduct = new Map<string, string | null>(
-    ((productsRes.data ?? []) as { id: string; category_id: string | null }[]).map((p) => [p.id, p.category_id]),
+  // Every category a product sits in — a row applies through any of them.
+  const categoriesByProduct = new Map<string, string[]>(
+    ((productsRes.data ?? []) as { id: string; category_ids: string[] | null }[]).map((p) => [p.id, p.category_ids ?? []]),
   );
 
   const results = lines
     .map((line) => {
-      const categoryId = categoryByProduct.get(line.productId) ?? null;
+      const productCategoryIds = categoriesByProduct.get(line.productId) ?? [];
       let percent = 0;
       benefits.forEach((b, index) => {
         const ids = covered[index];
-        const applies = ids === null || (categoryId !== null && ids.has(categoryId));
+        const applies = ids === null || productCategoryIds.some((id) => ids.has(id));
         if (applies && b.percent > percent) percent = b.percent;
       });
       const amount = percent > 0 ? round2((line.unitPrice * line.quantity * percent) / 100) : 0;

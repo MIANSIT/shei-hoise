@@ -12,6 +12,7 @@ import { computeMemberDiscount } from "@/lib/queries/membership/memberDiscountCo
 import { evaluateAutoMembership } from "@/lib/queries/membership/memberAutoAssign";
 import { resolveStorefrontMemberId } from "@/lib/queries/membership/memberStorefrontCore";
 import { getEffectivePrice } from "@/lib/utils/getEffectivePrice";
+import { invoicePriceMarkup } from "@/lib/utils/invoicePrice";
 import { branchColumns, moveOrderStock, pickOrderBranch } from "./orderStock";
 import {
   authorizeForStore,
@@ -252,6 +253,18 @@ export async function createOrder(
       if (discountDenied) throw new Error(discountDenied);
     }
 
+    // A changed invoice price (Quick Sale only) can only add to the product's
+    // price, and the extra has to be booked in additional_charges.
+    if (orderProducts.some((p) => p.invoice_unit_price != null)) {
+      if (channel !== "pos") throw new Error("A changed invoice price is only allowed on a Quick Sale.");
+      if (orderProducts.some((p) => p.invoice_unit_price != null && p.invoice_unit_price < p.unit_price)) {
+        throw new Error("A changed price cannot be lower than the product's price. Use a discount instead.");
+      }
+      if (invoicePriceMarkup(orderProducts) > additionalCharges + 0.01) {
+        throw new Error("The changed prices don't match the order's extra charges. Reload the page and try again.");
+      }
+    }
+
     // Step 0: Resolve any bundle lines into their component purchases, then
     // validate stock against the resolved (bundle-header-free) list — a
     // bundle header has no product_inventory row of its own.
@@ -358,6 +371,9 @@ export async function createOrder(
       product_name: item.product_name,
       variant_details: item.variant_details || null,
       cost_price: item.cost_price ?? null,
+      // Only sent for a changed-price line, so other orders are untouched
+      // even before the 20261209 migration has been applied.
+      ...(item.invoice_unit_price != null ? { invoice_unit_price: item.invoice_unit_price } : {}),
     }));
 
 

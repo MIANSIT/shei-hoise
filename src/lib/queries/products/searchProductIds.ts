@@ -23,8 +23,9 @@ function applyStructuralFilters(query: any, storeId: string, options: SearchProd
   let q = query.eq("store_id", storeId);
   if (options.statusEq) q = q.eq("status", options.statusEq);
   if (options.excludeBundles) q = q.neq("product_type", "bundle");
-  if (options.categoryIds?.length) q = q.in("category_id", options.categoryIds);
-  else if (options.categoryId) q = q.eq("category_id", options.categoryId);
+  // A product sits in every category listed in category_ids (GIN-indexed).
+  if (options.categoryIds?.length) q = q.overlaps("category_ids", options.categoryIds);
+  else if (options.categoryId) q = q.contains("category_ids", [options.categoryId]);
   if (options.featured !== undefined) q = q.eq("featured", options.featured);
   return q;
 }
