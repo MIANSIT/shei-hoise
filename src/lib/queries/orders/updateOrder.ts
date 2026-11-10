@@ -11,7 +11,7 @@ import {
   type OrderChange,
 } from "@/lib/permissions/server";
 import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
-import { moveOrderStock } from "./orderStock";
+import { moveOrderStock, stockOpsForStatusChange, type OrderStockOp } from "./orderStock";
 
 export interface UpdateOrderData {
   status?: OrderStatus;
@@ -293,37 +293,9 @@ export async function handleInventoryUpdates(
       return;
     }
 
-    // Handle different status transitions
-    switch (updates.status) {
-      case 'cancelled':
-        // Return reserved stock to available stock when order is cancelled
-        await returnReservedStockToAvailable(orderItems);
-        break;
-        
-      case 'delivered':
-        // Deduct reserved stock when order is delivered
-        await deductReservedStock(orderItems);
-        break;
-
-      case 'returned':
-        // Once delivered, stock is already fully out of quantity_reserved
-        // (deductReservedStock never touched quantity_available) — so a
-        // return from delivered has nothing left to move out of "reserved"
-        // and must add straight back to "available". A return from any
-        // earlier status (stock still sitting in quantity_reserved) is the
-        // same case cancelled already handles.
-        if (existingOrder.status === 'delivered') {
-          await restockDeliveredReturn(orderItems);
-        } else {
-          await returnReservedStockToAvailable(orderItems);
-        }
-        break;
-
-      case 'confirmed':
-        // Additional logic for confirmed orders if needed
-        break;
-        
-      default:
+    // One rule for every status change (see stockOpsForStatusChange): each move happens once, in order.
+    for (const op of stockOpsForStatusChange(existingOrder.status, updates.status)) {
+      await moveStockByOrder(orderItems, op);
     }
   } catch (error) {
     console.error('Error in handleInventoryUpdates:', error);
@@ -331,29 +303,12 @@ export async function handleInventoryUpdates(
   }
 }
 
-// Return reserved stock to available when order is cancelled
-async function returnReservedStockToAvailable(orderItems: any[]): Promise<void> {
-  await moveStockByOrder(orderItems, "release");
-}
-
-// Add stock straight back to available when a DELIVERED order is returned —
-// deductReservedStock already zeroed quantity_reserved for these items with
-// no corresponding add to quantity_available, so there's nothing to "return
-// from reserved" the way returnReservedStockToAvailable does for cancels.
-async function restockDeliveredReturn(orderItems: any[]): Promise<void> {
-  await moveStockByOrder(orderItems, "restock");
-}
-
-// Deduct reserved stock when order is delivered
-async function deductReservedStock(orderItems: any[]): Promise<void> {
-  await moveStockByOrder(orderItems, "finalize");
-}
 
 // order_items rows carry order_id; each order's stock moves in its own
 // branch (row-locked in the database — see orderStock.ts).
 async function moveStockByOrder(
   orderItems: any[],
-  op: "release" | "restock" | "finalize",
+  op: OrderStockOp,
 ): Promise<void> {
   const byOrder = new Map<string, any[]>();
   for (const item of orderItems) {

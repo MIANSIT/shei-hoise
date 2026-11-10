@@ -10,7 +10,7 @@ import {
   logOrderChange,
   type OrderChange,
 } from "@/lib/permissions/server";
-import { adjustOrderLineStock, moveOrderStock } from "./orderStock";
+import { adjustOrderLineStock, moveOrderStock, stockOpsForStatusChange } from "./orderStock";
 import { computeMemberDiscount } from "@/lib/queries/membership/memberDiscountCore";
 import { evaluateAutoMembership } from "@/lib/queries/membership/memberAutoAssign";
 
@@ -624,89 +624,13 @@ async function handleStatusChangeInventory(
 ): Promise<void> {
   try {
 
-    // Any non-cancelled status (pending, confirmed, or shipped) moving to
-    // cancelled returns stock. returnReservedStockToAvailable clamps
-    // quantity_reserved at 0, so it's safe to call regardless of which
-    // status this came from.
-    if (
-      oldStatus !== OrderStatus.CANCELLED &&
-      newStatus === OrderStatus.CANCELLED
-    ) {
-      await returnReservedStockToAvailable(orderId, orderItems);
+    // One rule for every status change (see stockOpsForStatusChange): each move happens once, in order.
+    for (const op of stockOpsForStatusChange(oldStatus, newStatus)) {
+      await moveOrderStock(orderId, orderItems, op);
     }
-
-    // Moving to returned: once delivered, deductReservedStock (below) has
-    // already zeroed quantity_reserved without ever touching
-    // quantity_available, so there's nothing left in "reserved" to move —
-    // restock straight to "available" instead. From any earlier status,
-    // stock is still sitting in quantity_reserved, same case cancelled
-    // already handles.
-    if (oldStatus !== OrderStatus.RETURNED && newStatus === OrderStatus.RETURNED) {
-      if (oldStatus === OrderStatus.DELIVERED) {
-        await restockDeliveredReturn(orderId, orderItems);
-      } else {
-        await returnReservedStockToAvailable(orderId, orderItems);
-      }
-    }
-
-    const wasClosed = oldStatus === OrderStatus.CANCELLED || oldStatus === OrderStatus.RETURNED;
-
-    // From cancelled/returned to an open status (not delivered) - take the stock out of available again
-    if (
-      wasClosed &&
-      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED || newStatus === OrderStatus.SHIPPED)
-    ) {
-      await reserveStock(orderId, orderItems);
-    }
-
-    // From cancelled/returned straight to delivered: the stock is back in available, so it has to leave
-    // available first; finalize below then clears the hold. Without this the stock stayed counted.
-    if (wasClosed && newStatus === OrderStatus.DELIVERED) {
-      await reserveStock(orderId, orderItems);
-    }
-
-    // From any status to delivered - deduct reserved stock (finalize)
-    if (newStatus === OrderStatus.DELIVERED) {
-      await deductReservedStock(orderId, orderItems);
-    }
-
-    // From delivered back to an open status - the stock is still out of available (it left when the order was
-    // placed), so only the hold comes back. Reserving again took it out of available a second time.
-    if (
-      oldStatus === OrderStatus.DELIVERED &&
-      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED || newStatus === OrderStatus.SHIPPED)
-    ) {
-      await moveOrderStock(orderId, orderItems, "rehold");
-    }
-
 
   } catch (error) {
     console.error("❌ Error in handleStatusChangeInventory:", error);
   }
 }
 
-// Reserve stock when order is confirmed
-async function reserveStock(orderId: string, orderItems: any[]): Promise<void> {
-  await moveOrderStock(orderId, orderItems, "reserve");
-}
-
-// Return reserved stock to available when order is cancelled
-async function returnReservedStockToAvailable(
-  orderId: string,
-  orderItems: any[]
-): Promise<void> {
-  await moveOrderStock(orderId, orderItems, "release");
-}
-
-// Add stock straight back to available when a DELIVERED order is returned —
-// deductReservedStock (below) already zeroed quantity_reserved for these
-// items with no corresponding add to quantity_available, so there's nothing
-// to "return from reserved" the way returnReservedStockToAvailable does.
-async function restockDeliveredReturn(orderId: string, orderItems: any[]): Promise<void> {
-  await moveOrderStock(orderId, orderItems, "restock");
-}
-
-// Deduct reserved stock when order is delivered
-async function deductReservedStock(orderId: string, orderItems: any[]): Promise<void> {
-  await moveOrderStock(orderId, orderItems, "finalize");
-}

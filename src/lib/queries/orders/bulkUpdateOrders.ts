@@ -14,7 +14,7 @@ import {
 } from "@/lib/permissions/server";
 import { recordOrderOutcome } from "@/lib/utils/riskScoring";
 import { handleOrderReturned } from "@/lib/queries/orders/handleOrderReturned";
-import { moveOrderStock } from "./orderStock";
+import { moveOrderStock, stockOpsForStatusChange } from "./orderStock";
 
 export interface BulkUpdateData {
   orderIds: string[];
@@ -307,10 +307,6 @@ async function handleBulkInventoryUpdates(
   previousStatusByOrderId: Record<string, string>
 ): Promise<void> {
   try {
-    if (newStatus !== "cancelled" && newStatus !== "delivered" && newStatus !== "returned") {
-      return; // Only handle inventory for cancelled, delivered, or returned status
-    }
-
     // Get all order items for the affected orders
     const { data: orderItems, error } = await supabaseAdmin
       .from("order_items")
@@ -321,24 +317,14 @@ async function handleBulkInventoryUpdates(
       return;
     }
 
-
-    if (newStatus === "cancelled") {
-      await returnBulkReservedStockToAvailable(orderItems);
-    } else if (newStatus === "delivered") {
-      await deductBulkReservedStock(orderItems);
-    } else if (newStatus === "returned") {
-      // Once delivered, quantity_reserved is already zeroed (deductBulkReservedStock
-      // never touches quantity_available) — those items restock straight to
-      // available. Items coming from any earlier status are still sitting in
-      // quantity_reserved, same case cancelled already handles.
-      const fromDelivered = orderItems.filter(
-        (item) => previousStatusByOrderId[item.order_id] === "delivered"
-      );
-      const fromOther = orderItems.filter(
-        (item) => previousStatusByOrderId[item.order_id] !== "delivered"
-      );
-      if (fromDelivered.length > 0) await restockBulkDeliveredReturn(fromDelivered);
-      if (fromOther.length > 0) await returnBulkReservedStockToAvailable(fromOther);
+    // One rule for every status change (see stockOpsForStatusChange), applied per order from its own old status.
+    const ops = new Map<string, ReturnType<typeof stockOpsForStatusChange>>();
+    for (const item of orderItems) {
+      if (!ops.has(item.order_id)) ops.set(item.order_id, stockOpsForStatusChange(previousStatusByOrderId[item.order_id] ?? "", newStatus));
+    }
+    for (const [orderId, orderOps] of ops) {
+      const items = orderItems.filter((item) => item.order_id === orderId);
+      for (const op of orderOps) await moveOrderStock(orderId, items, op);
     }
   } catch (error) {
     console.error("Error in handleBulkInventoryUpdates:", error);
@@ -346,37 +332,3 @@ async function handleBulkInventoryUpdates(
   }
 }
 
-// Return reserved stock to available for multiple orders when cancelled
-async function returnBulkReservedStockToAvailable(
-  orderItems: OrderItem[]
-): Promise<void> {
-  await moveBulkStock(orderItems, "release");
-}
-
-// Add stock straight back to available for multiple DELIVERED orders that
-// are being returned — see handleBulkInventoryUpdates for why this is a
-// separate path from returnBulkReservedStockToAvailable.
-async function restockBulkDeliveredReturn(orderItems: OrderItem[]): Promise<void> {
-  await moveBulkStock(orderItems, "restock");
-}
-
-// Deduct reserved stock for multiple orders when delivered
-async function deductBulkReservedStock(orderItems: OrderItem[]): Promise<void> {
-  await moveBulkStock(orderItems, "finalize");
-}
-
-// Each order's stock moves in its own branch, row-locked in the database
-// (order_stock_move) — see orderStock.ts. Bundle header lines are skipped
-// there, since a bundle holds no stock of its own.
-async function moveBulkStock(
-  orderItems: OrderItem[],
-  op: "release" | "restock" | "finalize",
-): Promise<void> {
-  const byOrder = new Map<string, OrderItem[]>();
-  for (const item of orderItems) {
-    byOrder.set(item.order_id, [...(byOrder.get(item.order_id) ?? []), item]);
-  }
-  await Promise.all(
-    Array.from(byOrder.entries()).map(([orderId, items]) => moveOrderStock(orderId, items, op)),
-  );
-}

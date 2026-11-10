@@ -36,6 +36,27 @@ const SQL_OP: Record<OrderStockOp, { op: "reserve" | "take" | "finalize"; sign: 
   rehold: { op: "finalize", sign: -1 },
 };
 
+/**
+ * Which stock moves an order's status change needs. One rule for every screen that changes a status.
+ *  - open (pending, confirmed, shipped): stock is out of available and held as reserved
+ *  - delivered: stock is out of available, nothing is held
+ *  - closed (cancelled, returned): stock is back in available, nothing is held
+ * Moves between two states of the same kind need nothing.
+ */
+export function stockOpsForStatusChange(oldStatus: string, newStatus: string): OrderStockOp[] {
+  const kind = (s: string): "open" | "delivered" | "closed" =>
+    s === "delivered" ? "delivered" : s === "cancelled" || s === "returned" ? "closed" : "open";
+  const from = kind(oldStatus);
+  const to = kind(newStatus);
+  if (from === to) return [];
+  if (from === "open" && to === "delivered") return ["finalize"];
+  if (from === "open" && to === "closed") return ["release"];
+  if (from === "delivered" && to === "closed") return ["restock"];
+  if (from === "delivered" && to === "open") return ["rehold"];
+  if (from === "closed" && to === "open") return ["reserve"];
+  return ["reserve", "finalize"]; // closed -> delivered
+}
+
 async function callStockMove(
   orderId: string,
   line: StockLine,
