@@ -174,7 +174,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
           ...cash.methods.map((m) => ({ key: `cash-${m.method}`, label: methodLabel[m.method] ?? m.method, amount: formatMoney(m.left), sub: true })),
         ]
       : []),
-    ...(investorAccount > 0.005
+    ...(Math.abs(investorAccount) > 0.005
       ? [{ key: "investor-account", label: t.admin.fsInvestorAccount, how: t.admin.fsInvestorAccountHow, amount: formatMoney(investorAccount) }]
       : []),
     {
@@ -227,7 +227,7 @@ export function FinancialStatements({ data, branchId, periodLabel, vendorProfit,
   ];
   const assetSegments: Segment[] = [
     { key: "cash", label: t.admin.fsCash, value: cashTotal, color: "bg-emerald-500" },
-    { key: "investor", label: t.admin.fsInvestorAccount, value: investorAccount, color: "bg-violet-500" },
+    { key: "investor", label: t.admin.fsInvestorAccount, value: Math.max(investorAccount, 0), color: "bg-violet-500" },
     { key: "fixed", label: t.admin.fsFixedAssets, value: fixedAssets, color: "bg-slate-400" },
     { key: "inventory", label: t.admin.fsInventory, value: balance.inventoryAtCost, color: "bg-teal-500" },
     { key: "customers", label: t.admin.fsRecvCustomers, value: balance.customerDue, color: "bg-sky-400" },

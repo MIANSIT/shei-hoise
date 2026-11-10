@@ -14,6 +14,7 @@ import { usePermissions } from "@/lib/context/PermissionsContext";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
 import { addInvestorMoney, deleteInvestorEntry, deleteInvestorPerson, getInvestorOverview, saveStartingCash } from "@/lib/queries/financial/investorMoney";
+import { firstShareMonth } from "@/lib/queries/financial/investorMath";
 import { currentPct } from "@/lib/queries/financial/investorMath";
 import { getCashPosition } from "@/lib/queries/financial/getCashPosition";
 import { START_METHODS, type InvestorKind, type InvestorOverview, type StartMethod } from "@/lib/queries/financial/investorMoneyTypes";
@@ -110,7 +111,7 @@ export default function InvestorMoneyPage() {
     payback: t.admin.invHintPayback,
   };
   const entryLabel = (type: string): string =>
-    ({ put_in: t.admin.invEntryPutIn, repay: t.admin.invEntryRepay, pay_back: t.admin.invEntryPayBack, profit_share_paid: t.admin.invEntryShare })[type] ?? type;
+    ({ put_in: t.admin.invEntryPutIn, previous_in: t.admin.invEntryPrevious, repay: t.admin.invEntryRepay, pay_back: t.admin.invEntryPayBack, profit_share_paid: t.admin.invEntryShare, interest: t.admin.invEntryInterest })[type] ?? type;
 
   const saveStart = async () => {
     if (!storeId) return;
@@ -166,9 +167,8 @@ export default function InvestorMoneyPage() {
   /** The first month money was put in and the latest month a share was paid for, for a deal. */
   const shareMonths = (dealId: string): { firstMonth: string | null; lastPaidMonth: string | null } => {
     const mine = (overview?.entries ?? []).filter((e) => e.dealId === dealId);
-    const puts = mine.filter((e) => e.type === "put_in").map((e) => e.date.slice(0, 7)).sort();
     const paid = mine.filter((e) => e.type === "profit_share_paid" && e.periodMonth).map((e) => e.periodMonth as string).sort();
-    return { firstMonth: puts[0] ?? null, lastPaidMonth: paid[paid.length - 1] ?? null };
+    return { firstMonth: firstShareMonth(mine, dealId, overview?.goLive ?? null), lastPaidMonth: paid[paid.length - 1] ?? null };
   };
 
   const removeEntry = async (id: string) => {
@@ -369,7 +369,7 @@ export default function InvestorMoneyPage() {
                       value={date}
                       onChange={(d) => d && setDate(d)}
                       allowClear={false}
-                      disabledDate={(d) => d.isAfter(dayjs(), "day")}
+                      disabledDate={(d) => d.isAfter(dayjs(), "day") || (!!overview?.goLive && d.isBefore(dayjs(overview.goLive), "day"))}
                       style={BOX}
                     />
                   </div>
@@ -493,14 +493,13 @@ export default function InvestorMoneyPage() {
                           </p>
                           <p className="m-0 text-xs text-muted-foreground">
                             {n(dayjs(e.date).format("DD-MM-YYYY"))}
-                            {e.payFrom ? ` · ${e.payFrom === "business" ? t.admin.invFromBusiness : t.admin.invFromInvestor}` : ""}
                             {e.periodMonth ? ` · ${e.periodMonth}` : ""}
                             {e.note ? ` · ${e.note}` : ""}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-3">
-                          <span className={`font-semibold tabular-nums ${e.type === "put_in" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                            {e.type === "put_in" ? "+" : "−"}
+                          <span className={`font-semibold tabular-nums ${e.type === "put_in" || e.type === "previous_in" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                            {e.type === "put_in" || e.type === "previous_in" ? "+" : "−"}
                             {money(e.amount)}
                           </span>
                           <Popconfirm title={t.admin.mbkDeleteConfirm} okText={t.admin.mbkDelete} onConfirm={() => removeEntry(e.id)}>

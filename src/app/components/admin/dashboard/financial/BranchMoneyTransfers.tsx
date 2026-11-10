@@ -123,7 +123,7 @@ export function BranchMoneyTransfers({ onChanged }: BranchMoneyTransfersProps) {
   );
 
   return (
-    <section className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
+    <section id="branch-transfers" className="scroll-mt-20 rounded-2xl border border-border/80 bg-card p-4 sm:p-5">
       <h2 className="m-0 text-sm font-bold text-foreground">{t.admin.btTitle}</h2>
       <p className="m-0 mb-4 mt-0.5 text-xs text-muted-foreground">{t.admin.btSub}</p>
 

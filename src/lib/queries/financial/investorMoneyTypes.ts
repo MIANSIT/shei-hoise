@@ -10,7 +10,7 @@ export type InvestorKind = "loan" | "profit_share" | "payback";
  *  - pay_back: investment paid back (lowers the investor's capital)
  *  - profit_share_paid: a profit share paid for one month
  */
-export type InvestorEntryType = "put_in" | "repay" | "pay_back" | "profit_share_paid";
+export type InvestorEntryType = "put_in" | "previous_in" | "repay" | "pay_back" | "profit_share_paid" | "interest";
 
 /** Which pocket paid: the money the business made, or the Investor account. */
 export type PayFrom = "business" | "investor";
@@ -129,17 +129,16 @@ export interface AddInvestorMoneyInput {
   amount: number;
   date: string;
   note?: string;
+  /** Money put in before the store used this page: it counts as owed to the person, but not in the Investor account. */
+  previous?: boolean;
 }
 
 export interface PayInvestorBackInput {
   dealId: string;
-  /** For a loan this is the whole payment; the interest part is saved as an expense. */
+  /** For a loan this is the whole payment, interest included. */
   amount: number;
   /** Loan only: how much of amount is interest. */
   interestAmount?: number;
-  /** The method used when part of the payment comes from business cash. */
-  method: StartMethod;
-  branchId?: string | null;
   date: string;
   note?: string;
 }
@@ -157,9 +156,6 @@ export interface PayProfitShareInput {
   /** YYYY-MM */
   month: string;
   amount: number;
-  payFrom: PayFrom;
-  method: StartMethod;
-  branchId?: string | null;
   date: string;
   note?: string;
 }

@@ -196,7 +196,7 @@ export async function exportBalanceSheetPDF(input: BalanceSheetPdfInput): Promis
           ...cash.methods.map((m) => ({ kind: "sub" as const, label: METHOD_LABEL[m.method] ?? m.method, value: m.left })),
         ] as Line[])
       : []),
-    ...(investorAccount > 0.005 ? ([{ kind: "plain", label: "Investor account", note: "Money people put in that has not been spent or paid back", value: investorAccount }] as Line[]) : []),
+    ...(Math.abs(investorAccount) > 0.005 ? ([{ kind: "plain", label: "Investor account", note: "Money people put in that has not been spent or paid back", value: investorAccount }] as Line[]) : []),
     {
       kind: "plain",
       label: "Inventory (at cost)",

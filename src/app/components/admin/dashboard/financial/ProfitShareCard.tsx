@@ -6,8 +6,8 @@ import { Button } from "antd";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { getAccrualProfitLoss } from "@/lib/queries/dashboard/getAccrualStatements";
 import { getVendorStoreProfitForPeriod } from "@/lib/queries/vendor/getVendorStoreProfitForPeriod";
-import { profitShareDue, ratePctFor } from "@/lib/queries/financial/investorMath";
-import type { InvestorEntry, InvestorOverview } from "@/lib/queries/financial/investorMoneyTypes";
+import { firstShareMonth, profitShareDue, ratePctFor } from "@/lib/queries/financial/investorMath";
+import type { InvestorOverview } from "@/lib/queries/financial/investorMoneyTypes";
 import type { InvestorPayTarget } from "./InvestorPayModal";
 
 interface ProfitShareCardProps {
@@ -64,10 +64,7 @@ export function ProfitShareCard({ storeId, overview, money, onPay }: ProfitShare
   const shareDeals = overview.positions.partners.flatMap((p) => p.deals.filter((d) => d.deal.kind === "profit_share").map((d) => ({ partner: p, deal: d })));
   if (shareDeals.length === 0) return null;
 
-  const firstPutIn = (dealId: string): string | null => {
-    const dates = overview.entries.filter((e: InvestorEntry) => e.dealId === dealId && e.type === "put_in").map((e) => e.date);
-    return dates.length === 0 ? null : dates.reduce((min, d) => (d < min ? d : min)).slice(0, 7);
-  };
+  const firstPutIn = (dealId: string): string | null => firstShareMonth(overview.entries, dealId, overview.goLive);
   const paidFor = (dealId: string, month: string): number =>
     overview.entries.filter((e) => e.dealId === dealId && e.type === "profit_share_paid" && e.periodMonth === month).reduce((s, e) => s + e.amount, 0);
 
