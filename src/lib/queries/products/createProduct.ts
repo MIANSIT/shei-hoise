@@ -144,7 +144,8 @@ async function createProductInternal(
       .from("products")
       .insert({
         store_id: product.store_id,
-        category_id: product.category_id,
+        // category_id (the main one) is set from this by a database trigger.
+        category_ids: product.category_ids,
         ...(brandId !== undefined ? { brand_id: brandId } : {}),
         name: product.name.trim(),
         slug: product.slug.trim(),

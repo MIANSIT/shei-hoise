@@ -32,6 +32,7 @@ import {
   ProductWithVariants,
   ProductVariant,
 } from "@/lib/queries/products/getProductsWithVariants";
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import {
   ProductStatus,
   PaymentMethod,
@@ -149,6 +150,7 @@ export default function QuickSale() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [storeCategories, setStoreCategories] = useState<{ id: string; name: string }[]>([]);
 
   const [cart, setCart] = useState<OrderProduct[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -324,17 +326,25 @@ export default function QuickSale() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Distinct categories present in this store's catalog — derived from the
-  // already-loaded products rather than a separate query, since Quick Sale
-  // pulls the whole catalog up front anyway.
-  const categories = Array.from(
-    new Map(
-      products.filter((p) => p.category).map((p) => [p.category!.id, p.category!]),
-    ).values(),
-  );
+  // Names for every category a product sits in, not only its main one.
+  useEffect(() => {
+    if (!user?.store_id) return;
+    getCategoriesQuery(user.store_id).then(({ data, error }) => {
+      if (error) {
+        console.error("Failed to load categories for Quick Sale:", error);
+        return;
+      }
+      setStoreCategories((data ?? []).map((c) => ({ id: c.id, name: c.name })));
+    });
+  }, [user?.store_id]);
+
+  // Only categories that at least one loaded product sits in, so a chip never
+  // leads to an empty grid.
+  const usedCategoryIds = new Set(products.flatMap((p) => p.category_ids));
+  const categories = storeCategories.filter((c) => usedCategoryIds.has(c.id));
 
   const visibleProducts = products.filter((p) => {
-    if (categoryId && p.category_id !== categoryId) return false;
+    if (categoryId && !p.category_ids.includes(categoryId)) return false;
     if (search.trim() && !p.name.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
   });

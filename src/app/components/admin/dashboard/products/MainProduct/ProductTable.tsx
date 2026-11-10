@@ -511,6 +511,13 @@ const ProductTable: React.FC<ProductTableProps> = ({
 
   // ── Row helpers ─────────────────────────────────────────────────────────────
 
+  // Main category, plus how many more the product sits in.
+  const categoryLabel = (record: ProductWithVariants) => {
+    const main = record.category?.name || t.admin.uncategorized;
+    const extra = (record.category_ids?.length ?? 0) - 1;
+    return extra > 0 ? `${main} ${t.admin.moreCategories.replace("{count}", n(extra))}` : main;
+  };
+
   const renderBadges = (record: ProductWithVariants) => {
     const featured = getFeatured(record);
     const freeDelivery = getFreeDelivery(record);
@@ -708,7 +715,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
               {record.name}
             </span>
             <span className="text-xs text-muted-foreground">
-              {record.category?.name || t.admin.uncategorized}
+              {categoryLabel(record)}
               {variantCount > 0 &&
                 ` · ${t.admin.productVariantCount.replace("{count}", n(variantCount))}`}
             </span>
@@ -883,7 +890,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 />
               }
               title={record.name}
-              subtitle={record.category?.name || t.admin.uncategorized}
+              subtitle={categoryLabel(record)}
               content={
                 <div className="flex flex-col gap-2.5 mt-1">
                   {/* Variants */}

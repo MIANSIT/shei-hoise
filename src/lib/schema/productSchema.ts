@@ -8,12 +8,8 @@ export const productSchema = z
   .object({
     id: z.string().uuid().optional(),
     store_id: z.string().uuid(),
-    category_id: z
-      .string()
-      .nullable()
-      .refine((val) => val !== null && val !== "", {
-        message: "Category is required",
-      }),
+    /** Every category the product sits in; the first is its main category. */
+    category_ids: z.array(z.string().uuid()).min(1, "Choose at least one category"),
     /** Optional brand (plan feature "brands"); the server ignores it on plans without brands. */
     brand_id: z.string().nullable().optional(),
     name: z.string().min(1, "Product name is required"),

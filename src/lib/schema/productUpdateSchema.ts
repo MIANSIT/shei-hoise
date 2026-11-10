@@ -5,7 +5,7 @@ export const productUpdateSchema = z
   .object({
     id: z.string().uuid(),
     store_id: z.string().uuid(),
-    category_id: z.string().nullable().optional(),
+    category_ids: z.array(z.string().uuid()).min(1, "Choose at least one category").optional(),
     brand_id: z.string().nullable().optional(),
     name: z.string().min(1).optional(),
     slug: z.string().min(1).optional(),
