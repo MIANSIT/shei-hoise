@@ -103,9 +103,9 @@ async function optionalBranch(storeId: string, branchId: string | null | undefin
 }
 
 /** The date must fall between the day the system started and today. */
-function checkDate(date: string, state: InvestorState): string | null {
+function checkDate(date: string, state: InvestorState, allowBeforeStart = false): string | null {
   if (!state.goLive) return "Save your starting cash first";
-  if (date < state.goLive) return "That date is before the starting cash date";
+  if (!allowBeforeStart && date < state.goLive) return "That date is before the starting cash date";
   if (date > dhakaToday()) return "The date cannot be in the future";
   return null;
 }
@@ -239,7 +239,8 @@ export async function addInvestorMoney(storeId: string, input: AddInvestorMoneyI
       if (seedError) return { success: false, error: seedError };
       state = await loadInvestorState(storeId);
     }
-    const dateError = checkDate(v.date, state);
+    // Money a person put in can be dated any day in the past: the Investor account is not tied to the starting cash date.
+    const dateError = checkDate(v.date, state, true);
     if (dateError) return { success: false, error: dateError };
 
     // What this call created, so a failed save leaves nothing behind (a person with no money, or an empty deal).

@@ -369,7 +369,7 @@ export default function InvestorMoneyPage() {
                       value={date}
                       onChange={(d) => d && setDate(d)}
                       allowClear={false}
-                      disabledDate={(d) => d.isAfter(dayjs(), "day") || (!!overview?.goLive && d.isBefore(dayjs(overview.goLive), "day"))}
+                      disabledDate={(d) => d.isAfter(dayjs(), "day")}
                       style={BOX}
                     />
                   </div>

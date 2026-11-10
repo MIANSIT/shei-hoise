@@ -119,7 +119,6 @@ export async function loadInvestorState(
         .from("investor_entries")
         .select("id, deal_id, entry_type, amount, entry_date, pay_from, payment_method, branch_id, period_month, note")
         .eq("store_id", storeId)
-        .gte("entry_date", goLive)
         .order("id")
         .range(from, to),
     );
@@ -143,7 +142,6 @@ export async function loadInvestorState(
         .eq("store_id", storeId)
         .eq("paid_from", "outside")
         .not("funder_id", "is", null)
-        .gte("expense_date", goLive)
         .order("id")
         .range(from, to),
     );
@@ -160,7 +158,6 @@ export async function loadInvestorState(
         .eq("kind", "payment")
         .eq("paid_from", "outside")
         .not("funder_id", "is", null)
-        .gte("entry_date", goLive)
         .order("id")
         .range(from, to),
     );

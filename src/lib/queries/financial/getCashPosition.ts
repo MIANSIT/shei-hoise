@@ -68,7 +68,7 @@ export async function getStartingCash(storeId: string): Promise<StartingCashRow[
  * The Investor account and the loans still owed, from the day the system started to a day. Owner only.
  * @returns both amounts, or zeros when nothing is recorded or it cannot be read
  */
-async function getInvestorTotals(storeId: string, goLive: string, today: string): Promise<{ account: number; loansOwed: number }> {
+async function getInvestorTotals(storeId: string, today: string): Promise<{ account: number; loansOwed: number }> {
   try {
     const [{ data: partnerRows }, { data: dealRows }] = await Promise.all([
       supabase.from("money_partners").select("id, name, kind").eq("store_id", storeId),
@@ -102,7 +102,6 @@ async function getInvestorTotals(storeId: string, goLive: string, today: string)
         .from("investor_entries")
         .select("id, deal_id, entry_type, amount, entry_date, pay_from, payment_method, branch_id, period_month, note")
         .eq("store_id", storeId)
-        .gte("entry_date", goLive)
         .lte("entry_date", today)
         .order("id")
         .range(from, to),
@@ -128,7 +127,6 @@ async function getInvestorTotals(storeId: string, goLive: string, today: string)
         .eq("store_id", storeId)
         .eq("paid_from", "outside")
         .not("funder_id", "is", null)
-        .gte("expense_date", goLive)
         .lte("expense_date", today)
         .order("id")
         .range(from, to),
@@ -142,7 +140,6 @@ async function getInvestorTotals(storeId: string, goLive: string, today: string)
         .eq("kind", "payment")
         .eq("paid_from", "outside")
         .not("funder_id", "is", null)
-        .gte("entry_date", goLive)
         .lte("entry_date", today)
         .order("id")
         .range(from, to),
@@ -249,7 +246,7 @@ export async function getCashPosition(
   let investorAccount = 0;
   let loans = 0;
   if (!branchId) {
-    const totals = await getInvestorTotals(storeId, earliest, today);
+    const totals = await getInvestorTotals(storeId, today);
     investorAccount = totals.account;
     loans = totals.loansOwed;
   }
