@@ -59,6 +59,7 @@ import CustomerOrderHistoryTags from "@/app/components/admin/order/common/Custom
 import type { CustomerHistoryEntry } from "@/lib/types/orders/customerHistory";
 import ReceiptPreviewModal from "@/app/components/admin/order/quick-sale/ReceiptPreviewModal";
 import { buildReceiptPdfSetForOrder } from "@/lib/utils/receiptFromOrder";
+import { invoiceTotals, invoiceUnitPrice } from "@/lib/utils/invoicePrice";
 import { getCustomerMemberNumber } from "@/lib/queries/membership/memberDiscount";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
@@ -220,6 +221,13 @@ const OrdersTable: React.FC<Props> = ({
   const [invoiceMemberNumber, setInvoiceMemberNumber] = useState<string | null>(null);
   const invoiceStoreId = selectedOrderForInvoice?.store_id;
   const invoiceCustomerId = selectedOrderForInvoice?.customer_id;
+  // A Quick Sale line sold at a changed price prints that price; its extra moves
+  // out of the extra-charge line so the invoice total is unchanged.
+  const invoicePrinted = invoiceTotals(
+    selectedOrderForInvoice?.order_items ?? [],
+    selectedOrderForInvoice?.subtotal ?? 0,
+    selectedOrderForInvoice?.additional_charges ?? 0,
+  );
   useEffect(() => {
     setInvoiceMemberNumber(null);
     if (!invoiceStoreId || !invoiceCustomerId) return;
@@ -1381,10 +1389,10 @@ const OrdersTable: React.FC<Props> = ({
           products={selectedOrderForInvoice.order_items.map((item) => ({
             name: item.product_name,
             qty: item.quantity,
-            price: item.unit_price,
+            price: invoiceUnitPrice(item),
           }))}
           currency={getValidCurrency(selectedOrderForInvoice.currency)}
-          subtotal={selectedOrderForInvoice.subtotal}
+          subtotal={invoicePrinted.subtotal}
           deliveryCharge={selectedOrderForInvoice.shipping_fee}
           taxAmount={selectedOrderForInvoice.tax_amount}
           // discount_amount is the whole discount; the membership's part gets its own line.
@@ -1396,12 +1404,11 @@ const OrdersTable: React.FC<Props> = ({
           memberNumber={invoiceMemberNumber}
           // ✅ FIX 1: Convert number to AdditionalCharge array
           additionalCharges={
-            selectedOrderForInvoice.additional_charges &&
-            selectedOrderForInvoice.additional_charges > 0
+            invoicePrinted.additionalCharges > 0
               ? [
                   {
                     label: "Additional Charges",
-                    amount: selectedOrderForInvoice.additional_charges,
+                    amount: invoicePrinted.additionalCharges,
                   },
                 ]
               : []

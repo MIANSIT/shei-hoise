@@ -13,10 +13,11 @@ import {
   Switch,
   Typography,
   Tag,
+  Popover,
   notification,
 } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { SearchOutlined, CameraOutlined, DeleteOutlined } from "@ant-design/icons";
+import { SearchOutlined, CameraOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import { ProductImage } from "@/app/components/products/ProductImage";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -59,6 +60,7 @@ import { WorkBranchPicker } from "@/app/components/admin/branches/WorkBranchPick
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { branchReceiptLines } from "@/lib/utils/invoiceStore";
+import { invoiceUnitPrice, invoicePriceMarkup } from "@/lib/utils/invoicePrice";
 
 import { formatDateTime } from "@/lib/utils/formatDate";
 const { Text, Title } = Typography;
@@ -192,6 +194,9 @@ export default function QuickSale() {
   // "✓ Added" confirmation has a second, harder-to-miss signal than a
   // status line under the camera view.
   const [flashKey, setFlashKey] = useState<string | null>(null);
+  // The cart line whose sale price is being changed, and the price typed so far.
+  const [priceEditIndex, setPriceEditIndex] = useState<number | null>(null);
+  const [priceDraft, setPriceDraft] = useState<number | null>(null);
 
   // A known phone number fills in that customer's saved name; a new one
   // leaves the name for the cashier to type.
@@ -489,12 +494,32 @@ export default function QuickSale() {
   };
 
   const removeFromCart = (index: number) => {
+    setPriceEditIndex(null);
     setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // A platform with its own (higher) MRP: the line keeps the product's price in
+  // unit_price and only the invoice shows the changed one — the difference is
+  // booked as an extra charge. A price at or below the MRP clears it.
+  const setLineInvoicePrice = (index: number, price: number | null) => {
+    setCart((prev) => {
+      const updated = [...prev];
+      const item = updated[index];
+      if (!item) return prev;
+      updated[index] = {
+        ...item,
+        invoice_unit_price: price != null && price > item.unit_price ? price : null,
+      };
+      return updated;
+    });
+    setPriceEditIndex(null);
+  };
+
   const subtotal = cart.reduce((sum, it) => sum + it.total_price, 0);
+  // What the changed prices add on top of the products' own prices.
+  const priceMarkup = invoicePriceMarkup(cart);
   const memberDiscount = Math.min(memberInfo?.discount ?? 0, subtotal);
-  const total = Math.max(0, subtotal - memberDiscount - discount + additionalCharges);
+  const total = Math.max(0, subtotal - memberDiscount - discount + additionalCharges + priceMarkup);
 
   // Types a membership number (as printed on the card) to fill in who is buying:
   // the member's phone goes into the customer field and the usual lookup does the rest.
@@ -586,7 +611,7 @@ export default function QuickSale() {
       items: order.items.map((it) => ({
         name: it.product_name + (it.variant_name ? ` (${it.variant_name})` : ""),
         qty: it.quantity,
-        amount: it.total_price,
+        amount: invoiceUnitPrice(it) * it.quantity,
       })),
       subtotal: order.subtotal,
       discount: order.discount,
@@ -703,7 +728,8 @@ export default function QuickSale() {
         // The order's whole discount: what the cashier gave plus the member discount.
         discount: discount + memberDiscount,
         ...(memberDiscount > 0 ? { membershipDiscount: memberDiscount } : {}),
-        additionalCharges,
+        // Changed prices are booked like an extra charge; subtotal stays at the products' prices.
+        additionalCharges: additionalCharges + priceMarkup,
         deliveryCost: 0,
         totalAmount: total,
         status: OrderStatus.DELIVERED,
@@ -758,7 +784,8 @@ export default function QuickSale() {
         await printReceipt({
           orderNumber,
           items: cart,
-          subtotal,
+          // The invoice shows the changed prices, so its subtotal includes them.
+          subtotal: subtotal + priceMarkup,
           discount,
           memberDiscount,
           additionalCharges,
@@ -782,6 +809,7 @@ export default function QuickSale() {
           date: orderDate.hour(now.getHours()).minute(now.getMinutes()).toDate(),
         });
         setCart([]);
+        setPriceEditIndex(null);
         setDiscount(0);
         setAdditionalCharges(0);
         setWalkInName("");
@@ -986,10 +1014,76 @@ export default function QuickSale() {
                         <span className="text-muted-foreground"> · {item.variant_name}</span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {currencyIcon}
-                      {item.unit_price} each
-                    </div>
+                    <Popover
+                      trigger="click"
+                      placement="bottomLeft"
+                      open={priceEditIndex === index}
+                      onOpenChange={(open) => {
+                        if (open) {
+                          setPriceEditIndex(index);
+                          setPriceDraft(invoiceUnitPrice(item));
+                        } else if (priceEditIndex === index) {
+                          setPriceEditIndex(null);
+                        }
+                      }}
+                      title={t.admin.qsPriceLabel}
+                      content={
+                        <div className="w-60 space-y-2">
+                          <InputNumber
+                            autoFocus
+                            min={item.unit_price}
+                            value={priceDraft}
+                            onChange={(v) => setPriceDraft(v)}
+                            onPressEnter={() => setLineInvoicePrice(index, priceDraft)}
+                            prefix={currencyIcon}
+                            aria-label={t.admin.qsPriceLabel}
+                            style={{ width: "100%" }}
+                          />
+                          <div className="text-[11px] text-muted-foreground">
+                            {t.admin.qsPriceHint}
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            {item.invoice_unit_price != null && (
+                              <Button size="small" onClick={() => setLineInvoicePrice(index, null)}>
+                                {t.admin.qsPriceReset}
+                              </Button>
+                            )}
+                            <Button
+                              size="small"
+                              type="primary"
+                              onClick={() => setLineInvoicePrice(index, priceDraft)}
+                            >
+                              {t.admin.qsPriceApply}
+                            </Button>
+                          </div>
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-indigo-500"
+                        aria-label={t.admin.qsChangePrice}
+                        title={t.admin.qsChangePrice}
+                      >
+                        {item.invoice_unit_price != null ? (
+                          <>
+                            <span className="font-medium text-indigo-500">
+                              {currencyIcon}
+                              {invoiceUnitPrice(item)} each
+                            </span>
+                            <span className="line-through">
+                              {t.admin.qsPriceMrp.replace("{price}", `${currencyIcon}${item.unit_price}`)}
+                            </span>
+                          </>
+                        ) : (
+                          <span>
+                            {currencyIcon}
+                            {item.unit_price} each
+                          </span>
+                        )}
+                        <EditOutlined />
+                      </button>
+                    </Popover>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <div className="flex items-center gap-1">
@@ -1019,7 +1113,7 @@ export default function QuickSale() {
                     </div>
                     <span className="text-sm font-semibold w-16 text-right">
                       {currencyIcon}
-                      {item.total_price.toFixed(2)}
+                      {(invoiceUnitPrice(item) * item.quantity).toFixed(2)}
                     </span>
                     <button
                       type="button"
@@ -1040,9 +1134,18 @@ export default function QuickSale() {
               <Text type="secondary">Subtotal</Text>
               <Text>
                 {currencyIcon}
-                {subtotal.toFixed(2)}
+                {(subtotal + priceMarkup).toFixed(2)}
               </Text>
             </div>
+            {priceMarkup > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <Text type="secondary">{t.admin.qsPriceChanges}</Text>
+                <Text type="secondary">
+                  +{currencyIcon}
+                  {priceMarkup.toFixed(2)}
+                </Text>
+              </div>
+            )}
             {memberDiscount > 0 && memberInfo?.membership && (
               <div className="flex items-center justify-between text-sm">
                 <Text type="secondary">

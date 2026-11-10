@@ -2,6 +2,7 @@ import { StoreOrder } from "@/lib/types/order";
 import { getValidCurrency } from "@/lib/utils/currency";
 import { InvoicePdfData } from "@/lib/utils/invoicePdfHelpers";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
+import { invoiceTotals, invoiceUnitPrice } from "@/lib/utils/invoicePrice";
 
 /**
  * Maps a StoreOrder into the flat shape the invoice PDF endpoints expect.
@@ -18,6 +19,9 @@ export function buildInvoiceRequestData(
   /** The customer's membership number when they are a member. */
   memberNumber?: string | null,
 ): InvoicePdfData {
+  // A Quick Sale line sold at a changed price prints that price; its extra
+  // moves out of the extra-charge line so the total is unchanged.
+  const printed = invoiceTotals(order.order_items, order.subtotal, order.additional_charges ?? 0);
   return {
     orderId: order.order_number,
     customer: {
@@ -28,10 +32,10 @@ export function buildInvoiceRequestData(
     products: order.order_items.map((item) => ({
       name: item.product_name,
       qty: item.quantity,
-      price: item.unit_price,
+      price: invoiceUnitPrice(item),
     })),
     currency: getValidCurrency(order.currency),
-    subtotal: order.subtotal,
+    subtotal: printed.subtotal,
     deliveryCharge: order.shipping_fee,
     taxAmount: order.tax_amount,
     // discount_amount is the whole discount; the membership's part gets its own line.
@@ -39,8 +43,8 @@ export function buildInvoiceRequestData(
     memberDiscount: order.membership_discount ?? 0,
     memberNumber: memberNumber ?? null,
     additionalCharges:
-      order.additional_charges && order.additional_charges > 0
-        ? [{ label: "Additional Charges", amount: order.additional_charges }]
+      printed.additionalCharges > 0
+        ? [{ label: "Additional Charges", amount: printed.additionalCharges }]
         : [],
     totalDue: order.total_amount,
     amountPaid: paidAmount,

@@ -687,6 +687,11 @@ CREATE TABLE IF NOT EXISTS "public"."branch_stock_transfer_items" (
 --   receive_purchase(...) adds stock, sets weighted-average cost, adds the bill and any
 --     "paid now" payment in one transaction. service_role only.
 
+-- Invoice price — 20261209000000_order_item_invoice_price.sql:
+--   order_items."invoice_unit_price" numeric(10,2) NULL — the per-unit price printed on the invoice when a
+--   Quick Sale line was sold at a changed MRP. unit_price keeps the product's own price; the difference
+--   ((invoice_unit_price - unit_price) * quantity) is part of orders.additional_charges.
+
 -- Order line cost — 20261205000000_order_line_cost_snapshot.sql. Triggers only: fill_order_item_cost (BEFORE INSERT on
 --   order_items fills a missing cost_price from the variant or product TP), backfill_order_costs_from_product / _variant
 --   (AFTER UPDATE OF tp_price: a TP added where there was none fills old lines of that product or variant that have no
