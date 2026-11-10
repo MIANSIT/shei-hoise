@@ -649,11 +649,19 @@ async function handleStatusChangeInventory(
       }
     }
 
-    // From cancelled/returned to pending/confirmed - reserve stock again
+    const wasClosed = oldStatus === OrderStatus.CANCELLED || oldStatus === OrderStatus.RETURNED;
+
+    // From cancelled/returned to an open status (not delivered) - take the stock out of available again
     if (
-      (oldStatus === OrderStatus.CANCELLED || oldStatus === OrderStatus.RETURNED) &&
-      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
+      wasClosed &&
+      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED || newStatus === OrderStatus.SHIPPED)
     ) {
+      await reserveStock(orderId, orderItems);
+    }
+
+    // From cancelled/returned straight to delivered: the stock is back in available, so it has to leave
+    // available first; finalize below then clears the hold. Without this the stock stayed counted.
+    if (wasClosed && newStatus === OrderStatus.DELIVERED) {
       await reserveStock(orderId, orderItems);
     }
 
@@ -662,12 +670,13 @@ async function handleStatusChangeInventory(
       await deductReservedStock(orderId, orderItems);
     }
 
-    // From delivered back to confirmed/pending - reverse the deduction
+    // From delivered back to an open status - the stock is still out of available (it left when the order was
+    // placed), so only the hold comes back. Reserving again took it out of available a second time.
     if (
       oldStatus === OrderStatus.DELIVERED &&
-      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED)
+      (newStatus === OrderStatus.PENDING || newStatus === OrderStatus.CONFIRMED || newStatus === OrderStatus.SHIPPED)
     ) {
-      await reserveStock(orderId, orderItems);
+      await moveOrderStock(orderId, orderItems, "rehold");
     }
 
 

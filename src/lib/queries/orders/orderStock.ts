@@ -23,14 +23,17 @@ export interface StockLine {
  * - release:  cancelled or returned before delivery — reserved → available
  * - finalize: delivered — the reservation is cleared, the stock has left
  * - restock:  returned after delivery — straight back to available
+ * - rehold:   a delivered order reopened — the hold comes back on reserved only; available was already reduced
+ *             when the order was placed, so it must not be reduced a second time
  */
-export type OrderStockOp = "reserve" | "release" | "finalize" | "restock";
+export type OrderStockOp = "reserve" | "release" | "finalize" | "restock" | "rehold";
 
 const SQL_OP: Record<OrderStockOp, { op: "reserve" | "take" | "finalize"; sign: 1 | -1 }> = {
   reserve: { op: "reserve", sign: 1 },
   release: { op: "reserve", sign: -1 },
   finalize: { op: "finalize", sign: 1 },
   restock: { op: "take", sign: -1 },
+  rehold: { op: "finalize", sign: -1 },
 };
 
 async function callStockMove(
