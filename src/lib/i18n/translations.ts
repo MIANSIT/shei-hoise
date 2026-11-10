@@ -177,6 +177,8 @@ export const translations = {
       outOfStock: "This product is out of stock",
       failedAddToCart: "Failed to add product to cart",
       addedToCart: "added to cart",
+      youMayAlsoLike: "You may also like",
+      viewAll: "View all",
     },
     card: {
       featured: "Featured",
@@ -4338,6 +4340,8 @@ export const translations = {
       outOfStock: "এই পণ্যটি স্টকে নেই",
       failedAddToCart: "পণ্য কার্টে যোগ করা যায়নি",
       addedToCart: "কার্টে যোগ হয়েছে",
+      youMayAlsoLike: "আপনার পছন্দ হতে পারে",
+      viewAll: "সব দেখুন",
     },
     card: {
       featured: "বিশেষ পণ্য",

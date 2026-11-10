@@ -14,6 +14,7 @@ import { getProductRatingSummary } from "@/lib/queries/reviews/getProductRatingS
 import { getProductSoldCount } from "@/lib/queries/products/getProductSoldCount";
 import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRatingSummary";
 import { ReviewsSection } from "@/app/components/products/reviews/ReviewsSection";
+import { RelatedProducts } from "@/app/components/products/singleProduct/RelatedProducts";
 import { StoreReviewsSection } from "@/app/components/store/reviews/StoreReviewsSection";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
@@ -56,7 +57,7 @@ interface ApiProduct {
   sale_starts_at?: string | null;
   sale_ends_at?: string | null;
   free_delivery?: boolean;
-  categories: { id: string; name: string } | null;
+  categories: { id: string; name: string; slug?: string | null } | null;
   product_images: Array<{ id: string; image_url: string; is_primary: boolean }>;
   product_inventory: Array<{
     quantity_available: number;
@@ -1296,6 +1297,15 @@ export default function ProductPage() {
             </div>
           </m.div>
         </div>
+
+        {product.categories?.slug && (
+          <RelatedProducts
+            storeSlug={store_slug}
+            storeId={storeId}
+            currentProductId={product.id}
+            categorySlug={product.categories.slug}
+          />
+        )}
 
         <ReviewsSection
           productId={product.id}
