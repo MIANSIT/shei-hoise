@@ -7,6 +7,7 @@ import { getBundleAvailabilityMap } from "@/lib/queries/bundles/getBundleAvailab
 import { getBundleComponentValueMap } from "@/lib/queries/bundles/getBundleComponentValueMap";
 import { getBundleConfigurableMap } from "@/lib/queries/bundles/getBundleConfigurableMap";
 import { searchProductIds } from "@/lib/queries/products/searchProductIds";
+import { getProductCategoryIds } from "@/lib/queries/products/getProductCategoryIds";
 
 /**
  * Storefront sort options.
@@ -285,6 +286,7 @@ export async function clientGetProducts(
           : orderedProducts;
 
       const pageProducts = finalOrder.slice(start, end + 1);
+      await attachCategoryIds(pageProducts);
       return {
         products: pageProducts,
         hasMore: end + 1 < finalOrder.length,
@@ -312,6 +314,7 @@ export async function clientGetProducts(
 
     const hasMore = count ? end + 1 < count : false;
 
+    await attachCategoryIds(sortedProducts);
     return {
       products: sortedProducts,
       hasMore,
@@ -320,6 +323,15 @@ export async function clientGetProducts(
   } catch (error) {
     console.error("Error in clientGetProducts:", error);
     throw error;
+  }
+}
+
+/** Adds every category of each product, so a coupon limited to categories can be matched on the product cards. */
+async function attachCategoryIds(list: Product[]): Promise<void> {
+  const map = await getProductCategoryIds(list.map((p) => p.id));
+  for (const p of list) {
+    const ids = map.get(p.id);
+    if (ids && ids.length > 0) p.category_ids = ids;
   }
 }
 

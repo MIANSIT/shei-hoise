@@ -15,6 +15,7 @@ import { getProductSoldCount } from "@/lib/queries/products/getProductSoldCount"
 import { getStoreRatingSummary } from "@/lib/queries/storeReviews/getStoreRatingSummary";
 import { ReviewsSection } from "@/app/components/products/reviews/ReviewsSection";
 import { RelatedProducts } from "@/app/components/products/singleProduct/RelatedProducts";
+import { getProductCategoryIds } from "@/lib/queries/products/getProductCategoryIds";
 import { StoreReviewsSection } from "@/app/components/store/reviews/StoreReviewsSection";
 import ProductImage from "@/app/components/products/singleProduct/ProductImage";
 import ProductPrice from "@/app/components/products/singleProduct/ProductPrice";
@@ -327,6 +328,8 @@ export default function ProductPage() {
   const [brand, setBrand] = useState<StorefrontBrand | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [autoCoupons, setAutoCoupons] = useState<Coupon[]>([]);
+  // Every category of this product, to match coupons limited to categories (the product's main category until loaded).
+  const [categoryIds, setCategoryIds] = useState<string[] | null>(null);
   const [storeRatingSummary, setStoreRatingSummary] = useState({ average: 0, total: 0 });
   const [descExpanded, setDescExpanded] = useState(false);
   const [descOverflows, setDescOverflows] = useState(false);
@@ -555,6 +558,18 @@ export default function ProductPage() {
     };
   }, [storeId]);
 
+  useEffect(() => {
+    if (!product?.id) return;
+    let cancelled = false;
+    getProductCategoryIds([product.id]).then((map) => {
+      const ids = map.get(product.id);
+      if (!cancelled && ids && ids.length > 0) setCategoryIds(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.id]);
+
   // Cap the open-by-default description at a fixed height with a
   // "Read more" toggle — only for descriptions that actually overflow it,
   // so a typical short/medium description shows in full with no extra click.
@@ -696,7 +711,7 @@ export default function ProductPage() {
   const couponPreview = autoCoupons
     .map((c) => ({
       code: c.code,
-      finalPrice: displayPrice - computeCouponDiscount(c, displayPrice, product.categories?.id ? [product.categories.id] : []),
+      finalPrice: displayPrice - computeCouponDiscount(c, displayPrice, categoryIds ?? (product.categories?.id ? [product.categories.id] : [])),
       minOrder: c.min_order_amount !== null && displayPrice < c.min_order_amount ? c.min_order_amount : null,
     }))
     .filter((p) => p.finalPrice < displayPrice)

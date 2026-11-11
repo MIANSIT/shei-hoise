@@ -83,7 +83,7 @@ export default function ProductCard({
   // Biggest saving among auto-apply coupons at this card's price (min-order
   // is ignored here — the product page spells that out).
   const couponBadge = autoCoupons
-    .map((c) => ({ coupon: c, saving: computeCouponDiscount(c, displayPrice, product.category?.id ? [product.category.id] : []) }))
+    .map((c) => ({ coupon: c, saving: computeCouponDiscount(c, displayPrice, product.category_ids ?? (product.category?.id ? [product.category.id] : [])) }))
     .filter((x) => x.saving > 0)
     .sort((a, b) => b.saving - a.saving)[0]?.coupon;
 

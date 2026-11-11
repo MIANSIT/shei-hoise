@@ -52,6 +52,8 @@ export interface Product {
   sale_ends_at?: string | null;
   featured?: boolean;
   category?: Category | null;
+  /** Every category the product sits in (main first). Set on the storefront lists, to match category coupons. */
+  category_ids?: string[];
   primary_image?: ProductImage | null;
   images?: string[];
   stock?: ProductStock | null;
