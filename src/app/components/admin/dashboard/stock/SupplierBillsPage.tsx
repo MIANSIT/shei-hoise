@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dayjs from "dayjs";
-import { Button, Empty, Spin } from "antd";
+import { Button, Empty, Select, Spin } from "antd";
 import { ReceiptText } from "lucide-react";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useTranslation } from "@/lib/hook/useTranslation";
@@ -12,7 +12,7 @@ import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
-import { getSupplierBills, type SupplierBillRow } from "@/lib/queries/supplier/supplierBills";
+import { getSupplierBills, setSupplierBillBranch, type SupplierBillRow } from "@/lib/queries/supplier/supplierBills";
 import type { BillSummary } from "@/lib/queries/supplier/supplierBillMath";
 import { addSupplierEntry, addSupplierPayments } from "@/lib/queries/supplier/supplierLedger";
 import { attachBillPhoto, getBillPhotoUrl, uploadBillPhoto } from "@/lib/queries/supplier/supplierBillPhotos";
@@ -47,6 +47,21 @@ export default function SupplierBillsPage() {
   const [filter, setFilter] = useState<Filter>("open");
   const [photoBusy, setPhotoBusy] = useState<string | null>(null);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [unassignedCount, setUnassignedCount] = useState(0);
+  const [branchBusy, setBranchBusy] = useState<string | null>(null);
+
+  const assignBranch = async (billId: string, branchId: string) => {
+    if (!storeId) return;
+    setBranchBusy(billId);
+    try {
+      const result = await setSupplierBillBranch(storeId, billId, branchId);
+      if (!result.success) return showError(result.error);
+      success(t.admin.sbBranchSaved);
+      await load();
+    } finally {
+      setBranchBusy(null);
+    }
+  };
 
   const openPhoto = async (path: string) => {
     if (!storeId) return;
@@ -84,6 +99,7 @@ export default function SupplierBillsPage() {
     }
     setRows(result.rows);
     setSummary(result.summary);
+    setUnassignedCount(result.unassignedCount);
     setLoading(false);
   }, [storeId, billBranchId, showError, t.admin.sbLoadFailed]);
 
@@ -254,6 +270,12 @@ export default function SupplierBillsPage() {
         ))}
       </div>
 
+      {branchesOn && billBranchId && unassignedCount > 0 && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+          {t.admin.sbUnassignedNote.replace("{n}", n(unassignedCount))}
+        </p>
+      )}
+
       <section className="rounded-2xl border border-border bg-card overflow-hidden">
         {visible.length === 0 ? (
           <div className="p-8">
@@ -308,7 +330,21 @@ export default function SupplierBillsPage() {
                       )}
                     </td>
                     {branchesOn && !billBranchId && (
-                      <td className="py-2 px-3 text-foreground">{r.branchId ? (branchNames.get(r.branchId) ?? "—") : t.admin.sbNoBranch}</td>
+                      <td className="py-2 px-3 text-foreground">
+                        {r.branchId ? (
+                          (branchNames.get(r.branchId) ?? "—")
+                        ) : (
+                          <Select
+                            size="small"
+                            placeholder={t.admin.sbAssignBranch}
+                            loading={branchBusy === r.id}
+                            disabled={branchBusy !== null}
+                            style={{ minWidth: 130 }}
+                            options={branches.filter((b) => b.isActive).map((b) => ({ value: b.id, label: b.name }))}
+                            onChange={(value: string) => void assignBranch(r.id, value)}
+                          />
+                        )}
+                      </td>
                     )}
                     <td className="py-2 px-3 whitespace-nowrap text-foreground">{date(r.dueDate)}</td>
                     <td className="py-2 px-3 text-right tabular-nums text-foreground">{money(r.amount)}</td>

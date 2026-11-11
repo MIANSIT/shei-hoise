@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { authorizeForStore, logActivity } from "@/lib/permissions/server";
 import { optimizeImage } from "@/lib/utils/optimizeImage";
+import { toPublicStorageUrl } from "@/lib/supabase/publicUrl";
 
 /** Photos of paper supplier bills: private storage, shown through short-lived signed links. */
 const BUCKET = "supplier-bills";
@@ -94,7 +95,9 @@ export async function getBillPhotoUrl(storeId: string, path: string): Promise<Bi
 
     const { data, error } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, LINK_SECONDS);
     if (error || !data) return { success: false, error: error?.message ?? "The photo could not be opened" };
-    return { success: true, url: data.signedUrl };
+    // The server talks to storage over the internal address (kong:8000), which a browser cannot reach: hand out the
+    // same link on the public address.
+    return { success: true, url: toPublicStorageUrl(data.signedUrl) };
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "The photo could not be opened" };
   }
