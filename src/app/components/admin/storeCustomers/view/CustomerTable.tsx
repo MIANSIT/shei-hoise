@@ -23,6 +23,7 @@ import { DetailedCustomer } from "@/lib/types/users";
 import { deleteUserWithCheck } from "@/lib/queries/user/deleteUserWithCheck";
 import { useTranslation } from "@/lib/hook/useTranslation";
 import { useLocalNum } from "@/lib/hook/useLocalNum";
+import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 
 import Link from "next/link";
@@ -48,6 +49,16 @@ export function CustomerTable({
   const { notification, modal } = App.useApp();
   const t = useTranslation();
   const { can } = usePermissions();
+  const { icon: currencyIcon } = useUserCurrencyIcon();
+  const symbol = typeof currencyIcon === "string" ? currencyIcon : "৳";
+  /** What the customer has bought, as a tag; nothing for a customer who has bought nothing. */
+  const totalTag = (customer: DetailedCustomer) =>
+    typeof customer.total_purchase === "number" && customer.total_purchase > 0 ? (
+      <Tag color="blue" className="text-xs" title={t.admin.customerTotalPurchase}>
+        {symbol}
+        {n(Math.round(customer.total_purchase).toLocaleString())}
+      </Tag>
+    ) : null;
   const n = useLocalNum();
 
   const handleDelete = (customer: DetailedCustomer) => {
@@ -125,6 +136,7 @@ export function CustomerTable({
                     {n(record.order_count)} {t.admin.customerTableOrdersTag}
                   </Tag>
                 )}
+              {totalTag(record)}
             </Space>
           </div>
         </Space>
@@ -286,6 +298,7 @@ export function CustomerTable({
                             {n(customer.order_count)} {t.admin.customerTableOrdersTag}
                           </Tag>
                         )}
+                      {totalTag(customer)}
                     </div>
                   </div>
                 </div>

@@ -34,6 +34,8 @@ export interface TableCustomer {
   address?: string;
   status?: "active" | "inactive";
   order_count?: number;
+  /** What the customer has bought: goods after discount plus extra charges, without delivery; cancelled and returned orders left out. */
+  total_purchase?: number;
   last_order_date?: string;
   source?: "direct" | "orders";
 }

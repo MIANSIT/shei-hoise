@@ -32,9 +32,25 @@ interface RawCustomerRow {
     | null;
 }
 
+/** The columns needed to work out what an order counts as shopping. */
+const SPEND_COLUMNS = "subtotal, discount_amount, additional_charges, status";
+
+interface SpendFields {
+  subtotal?: number | null;
+  discount_amount?: number | null;
+  additional_charges?: number | null;
+  status?: string | null;
+}
+
+/** Same as the membership spend: goods after discount plus extra charges (not delivery or tax); cancelled and returned count nothing. */
+function orderSpend(o: SpendFields): number {
+  if (o.status === "cancelled" || o.status === "returned") return 0;
+  return Number(o.subtotal ?? 0) - Number(o.discount_amount ?? 0) + Number(o.additional_charges ?? 0);
+}
+
 function toDetailedCustomer(
   c: RawCustomerRow,
-  customerOrders: { created_at: string }[],
+  customerOrders: ({ created_at: string } & SpendFields)[],
 ): DetailedCustomer {
   const profile = (c.customer_profiles || [])[0] || null;
   return {
@@ -44,6 +60,7 @@ function toDetailedCustomer(
     phone: c.phone || undefined,
     status: "active",
     order_count: customerOrders.length,
+    total_purchase: Math.round(customerOrders.reduce((sum, o) => sum + orderSpend(o), 0) * 100) / 100,
     last_order_date: customerOrders[0]?.created_at ?? undefined,
     source: "direct",
     user_type: "customer",
@@ -105,7 +122,7 @@ async function getBranchStoreCustomers(
       .in("id", ids),
     supabase
       .from("orders")
-      .select("customer_id, created_at")
+      .select(`customer_id, created_at, ${SPEND_COLUMNS}`)
       .eq("store_id", storeId)
       .eq("branch_id", branchId)
       .in("customer_id", ids)
@@ -115,7 +132,7 @@ async function getBranchStoreCustomers(
 
   const rows = (customersRes.data ?? []) as unknown as RawCustomerRow[];
   const byId = new Map(rows.map((c) => [c.id, c]));
-  const orders = (ordersRes.data ?? []) as { customer_id: string; created_at: string }[];
+  const orders = (ordersRes.data ?? []) as unknown as ({ customer_id: string; created_at: string } & SpendFields)[];
 
   const customers = ids
     .map((id) => byId.get(id))
@@ -228,14 +245,16 @@ export async function getAllStoreCustomers(
     // 1699 orders, so the newest 1000 were all that counted — every customer
     // whose orders fell outside that window showed order_count 0 and no last
     // order date, with nothing to indicate the number was wrong.
-    const orders = await fetchAllPaged<{
-      id: string;
-      customer_id: string | null;
-      created_at: string;
-    }>((from, to) =>
+    const orders = await fetchAllPaged<
+      {
+        id: string;
+        customer_id: string | null;
+        created_at: string;
+      } & SpendFields
+    >((from, to) =>
       supabase
         .from("orders")
-        .select("id, customer_id, created_at")
+        .select(`id, customer_id, created_at, ${SPEND_COLUMNS}`)
         .eq("store_id", storeId)
         .order("created_at", { ascending: false })
         .range(from, to),
