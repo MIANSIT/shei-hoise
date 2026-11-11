@@ -255,9 +255,13 @@ export interface CreateVendorPaymentInput {
   // invoice it belongs to — useful when the vendor says outright which
   // invoice they're paying off.
   vendor_order_id?: string | null;
+  /** With vendor_order_id: what the payment pays, the invoice's goods or its delivery charge. Omitted = goods first, then delivery. */
+  applies_to?: VendorPaymentFor | null;
   /** Stores with branches: the branch that received the money (default branch when omitted). */
   branch_id?: string | null;
 }
+
+export type VendorPaymentFor = "goods" | "delivery";
 
 export interface VendorPayment {
   id: string;

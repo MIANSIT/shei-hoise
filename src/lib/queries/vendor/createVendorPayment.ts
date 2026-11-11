@@ -30,6 +30,8 @@ export async function createVendorPayment(
       notes: input.notes || null,
       created_by: input.created_by || auth.actor.userId,
       vendor_order_id: input.vendor_order_id || null,
+      // Only sent when it was chosen (and an invoice is pinned), so a database without the column keeps working.
+      ...(input.vendor_order_id && input.applies_to ? { applies_to: input.applies_to } : {}),
       // Stores with branches; the database falls back to the default branch.
       ...(input.branch_id ? { branch_id: input.branch_id } : {}),
     })

@@ -19,7 +19,7 @@ import {
   type VendorInvoiceBalance,
   type VendorInvoiceBalanceItem,
 } from "@/lib/queries/vendor/getVendorInvoiceBalances";
-import { getStoreById } from "@/lib/queries/stores/getStoreById";
+import { downloadVendorStatement } from "@/lib/utils/downloadVendorStatement";
 import { recordVendorSettlement } from "@/lib/queries/vendorSettlement/recordVendorSettlement";
 import { deleteVendorSettlement } from "@/lib/queries/vendorSettlement/deleteVendorSettlement";
 import { recordVendorReturn } from "@/lib/queries/vendorSettlement/recordVendorReturn";
@@ -40,6 +40,7 @@ import type {
   VendorLedgerEntry,
   VendorSettlementItemInput,
   VendorPaymentMethod,
+  VendorPaymentFor,
   VendorReturnableItem,
   VendorReturnItemInput,
 } from "@/lib/types/vendor/type";
@@ -239,6 +240,7 @@ export default function VendorDetailPage() {
     paymentMethod: VendorPaymentMethod;
     notes?: string;
     vendorOrderId?: string | null;
+    appliesTo?: VendorPaymentFor | null;
   }) => {
     if (!storeId) return;
     if (!(await confirmIfOverpaying(payload.amount))) return;
@@ -253,6 +255,7 @@ export default function VendorDetailPage() {
         notes: payload.notes,
         created_by: user?.id ?? null,
         vendor_order_id: payload.vendorOrderId,
+        applies_to: payload.appliesTo,
         branch_id: workBranchId,
       });
       success("Payment recorded");
@@ -289,49 +292,13 @@ export default function VendorDetailPage() {
     if (!vendor || !storeId) return;
     setStatementDownloading(true);
     try {
-      const store = await getStoreById(storeId);
-      // Ledger arrives newest-first; the statement reads top-to-bottom with
-      // an accumulating balance, so it needs oldest-first order instead.
-      const entries = [...ledger].reverse().map((e) => ({
-        date: dayjs(e.date).format("DD-MM-YYYY"),
-        type: e.type,
-        reference: e.reference,
-        description: e.description,
-        receivable: e.receivable,
-        paid: e.paid,
-        value: e.value,
-      }));
-
-      const res = await fetch("/api/vendor-invoices/statement", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          store: {
-            name: store?.store_name ?? "Store",
-            address: store?.business_address,
-            phone: store?.contact_phone,
-            email: store?.contact_email,
-          },
-          vendor: { name: vendor.name, phone: vendor.phone, address: vendor.address },
-          generatedDate: dayjs().format("DD-MM-YYYY"),
-          entries,
-          currentDue: stats?.current_due ?? 0,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to generate statement");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `vendor_statement_${vendor.name.replace(/\s+/g, "_")}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const due = await downloadVendorStatement(vendor, storeId);
 
       // The statement itself still has to be attached manually in the chat
       // that opens — WhatsApp's web link only pre-fills text, it can't
       // attach a file without the (paid, separately set up) Business API.
       const waNumber = toWhatsAppNumber(vendor.phone);
-      const message = `Hi ${vendor.name}, please find your account statement attached. Current due: ${fmtMoney(stats?.current_due ?? 0)}.`;
+      const message = `Hi ${vendor.name}, please find your account statement attached. Balance due: ${fmtMoney(due)}.`;
       window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`, "_blank");
     } catch (err) {
       error(err instanceof Error ? err.message : "Failed to download statement");
@@ -440,6 +407,25 @@ export default function VendorDetailPage() {
           {fmtMoney(v)}
         </span>
       ),
+    },
+    {
+      title: "Delivery Charge",
+      key: "delivery",
+      width: 170,
+      render: (_, record) => {
+        if (record.delivery_cost <= 0) return <span className="text-muted-foreground">—</span>;
+        const paidUp = record.delivery_due <= 0.005;
+        return (
+          <div>
+            <Tag color={paidUp ? "green" : record.delivery_paid > 0 ? "gold" : "red"} className="rounded-full">
+              {paidUp ? "Delivery paid" : record.delivery_paid > 0 ? "Part paid" : "Delivery not paid"}
+            </Tag>
+            <div className="text-[11px] text-muted-foreground">
+              {fmtMoney(record.delivery_paid)} of {fmtMoney(record.delivery_cost)}
+            </div>
+          </div>
+        );
+      },
     },
     {
       title: "Status",
@@ -758,7 +744,10 @@ export default function VendorDetailPage() {
                     <div className="flex flex-wrap justify-end gap-x-6 gap-y-1 text-xs text-muted-foreground pr-2">
                       <span>Subtotal: {fmtMoney(record.subtotal)}</span>
                       {record.delivery_cost > 0 && (
-                        <span>+ Delivery: {fmtMoney(record.delivery_cost)}</span>
+                        <span>
+                          + Delivery: {fmtMoney(record.delivery_cost)} (paid {fmtMoney(record.delivery_paid)}, due{" "}
+                          {fmtMoney(record.delivery_due)})
+                        </span>
                       )}
                       {record.discount_amount > 0 && (
                         <span>− Discount: {fmtMoney(record.discount_amount)}</span>
@@ -773,7 +762,7 @@ export default function VendorDetailPage() {
               }}
               pagination={false}
               locale={{ emptyText: "No confirmed vendor orders yet" }}
-              scroll={{ x: 700 }}
+              scroll={{ x: 870 }}
             />
           </div>
         </div>

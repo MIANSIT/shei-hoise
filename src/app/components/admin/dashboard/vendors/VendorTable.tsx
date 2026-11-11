@@ -8,6 +8,7 @@ import {
   MoreOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
+  FilePdfOutlined,
 } from "@ant-design/icons";
 import { Users, AlertTriangle } from "lucide-react";
 import type { ColumnsType } from "antd/es/table";
@@ -29,6 +30,10 @@ interface VendorTableProps {
   currencySymbol: string;
   onEdit: (vendor: Vendor) => void;
   onDelete: (id: string) => void;
+  /** Downloads the vendor's statement of account (invoices, returns, payments, balance). */
+  onStatement: (vendor: Vendor) => void;
+  /** The vendor whose statement is being built, if any. */
+  statementVendorId: string | null;
 }
 
 const TABLE_STYLES = `
@@ -69,6 +74,8 @@ function VendorTable({
   currencySymbol,
   onEdit,
   onDelete,
+  onStatement,
+  statementVendorId,
 }: VendorTableProps) {
   const router = useRouter();
   const { modal } = App.useApp();
@@ -107,6 +114,16 @@ function VendorTable({
         },
       },
       {
+        key: "statement",
+        icon: statementVendorId === record.id ? <Spin size="small" /> : <FilePdfOutlined style={{ color: "#6366f1" }} />,
+        label: <span className="text-foreground text-sm">Download Statement</span>,
+        onClick: ({ domEvent }) => {
+          domEvent.stopPropagation();
+          setOpenMenuId(null);
+          onStatement(record);
+        },
+      },
+      {
         key: "edit",
         icon: <EditOutlined style={{ color: "#6366f1" }} />,
         label: <span className="text-foreground text-sm">Edit</span>,
@@ -129,7 +146,7 @@ function VendorTable({
         },
       },
     ],
-    [deletingId, onEdit, confirmDelete, router],
+    [deletingId, onEdit, onStatement, statementVendorId, confirmDelete, router],
   );
 
   const columns: ColumnsType<Vendor> = [

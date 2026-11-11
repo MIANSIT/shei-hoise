@@ -12,6 +12,7 @@ import { getVendorsOverviewStats } from "@/lib/queries/vendor/getVendorsOverview
 import { createVendor, type CreateVendorInput } from "@/lib/queries/vendor/createVendor";
 import { updateVendor, type UpdateVendorInput } from "@/lib/queries/vendor/updateVendor";
 import { deleteVendor } from "@/lib/queries/vendor/deleteVendor";
+import { downloadVendorStatement } from "@/lib/utils/downloadVendorStatement";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
@@ -67,6 +68,7 @@ export default function VendorsPage() {
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statementVendorId, setStatementVendorId] = useState<string | null>(null);
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleSearchChange = useCallback((value: string) => {
@@ -184,6 +186,18 @@ export default function VendorsPage() {
     }
   };
 
+  const handleStatement = async (vendor: Vendor) => {
+    if (!storeId) return;
+    setStatementVendorId(vendor.id);
+    try {
+      await downloadVendorStatement(vendor, storeId);
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Failed to download statement");
+    } finally {
+      setStatementVendorId(null);
+    }
+  };
+
   if (userLoading || featureLoading) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center">
@@ -298,6 +312,8 @@ export default function VendorsPage() {
           currencySymbol={currencySymbol}
           onEdit={openEditModal}
           onDelete={handleDelete}
+          onStatement={handleStatement}
+          statementVendorId={statementVendorId}
         />
 
         {total > PAGE_SIZE && (

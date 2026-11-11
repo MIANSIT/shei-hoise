@@ -31,6 +31,7 @@ import type {
   VendorSettlementListItem,
   VendorSettlementItemInput,
   VendorPaymentMethod,
+  VendorPaymentFor,
 } from "@/lib/types/vendor/type";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
@@ -178,6 +179,7 @@ export default function VendorSettlementsPage() {
     paymentMethod: VendorPaymentMethod;
     notes?: string;
     vendorOrderId?: string | null;
+    appliesTo?: VendorPaymentFor | null;
   }) => {
     if (!storeId || !selectedVendorId) return;
     setQuickPaymentSubmitting(true);
@@ -191,6 +193,7 @@ export default function VendorSettlementsPage() {
         notes: payload.notes,
         created_by: user?.id ?? null,
         vendor_order_id: payload.vendorOrderId,
+        applies_to: payload.appliesTo,
         branch_id: workBranchId,
       });
       success("Payment recorded");

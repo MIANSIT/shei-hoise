@@ -4,7 +4,7 @@ import { memo, useEffect, useState } from "react";
 import { Modal, Button, DatePicker, InputNumber, Input, Select } from "antd";
 import { Wallet } from "lucide-react";
 import dayjs, { Dayjs } from "dayjs";
-import type { VendorPaymentMethod } from "@/lib/types/vendor/type";
+import type { VendorPaymentFor, VendorPaymentMethod } from "@/lib/types/vendor/type";
 
 const PAYMENT_METHOD_OPTIONS: { value: VendorPaymentMethod; label: string }[] = [
   { value: "cash", label: "Cash" },
@@ -29,6 +29,8 @@ interface VendorQuickPaymentModalProps {
     paymentMethod: VendorPaymentMethod;
     notes?: string;
     vendorOrderId?: string | null;
+    /** With an invoice picked: pays its goods or its delivery charge (omitted = goods first, then delivery). */
+    appliesTo?: VendorPaymentFor | null;
   }) => void;
   onCancel: () => void;
 }
@@ -45,6 +47,7 @@ function VendorQuickPaymentModal({
   const [paymentMethod, setPaymentMethod] = useState<VendorPaymentMethod>("cash");
   const [notes, setNotes] = useState("");
   const [vendorOrderId, setVendorOrderId] = useState<string | null>(null);
+  const [appliesTo, setAppliesTo] = useState<VendorPaymentFor | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -53,6 +56,7 @@ function VendorQuickPaymentModal({
       setPaymentMethod("cash");
       setNotes("");
       setVendorOrderId(null);
+      setAppliesTo(null);
     }
   }, [open]);
 
@@ -63,6 +67,7 @@ function VendorQuickPaymentModal({
       paymentMethod,
       notes: notes || undefined,
       vendorOrderId,
+      appliesTo: vendorOrderId ? appliesTo : null,
     });
   };
 
@@ -144,11 +149,29 @@ function VendorQuickPaymentModal({
               allowClear
               placeholder="Auto — oldest unpaid invoice first"
               value={vendorOrderId ?? undefined}
-              onChange={(v) => setVendorOrderId(v ?? null)}
+              onChange={(v) => {
+                setVendorOrderId(v ?? null);
+                if (!v) setAppliesTo(null);
+              }}
               options={invoiceOptions.map((o) => ({
                 value: o.order_id,
                 label: `${o.invoice_number} — Due: ${o.due_remaining.toFixed(2)}`,
               }))}
+              className="w-full mt-1"
+            />
+          </div>
+        )}
+        {vendorOrderId && (
+          <div>
+            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">This payment is for</label>
+            <Select
+              value={appliesTo ?? "any"}
+              onChange={(v) => setAppliesTo(v === "any" ? null : (v as VendorPaymentFor))}
+              options={[
+                { value: "any", label: "Not specified (goods first, then delivery charge)" },
+                { value: "goods", label: "Goods" },
+                { value: "delivery", label: "Delivery charge" },
+              ]}
               className="w-full mt-1"
             />
           </div>
