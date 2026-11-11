@@ -271,6 +271,11 @@ export default function CheckoutPage() {
   // customer applies or removes a coupon themselves, so their choice wins.
   // Re-runs when the subtotal changes so a min_order_amount reached later is
   // picked up, and a coupon that no longer fits is dropped.
+  // The cart's lines for the coupon check: a coupon limited to categories counts only its own categories' lines.
+  const couponLines = useMemo(
+    () => cartItems.map((i) => ({ productId: i.productId, amount: i.displayPrice * i.quantity })),
+    [cartItems],
+  );
   const couponTouchedByUser = useRef(false);
   const autoAppliedCode = useRef<string | null>(null);
   useEffect(() => {
@@ -283,7 +288,7 @@ export default function CheckoutPage() {
         if (!storeId) return;
         const candidates = await getAutoApplyCoupons(storeId);
         const results = await Promise.all(
-          candidates.map((c) => validateCoupon(c.code, storeId, calculations.subtotal)),
+          candidates.map((c) => validateCoupon(c.code, storeId, calculations.subtotal, null, couponLines)),
         );
         if (cancelled || couponTouchedByUser.current) return;
         const best = results
@@ -305,7 +310,7 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [isMounted, cartLoading, calculations.subtotal, store_slug]);
+  }, [isMounted, cartLoading, calculations.subtotal, couponLines, store_slug]);
 
   // Coupon apply/remove — this is only a live preview; the discount is
   // always (re)computed server-side again in createCustomerOrder right
@@ -324,7 +329,7 @@ export default function CheckoutPage() {
     try {
       const storeId = await getStoreIdBySlug(store_slug);
       if (!storeId) throw new Error("Store not found");
-      const result = await validateCoupon(code, storeId, calculations.subtotal);
+      const result = await validateCoupon(code, storeId, calculations.subtotal, null, couponLines);
       setAppliedCoupon(result);
       if (!result.valid) {
         notify.error(result.error || "Invalid coupon code");
@@ -335,7 +340,7 @@ export default function CheckoutPage() {
     } finally {
       setCouponValidating(false);
     }
-  }, [couponCode, calculations.subtotal, store_slug, notify]);
+  }, [couponCode, calculations.subtotal, couponLines, store_slug, notify]);
 
   const handleRemoveCoupon = useCallback(() => {
     couponTouchedByUser.current = true;

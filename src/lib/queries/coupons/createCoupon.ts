@@ -46,9 +46,11 @@ export async function createCoupon(
     throw new Error(`A coupon with code "${payload.code}" already exists.`);
   }
 
+  // The category list is sent only when categories were picked, so a database without the column still saves coupons.
+  const { category_ids: categoryIds, ...basePayload } = payload;
   const { data: insertData, error } = await supabaseAdmin
     .from("coupons")
-    .insert({ ...payload, store_id: storeId })
+    .insert({ ...basePayload, ...(categoryIds.length > 0 ? { category_ids: categoryIds } : {}), store_id: storeId })
     .select("*")
     .single();
 

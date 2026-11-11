@@ -637,6 +637,7 @@ export async function createCustomerOrder(
         storeId,
         subtotal,
         customerInfo.customer_id || null,
+        (orderProducts as OrderProduct[]).map((p) => ({ productId: p.product_id, amount: p.total_price })),
       );
       if (validation.valid && validation.coupon) {
         finalDiscount = validation.discountAmount;

@@ -25,12 +25,17 @@ export interface CouponFormValues {
   is_featured: boolean;
   show_on_storefront: boolean;
   auto_apply: boolean;
+  /** "all" = every product; "categories" = only the products in category_ids. */
+  applies_to: "all" | "categories";
+  category_ids?: string[];
 }
 
 interface CouponFormModalProps {
   open: boolean;
   mode: ModalMode;
   editingCoupon: Coupon | null;
+  /** The store's categories, for "Applies to: selected categories". */
+  categories: { id: string; name: string }[];
   submitting: boolean;
   onSubmit: (values: CouponFormValues) => void;
   onCancel: () => void;
@@ -48,12 +53,14 @@ function CouponFormModal({
   open,
   mode,
   editingCoupon,
+  categories,
   submitting,
   onSubmit,
   onCancel,
 }: CouponFormModalProps) {
   const [form] = Form.useForm<CouponFormValues>();
   const discountType = Form.useWatch("discount_type", form);
+  const appliesTo = Form.useWatch("applies_to", form);
 
   useEffect(() => {
     if (!open) return;
@@ -73,6 +80,8 @@ function CouponFormModal({
         is_featured: editingCoupon.is_featured,
         show_on_storefront: editingCoupon.show_on_storefront,
         auto_apply: editingCoupon.auto_apply,
+        applies_to: (editingCoupon.category_ids?.length ?? 0) > 0 ? "categories" : "all",
+        category_ids: editingCoupon.category_ids ?? [],
       });
     } else {
       form.resetFields();
@@ -82,6 +91,8 @@ function CouponFormModal({
         is_featured: false,
         show_on_storefront: false,
         auto_apply: false,
+        applies_to: "all",
+        category_ids: [],
       });
     }
   }, [open, mode, editingCoupon, form]);
@@ -211,6 +222,36 @@ function CouponFormModal({
               </Form.Item>
             )}
           </div>
+
+          <Form.Item
+            name="applies_to"
+            label={<FieldLabel>Applies to</FieldLabel>}
+            tooltip="All products, or only products in the categories you pick (for example Imported or Local). With categories, the discount, the minimum order and the maximum discount count only those products in the cart."
+          >
+            <Select
+              options={[
+                { value: "all", label: "All products" },
+                { value: "categories", label: "Selected categories only" },
+              ]}
+              className="rounded-lg"
+            />
+          </Form.Item>
+
+          {appliesTo === "categories" && (
+            <Form.Item
+              name="category_ids"
+              label={<FieldLabel>Categories</FieldLabel>}
+              rules={[{ required: true, type: "array", min: 1, message: "Pick at least one category" }]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Pick one or more categories"
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                optionFilterProp="label"
+                className="rounded-lg"
+              />
+            </Form.Item>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
             <Form.Item

@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { CouponDiscountType } from "@/lib/types/enums";
-import type { Coupon, CouponValidationResult } from "@/lib/types/coupon";
+import type { Coupon, CouponCartLine, CouponValidationResult } from "@/lib/types/coupon";
 
 /**
  * The single authoritative coupon check — computes the discount amount
@@ -24,6 +24,12 @@ export async function validateCoupon(
   storeId: string,
   serverComputedSubtotal: number,
   customerId?: string | null,
+  /**
+   * The cart's lines (product and line total). Needed for a coupon limited to some categories: the discount, the
+   * minimum order and the maximum discount are then worked out on the matching lines only. Without them such a
+   * coupon is refused rather than applied to the whole cart.
+   */
+  lines?: CouponCartLine[],
 ): Promise<CouponValidationResult> {
   const normalizedCode = code.trim().toUpperCase();
   if (!normalizedCode) {
@@ -85,9 +91,45 @@ export async function validateCoupon(
     }
   }
 
+  // A coupon limited to categories counts only the cart lines whose product is in one of them.
+  let baseAmount = serverComputedSubtotal;
+  const allowedCategories = typedCoupon.category_ids ?? [];
+  if (allowedCategories.length > 0) {
+    if (!lines || lines.length === 0) {
+      return { valid: false, discountAmount: 0, error: "This coupon is only for selected categories." };
+    }
+    const productIds = [...new Set(lines.map((l) => l.productId))];
+    // category_ids (all categories of a product) when 20261210 is applied, else the product's main category.
+    let categoriesByProduct = new Map<string, string[]>();
+    const full = await supabaseAdmin.from("products").select("id, category_id, category_ids").eq("store_id", storeId).in("id", productIds);
+    if (!full.error) {
+      categoriesByProduct = new Map(
+        ((full.data ?? []) as { id: string; category_id: string | null; category_ids: string[] | null }[]).map((p) => [
+          p.id,
+          p.category_ids && p.category_ids.length > 0 ? p.category_ids : p.category_id ? [p.category_id] : [],
+        ]),
+      );
+    } else {
+      const basic = await supabaseAdmin.from("products").select("id, category_id").eq("store_id", storeId).in("id", productIds);
+      if (basic.error) {
+        console.error("Error reading product categories for a coupon:", basic.error.message);
+        return { valid: false, discountAmount: 0, error: "Could not validate coupon." };
+      }
+      categoriesByProduct = new Map(
+        ((basic.data ?? []) as { id: string; category_id: string | null }[]).map((p) => [p.id, p.category_id ? [p.category_id] : []]),
+      );
+    }
+    baseAmount = lines
+      .filter((l) => (categoriesByProduct.get(l.productId) ?? []).some((c) => allowedCategories.includes(c)))
+      .reduce((sum, l) => sum + l.amount, 0);
+    if (baseAmount <= 0) {
+      return { valid: false, discountAmount: 0, error: "This coupon is only for selected categories." };
+    }
+  }
+
   if (
     typedCoupon.min_order_amount !== null &&
-    serverComputedSubtotal < typedCoupon.min_order_amount
+    baseAmount < typedCoupon.min_order_amount
   ) {
     return {
       valid: false,
@@ -98,13 +140,13 @@ export async function validateCoupon(
 
   let discountAmount =
     typedCoupon.discount_type === CouponDiscountType.PERCENTAGE
-      ? (serverComputedSubtotal * typedCoupon.discount_value) / 100
+      ? (baseAmount * typedCoupon.discount_value) / 100
       : typedCoupon.discount_value;
 
   if (typedCoupon.max_discount_amount !== null) {
     discountAmount = Math.min(discountAmount, typedCoupon.max_discount_amount);
   }
-  discountAmount = Math.min(discountAmount, serverComputedSubtotal);
+  discountAmount = Math.min(discountAmount, baseAmount);
   discountAmount = Math.round(discountAmount * 100) / 100;
 
   return { valid: true, discountAmount, coupon: typedCoupon };

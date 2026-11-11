@@ -140,8 +140,15 @@ function CouponTable({ data, loading, deletingId, currencySymbol, storeId, onEdi
       title: "Code",
       dataIndex: "code",
       key: "code",
-      render: (code: string) => (
-        <span className="font-mono font-semibold text-gray-800 dark:text-gray-100">{code}</span>
+      render: (code: string, record) => (
+        <div>
+          <span className="font-mono font-semibold text-gray-800 dark:text-gray-100">{code}</span>
+          {(record.category_ids?.length ?? 0) > 0 && (
+            <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+              {record.category_ids?.length === 1 ? "1 category only" : `${record.category_ids?.length} categories only`}
+            </div>
+          )}
+        </div>
       ),
     },
     {

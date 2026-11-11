@@ -7,7 +7,10 @@ import type { Coupon } from "@/lib/types/coupon";
  * page's "price with coupon" preview; the real discount is always recomputed
  * server-side at checkout.
  */
-export function computeCouponDiscount(coupon: Coupon, subtotal: number): number {
+export function computeCouponDiscount(coupon: Coupon, subtotal: number, productCategoryIds?: string[]): number {
+  // A coupon limited to categories gives nothing on a product outside them (checked for real at checkout).
+  const allowed = coupon.category_ids ?? [];
+  if (allowed.length > 0 && !(productCategoryIds ?? []).some((c) => allowed.includes(c))) return 0;
   let discount =
     coupon.discount_type === CouponDiscountType.PERCENTAGE
       ? (subtotal * coupon.discount_value) / 100

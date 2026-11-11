@@ -696,7 +696,7 @@ export default function ProductPage() {
   const couponPreview = autoCoupons
     .map((c) => ({
       code: c.code,
-      finalPrice: displayPrice - computeCouponDiscount(c, displayPrice),
+      finalPrice: displayPrice - computeCouponDiscount(c, displayPrice, product.categories?.id ? [product.categories.id] : []),
       minOrder: c.min_order_amount !== null && displayPrice < c.min_order_amount ? c.min_order_amount : null,
     }))
     .filter((p) => p.finalPrice < displayPrice)

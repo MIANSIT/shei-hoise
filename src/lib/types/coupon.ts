@@ -19,6 +19,8 @@ export interface Coupon {
   is_featured: boolean;
   show_on_storefront: boolean;
   auto_apply: boolean;
+  /** Empty or missing = the coupon works on every product; otherwise only on products in these categories. */
+  category_ids?: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +33,12 @@ export interface CouponRedemption {
   customer_id: string | null;
   discount_amount: number;
   created_at: string;
+}
+
+/** One cart line, as the coupon check sees it: the product and what the line costs in total. */
+export interface CouponCartLine {
+  productId: string;
+  amount: number;
 }
 
 export interface CouponValidationResult {

@@ -9,6 +9,7 @@ import { getCoupons } from "@/lib/queries/coupons/getCoupons";
 import { createCoupon } from "@/lib/queries/coupons/createCoupon";
 import { updateCoupon } from "@/lib/queries/coupons/updateCoupon";
 import { deleteCoupon } from "@/lib/queries/coupons/deleteCoupon";
+import { getCategoriesQuery } from "@/lib/queries/categories/getCategories";
 import { getCouponLimitStatus, type CouponLimitStatus } from "@/lib/queries/coupons/getCouponLimitStatus";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
@@ -42,6 +43,7 @@ function toCreateCouponType(values: CouponFormValues): CreateCouponType {
     is_featured: values.is_featured,
     show_on_storefront: values.show_on_storefront,
     auto_apply: values.auto_apply,
+    category_ids: values.applies_to === "categories" ? (values.category_ids ?? []) : [],
   };
 }
 
@@ -65,6 +67,8 @@ export default function CouponsPage() {
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // For "Applies to: selected categories" on the coupon form.
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const { can } = usePermissions();
 
   const fetchCoupons = useCallback(async () => {
@@ -87,6 +91,23 @@ export default function CouponsPage() {
   useEffect(() => {
     fetchCoupons();
   }, [fetchCoupons]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    let cancelled = false;
+    getCategoriesQuery(storeId, { status: true })
+      .then((res) => {
+        if (cancelled) return;
+        const rows = (res.data ?? []) as unknown as { id: string; name: string }[];
+        setCategories(rows.map((c) => ({ id: c.id, name: c.name })));
+      })
+      .catch(() => {
+        /* the form still works for "All products" */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId]);
 
   const fetchLimitStatus = useCallback(async () => {
     if (!storeId) return;
@@ -269,6 +290,7 @@ export default function CouponsPage() {
         open={isModalOpen}
         mode={modalMode}
         editingCoupon={editingCoupon}
+        categories={categories}
         submitting={submitting}
         onSubmit={handleSubmit}
         onCancel={closeModal}

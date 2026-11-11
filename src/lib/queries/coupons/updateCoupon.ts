@@ -13,7 +13,7 @@ export async function updateCoupon(
   _storeId: string,
 ): Promise<Coupon | null> {
   const payload = updateCouponSchema.parse(data);
-  const { id, ...rest } = payload;
+  const { id, category_ids: categoryIds, ...rest } = payload;
 
   // storeId is caller-supplied — never trust it for authorization. This uses
   // the service-role client below, which bypasses RLS entirely, so this is
@@ -66,9 +66,17 @@ export async function updateCoupon(
     }
   }
 
+  // The category list is sent when categories were picked, or to clear a list the coupon had before; otherwise it is
+  // left out so a database without the column still saves coupons.
+  const { data: before } = await supabaseAdmin.from("coupons").select("*").eq("id", id).eq("store_id", storeId).maybeSingle();
+  const hadCategories = ((before as { category_ids?: string[] | null } | null)?.category_ids?.length ?? 0) > 0;
   const { data: updated, error } = await supabaseAdmin
     .from("coupons")
-    .update({ ...rest, updated_at: new Date().toISOString() })
+    .update({
+      ...rest,
+      ...(categoryIds.length > 0 || hadCategories ? { category_ids: categoryIds } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", id)
     .eq("store_id", storeId)
     .select("*")
