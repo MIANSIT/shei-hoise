@@ -132,6 +132,7 @@ export default function SupplierBillsPage() {
         funderTreatment: values.funderTreatment,
         branchId: values.branchId,
         billBranchId: values.billBranchId,
+        forBillId: values.forBillId,
         note: values.note,
       });
       if (!result.success) {
@@ -387,6 +388,9 @@ export default function SupplierBillsPage() {
         onSubmit={submitPayment}
         onSubmitMany={submitPayments}
         defaultBillBranchId={payTarget?.branchId ?? null}
+        billOptions={payTarget ? [{ id: payTarget.id, label: payTarget.billNo ?? payTarget.date, date: payTarget.date, left: payTarget.left }] : []}
+        defaultForBillId={payTarget?.id ?? null}
+        money={money}
         onCancel={() => setPayTarget(null)}
       />
     </div>

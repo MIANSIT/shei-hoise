@@ -28,7 +28,17 @@ export interface SupplierEntryValues {
   /** Payments from outside: who paid, and whether it counts as their capital or a loan to repay. */
   funderId: string | null;
   funderTreatment: "capital" | "loan" | null;
+  /** Payments: the bill it pays first; null = the supplier's oldest bills. */
+  forBillId: string | null;
   note: string;
+}
+
+/** A bill a payment can be made for. */
+export interface PayableBillOption {
+  id: string;
+  label: string;
+  date: string;
+  left: number;
 }
 
 interface SupplierEntryModalProps {
@@ -39,6 +49,12 @@ interface SupplierEntryModalProps {
   defaultAmount?: number | null;
   /** The branch whose bills a payment pays first, e.g. the branch of the bill being paid. */
   defaultBillBranchId?: string | null;
+  /** Payments: the supplier's open bills, to pay one of them by name. Empty = no choice is shown. */
+  billOptions?: PayableBillOption[];
+  /** The bill picked when the form opens, e.g. the bill whose Pay button was pressed. */
+  defaultForBillId?: string | null;
+  /** Shows an amount as money, for the bill list. */
+  money?: (amount: number) => string;
   saving: boolean;
   onSubmit: (values: SupplierEntryValues) => void;
   /** A payment can be split over several parts (branches, methods, an investor): given, it is called with every part instead of onSubmit. */
@@ -53,6 +69,9 @@ export function SupplierEntryModal({
   supplierName,
   defaultAmount = null,
   defaultBillBranchId = null,
+  billOptions = [],
+  defaultForBillId = null,
+  money,
   saving,
   onSubmit,
   onSubmitMany,
@@ -73,6 +92,8 @@ export function SupplierEntryModal({
   const [billBranchId, setBillBranchId] = useState<string | null>(null);
   const [billBranchTouched, setBillBranchTouched] = useState(false);
   const [note, setNote] = useState("");
+  // The bill this payment pays first (optional).
+  const [forBillId, setForBillId] = useState<string | null>(null);
   // More parts of the same payment, each from its own branch, method or investor.
   const [extraLines, setExtraLines] = useState<PaymentLineValue[]>([]);
 
@@ -89,10 +110,11 @@ export function SupplierEntryModal({
       setBillBranchId(defaultBillBranchId ?? startBranch);
       setBillBranchTouched(!!defaultBillBranchId);
       setNote("");
+      setForBillId(defaultForBillId);
     }
     // The branch is only a starting value; it shouldn't reset while the form is open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultAmount, defaultBillBranchId]);
+  }, [open, defaultAmount, defaultBillBranchId, defaultForBillId]);
 
   const needsBranch = kind === "payment" && (!investorAllowed || paidFrom === "shop") && branchesOn;
   // A bill typed by hand also says which branch received the goods.
@@ -122,6 +144,7 @@ export function SupplierEntryModal({
           billBranchId: kind === "payment" && branchesOn ? billBranchId : null,
           funderId: kind === "payment" && investorAllowed && paidFrom === "outside" ? funder.partnerId : null,
           funderTreatment: kind === "payment" && investorAllowed && paidFrom === "outside" && funder.partnerId ? funder.treatment : null,
+          forBillId: kind === "payment" ? forBillId : null,
           note,
         };
         if (kind === "payment" && onSubmitMany && extraLines.length > 0) {
@@ -136,6 +159,7 @@ export function SupplierEntryModal({
               billBranchId: branchesOn ? l.billBranchId : null,
               funderId: investorAllowed && l.paidFrom === "outside" ? l.funder.partnerId : null,
               funderTreatment: investorAllowed && l.paidFrom === "outside" && l.funder.partnerId ? l.funder.treatment : null,
+              forBillId: null,
               note,
             })),
           ]);
@@ -196,6 +220,23 @@ export function SupplierEntryModal({
             </div>
           )}
         </div>
+        {kind === "payment" && billOptions.length > 0 && (
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground">{t.admin.spForBill}</label>
+            <Select
+              allowClear
+              value={forBillId ?? undefined}
+              onChange={(v) => setForBillId(v ?? null)}
+              className="w-full mt-1"
+              placeholder={t.admin.spForBillAny}
+              options={billOptions.map((b) => ({
+                value: b.id,
+                label: `${b.label} · ${dayjs(b.date).format("DD-MM-YYYY")} · ${t.admin.spForBillLeft} ${money ? money(b.left) : b.left}`,
+              }))}
+            />
+            <p className="m-0 mt-1 text-[11px] text-muted-foreground">{t.admin.spForBillHint}</p>
+          </div>
+        )}
         {kind === "payment" && investorAllowed && (
           <div>
             <label className="text-xs font-semibold text-muted-foreground">{t.admin.moPaidFrom}</label>

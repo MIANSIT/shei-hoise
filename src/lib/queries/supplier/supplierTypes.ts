@@ -65,6 +65,8 @@ export interface SupplierEntryInput {
   branchId?: string | null;
   /** Payments, stores with branches: the branch whose bills it pays. */
   billBranchId?: string | null;
+  /** Payments: the bill it pays (it is paid first); without one the supplier's oldest bills are paid. */
+  forBillId?: string | null;
   note?: string;
 }
 

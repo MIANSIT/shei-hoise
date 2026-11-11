@@ -29,6 +29,8 @@ const entrySchema = z.object({
   funderTreatment: z.enum(["capital", "loan"]).nullable().optional(),
   branchId: z.string().uuid().nullable().optional(),
   billBranchId: z.string().uuid().nullable().optional(),
+  /** A payment can name the bill it pays. */
+  forBillId: z.string().uuid().nullable().optional(),
   note: z.string().trim().max(300, "Note is too long").optional(),
 });
 
@@ -176,6 +178,21 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
       payBillBranch = pb.id as string;
     }
 
+    // A payment can name the bill it pays: it must be a bill of this supplier in this store.
+    let forBill: string | null = null;
+    if (isPayment && v.forBillId) {
+      const { data: bill } = await supabaseAdmin
+        .from("supplier_ledger")
+        .select("id")
+        .eq("id", v.forBillId)
+        .eq("store_id", storeId)
+        .eq("supplier_id", v.supplierId)
+        .eq("kind", "bill")
+        .maybeSingle();
+      if (!bill) return { success: false, error: "That bill was not found for this supplier" };
+      forBill = bill.id as string;
+    }
+
     const row: Record<string, unknown> = {
       store_id: storeId,
       supplier_id: v.supplierId,
@@ -189,6 +206,8 @@ export async function addSupplierEntry(storeId: string, input: SupplierEntryInpu
       ...(isPayment ? { paid_from: paidFrom, branch_id: branchId } : {}),
       ...(billBranch ? { branch_id: billBranch } : {}),
       ...(payBillBranch ? { bill_branch_id: payBillBranch } : {}),
+      // Only sent when a bill was named; a database without migration 20261213 then says so instead of paying the wrong bill.
+      ...(forBill ? { for_bill_id: forBill } : {}),
       // Only sent when set, so a database without the columns keeps working.
       ...(funder && funder.ok && funder.funderId ? { funder_id: funder.funderId, funder_treatment: funder.treatment } : {}),
     };

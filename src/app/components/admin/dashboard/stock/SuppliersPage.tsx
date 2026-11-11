@@ -10,6 +10,7 @@ import { useLocalNum } from "@/lib/hook/useLocalNum";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 import { createSupplier, deleteSupplier, getSuppliers, updateSupplier } from "@/lib/queries/supplier/suppliers";
+import { getSupplierOpenBills } from "@/lib/queries/supplier/supplierBills";
 import {
   whatsappNumber,
   type Supplier,
@@ -28,6 +29,7 @@ import {
 import { useUserCurrencyIcon } from "@/lib/hook/currecncyStore/useUserCurrencyIcon";
 import {
   SupplierEntryModal,
+  type PayableBillOption,
   SupplierLedgerModal,
   type SupplierEntryValues,
 } from "./SupplierMoneyModals";
@@ -143,6 +145,22 @@ export default function SuppliersPage() {
     await load();
   };
 
+  // The supplier's open bills, so a payment can name the bill it pays.
+  const [payableBills, setPayableBills] = useState<PayableBillOption[]>([]);
+  useEffect(() => {
+    if (!storeId || !entryTarget || entryTarget.kind !== "payment") {
+      setPayableBills([]);
+      return;
+    }
+    let cancelled = false;
+    getSupplierOpenBills(storeId, entryTarget.supplier.id).then((list) => {
+      if (!cancelled) setPayableBills(list.map((b) => ({ id: b.id, label: b.label, date: b.date, left: b.left })));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId, entryTarget]);
+
   const submitEntry = async (values: SupplierEntryValues) => {
     if (!storeId || !entryTarget) return;
     setEntrySaving(true);
@@ -158,6 +176,7 @@ export default function SuppliersPage() {
         funderTreatment: values.funderTreatment,
         branchId: values.branchId,
         billBranchId: values.billBranchId,
+        forBillId: values.forBillId,
         note: values.note,
       });
       if (!result.success) {
@@ -434,6 +453,8 @@ export default function SuppliersPage() {
         open={!!entryTarget}
         kind={entryTarget?.kind ?? "bill"}
         supplierName={entryTarget?.supplier.name ?? ""}
+        billOptions={payableBills}
+        money={money}
         saving={entrySaving}
         onSubmit={submitEntry}
         onSubmitMany={submitEntryMany}

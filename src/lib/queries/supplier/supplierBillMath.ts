@@ -19,6 +19,8 @@ export interface RawPayment {
   amount: number;
   /** The branch whose bills this payment (or credit) is applied to first; null = not tied to a branch, applied to the oldest bills. */
   targetBranchId?: string | null;
+  /** The bill this payment was made for: it pays that bill first, up to the bill's amount. The rest is applied as any other payment. */
+  forBillId?: string | null;
 }
 
 /** What Receive stock saved about a purchase: the number on the paper bill and when it must be paid. */
@@ -99,10 +101,27 @@ export function allocateSupplierPayments(
   const sorted = [...bills].sort((a, b) => (a.date === b.date ? a.createdAt.localeCompare(b.createdAt) : a.date.localeCompare(b.date)));
   const todayNumber = dayNumber(today);
 
+  // Pass 0: a payment made for a named bill pays that bill first (never above what it still needs). A refund
+  // (negative amount), a bill of another supplier, or the part above the bill is applied like any other payment.
+  const paidByBill = new Map<string, number>();
+  const billById = new Map(sorted.map((b) => [b.id, b]));
+  for (const bill of sorted) paidByBill.set(bill.id, 0);
+  const remaining: { supplierId: string; amount: number; targetBranchId?: string | null }[] = [];
+  for (const p of payments) {
+    const bill = p.forBillId ? billById.get(p.forBillId) : undefined;
+    if (bill && bill.supplierId === p.supplierId && p.amount > 0) {
+      const take = Math.min(p.amount, Math.max(bill.amount - (paidByBill.get(bill.id) ?? 0), 0));
+      paidByBill.set(bill.id, (paidByBill.get(bill.id) ?? 0) + take);
+      if (p.amount - take > EPSILON) remaining.push({ supplierId: p.supplierId, amount: p.amount - take, targetBranchId: p.targetBranchId });
+    } else {
+      remaining.push(p);
+    }
+  }
+
   // Per supplier: money meant for a branch's bills, and money meant for any bill (the pool).
   const targeted = new Map<string, Map<string, number>>();
   const pool = new Map<string, number>();
-  for (const p of payments) {
+  for (const p of remaining) {
     if (p.targetBranchId) {
       const perBranch = targeted.get(p.supplierId) ?? new Map<string, number>();
       perBranch.set(p.targetBranchId, (perBranch.get(p.targetBranchId) ?? 0) + p.amount);
@@ -113,13 +132,13 @@ export function allocateSupplierPayments(
   }
 
   // Pass 1: a branch's own payments pay that branch's bills, oldest first.
-  const paidByBill = new Map<string, number>();
   for (const bill of sorted) {
     const perBranch = bill.branchId ? targeted.get(bill.supplierId) : undefined;
     const have = bill.branchId && perBranch ? (perBranch.get(bill.branchId) ?? 0) : 0;
-    const take = Math.min(Math.max(have, 0), bill.amount);
+    const open = bill.amount - (paidByBill.get(bill.id) ?? 0);
+    const take = Math.min(Math.max(have, 0), Math.max(open, 0));
     if (take > 0 && bill.branchId && perBranch) perBranch.set(bill.branchId, have - take);
-    paidByBill.set(bill.id, take);
+    paidByBill.set(bill.id, (paidByBill.get(bill.id) ?? 0) + take);
   }
   // What a branch could not use goes to the pool.
   for (const [supplierId, perBranch] of targeted) {
