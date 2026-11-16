@@ -54,6 +54,7 @@ import VariantPickerModal from "./VariantPickerModal";
 import ReceiptPreviewModal from "./ReceiptPreviewModal";
 import ScanToAddModal, { type ScanResult } from "./ScanToAddModal";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
+import { SPLIT_METHODS, type PaymentSplitPart } from "@/lib/utils/paymentSplit";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 import { useBranches } from "@/lib/context/BranchContext";
@@ -158,6 +159,8 @@ export default function QuickSale() {
   const t = useTranslation();
   const [additionalCharges, setAdditionalCharges] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  // Split payment: what the customer paid by each method (blank = nothing by it).
+  const [splitAmounts, setSplitAmounts] = useState<Record<string, number | null>>({});
   const [walkInName, setWalkInName] = useState("");
   const [walkInPhone, setWalkInPhone] = useState("");
   // Whether the typed phone belongs to a saved customer. Their saved name
@@ -569,11 +572,28 @@ export default function QuickSale() {
     !isDueSale && paymentMethod === PaymentMethod.CASH && cashReceived != null
       ? Math.max(0, cashReceived - total)
       : null;
-  const receivedNow = isDueSale ? Math.min(Math.max(amountReceivedNow || 0, 0), total) : total;
+  const isSplit = paymentMethod === PaymentMethod.SPLIT;
+  const splitParts: PaymentSplitPart[] = SPLIT_METHODS.map((method) => ({
+    method,
+    amount: Math.round((splitAmounts[method] || 0) * 100) / 100,
+  })).filter((p) => p.amount > 0);
+  const splitTotal = splitParts.reduce((sum, p) => sum + p.amount, 0);
+  // Paid in full, the parts must make up the whole total; on a due sale they
+  // are what was received now, so they only must not go over it.
+  const splitRemaining = total - splitTotal;
+  const splitValid =
+    splitParts.length >= 2 &&
+    splitRemaining >= -0.01 &&
+    (isDueSale || splitRemaining <= 0.01);
+  const receivedNow = isDueSale
+    ? Math.min(Math.max((isSplit ? splitTotal : amountReceivedNow) || 0, 0), total)
+    : total;
   const dueAmount = isDueSale ? Math.max(0, total - receivedNow) : 0;
   const canCompleteSale =
     !needsBranchPick &&
-    cart.length > 0 && (!isDueSale || (walkInName.trim() !== "" && walkInPhone.trim() !== ""));
+    cart.length > 0 &&
+    (!isSplit || splitValid) &&
+    (!isDueSale || (walkInName.trim() !== "" && walkInPhone.trim() !== ""));
 
   const printReceipt = async (order: {
     orderNumber: string;
@@ -584,6 +604,8 @@ export default function QuickSale() {
     additionalCharges: number;
     total: number;
     paymentMethod: PaymentMethod;
+    /** A split sale: what came in by each method, printed under the payment line. */
+    paymentSplit: PaymentSplitPart[] | null;
     cashReceived: number | null;
     changeDue: number | null;
     paidNow: number | null;
@@ -629,6 +651,10 @@ export default function QuickSale() {
       additionalCharges: order.additionalCharges,
       total: order.total,
       paymentLabel: PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod,
+      paymentParts: order.paymentSplit?.map((p) => ({
+        label: PAYMENT_LABELS[p.method] || p.method,
+        amount: p.amount,
+      })),
       cashReceived: order.cashReceived,
       changeDue: order.changeDue,
       paidNow: order.paidNow,
@@ -748,6 +774,7 @@ export default function QuickSale() {
         paymentStatus:
           isDueSale && dueAmount > 0.01 ? PaymentStatus.PENDING : PaymentStatus.PAID,
         paymentMethod,
+        paymentSplit: isSplit ? splitParts : null,
         deliveryOption: DeliveryOption.OTHER,
         // Quick Sale orders are created already DELIVERED, so the Delivery
         // Courier field locks immediately and can never be set afterward —
@@ -767,20 +794,27 @@ export default function QuickSale() {
         // Record whatever was actually collected up front against the due
         // balance — pinned to this order so it's excluded from the "pool"
         // waterfall other due orders for the same customer might use.
+        // A split payment is logged as one payment per method, so each
+        // method's balance gets its own part.
         if (isDueSale && customerId && receivedNow > 0 && result.orderId) {
-          const paymentResult = await recordCustomerPayment({
-            storeId: user.store_id,
-            customerId,
-            orderId: result.orderId,
-            amount: receivedNow,
-            paymentMethod,
-            paymentDate: orderDate.format("YYYY-MM-DD"),
-          });
-          if (!paymentResult.success) {
-            notification.warning({
-              message: "Sale recorded, but the payment log failed",
-              description: paymentResult.error,
+          const received: PaymentSplitPart[] = isSplit
+            ? splitParts
+            : [{ method: paymentMethod, amount: receivedNow }];
+          for (const part of received) {
+            const paymentResult = await recordCustomerPayment({
+              storeId: user.store_id,
+              customerId,
+              orderId: result.orderId,
+              amount: part.amount,
+              paymentMethod: part.method,
+              paymentDate: orderDate.format("YYYY-MM-DD"),
             });
+            if (!paymentResult.success) {
+              notification.warning({
+                message: "Sale recorded, but the payment log failed",
+                description: paymentResult.error,
+              });
+            }
           }
         }
 
@@ -801,6 +835,7 @@ export default function QuickSale() {
           additionalCharges,
           total,
           paymentMethod,
+          paymentSplit: isSplit ? splitParts : null,
           cashReceived: receiptCashReceived,
           changeDue: receiptChangeDue,
           paidNow: isDueSale ? receivedNow : null,
@@ -827,6 +862,7 @@ export default function QuickSale() {
         setMemberNumber("");
         setMemberMessage(null);
         setCashReceived(null);
+        setSplitAmounts({});
         setIsDueSale(false);
         setAmountReceivedNow(null);
         setOrderDate(dayjs());
@@ -1302,9 +1338,87 @@ export default function QuickSale() {
                 { label: "Cash", value: PaymentMethod.CASH },
                 { label: "Mobile Banking", value: PaymentMethod.MOBILE_BANKING },
                 { label: "Bank / Card", value: PaymentMethod.BANK_TRANSFER },
+                { label: t.admin.qsPaySplit, value: PaymentMethod.SPLIT },
               ]}
             />
           </div>
+
+          {isSplit && (
+            <div className="space-y-2 rounded-lg bg-muted/50 px-3 py-2.5">
+              <Text type="secondary" className="text-[11px] block">
+                {isDueSale ? t.admin.qsSplitDueHint : t.admin.qsSplitHint}
+              </Text>
+              {SPLIT_METHODS.map((method) => (
+                <div key={method} className="flex items-center justify-between gap-2 text-sm">
+                  <Text type="secondary">
+                    {method === PaymentMethod.CASH
+                      ? t.admin.orderPayCash
+                      : method === PaymentMethod.MOBILE_BANKING
+                        ? t.admin.orderPayMobileBanking
+                        : t.admin.moBankTransfer}
+                  </Text>
+                  <Space.Compact>
+                    {!isDueSale && (
+                      <Button
+                        disabled={splitRemaining <= 0.01}
+                        onClick={() =>
+                          setSplitAmounts((prev) => ({
+                            ...prev,
+                            [method]: Math.round(((prev[method] || 0) + splitRemaining) * 100) / 100,
+                          }))
+                        }
+                      >
+                        {t.admin.qsSplitFillRest}
+                      </Button>
+                    )}
+                    <InputNumber
+                      min={0}
+                      max={total}
+                      value={splitAmounts[method] ?? null}
+                      onChange={(v) => setSplitAmounts((prev) => ({ ...prev, [method]: v }))}
+                      placeholder="0.00"
+                      aria-label={
+                        method === PaymentMethod.CASH
+                          ? t.admin.orderPayCash
+                          : method === PaymentMethod.MOBILE_BANKING
+                            ? t.admin.orderPayMobileBanking
+                            : t.admin.moBankTransfer
+                      }
+                      style={{ width: 110 }}
+                    />
+                  </Space.Compact>
+                </div>
+              ))}
+              {(!isDueSale || splitRemaining < -0.01) && (
+              <div className="flex items-center justify-between border-t border-dashed border-border pt-1.5 text-sm">
+                {splitRemaining < -0.01 ? (
+                  <>
+                    <Text type="danger">{t.admin.qsSplitOver}</Text>
+                    <Text strong type="danger">
+                      {currencyIcon}
+                      {(-splitRemaining).toFixed(2)}
+                    </Text>
+                  </>
+                ) : splitRemaining > 0.01 ? (
+                  <>
+                    <Text type="warning">{t.admin.qsSplitRemaining}</Text>
+                    <Text strong type="warning">
+                      {currencyIcon}
+                      {splitRemaining.toFixed(2)}
+                    </Text>
+                  </>
+                ) : (
+                  <Text type="success">{t.admin.qsSplitBalanced}</Text>
+                )}
+              </div>
+              )}
+              {cart.length > 0 && splitParts.length < 2 && (
+                <Text type="danger" className="text-xs block">
+                  {t.admin.qsSplitNeedTwo}
+                </Text>
+              )}
+            </div>
+          )}
 
           {!isDueSale && paymentMethod === PaymentMethod.CASH && (
             <div className="space-y-2 pt-1">
@@ -1346,6 +1460,8 @@ export default function QuickSale() {
 
           {isDueSale && (
             <div className="space-y-2 pt-1">
+              {/* A split payment's amounts are what was received now. */}
+              {!isSplit && (
               <div className="flex items-center justify-between text-sm">
                 <Text type="secondary">Amount received now</Text>
                 <InputNumber
@@ -1357,6 +1473,7 @@ export default function QuickSale() {
                   style={{ width: 140 }}
                 />
               </div>
+              )}
               <div className="space-y-1.5 rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
                 <div className="flex items-center justify-between">
                   <Text type="secondary">This sale</Text>

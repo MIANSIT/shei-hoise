@@ -1,6 +1,7 @@
 "use server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { recordCustomerRefund } from "@/lib/queries/customers/recordCustomerRefund";
+import { shareByMethod } from "@/lib/utils/paymentSplit";
 
 export interface HandleOrderReturnedInput {
   storeId: string;
@@ -21,8 +22,9 @@ export interface HandleOrderReturnedInput {
 //  - Paid at the sale (a Quick Sale cash sale, COD collected): a refund entry
 //    (customer_refunds) for the product part, on the method it came in by, so
 //    Money Overview takes it out of that cash/bKash balance on today's date
-//    and keeps the original sale on the day it was received. The owner can
-//    delete it if no money was actually given back.
+//    and keeps the original sale on the day it was received. A split sale
+//    gets one entry per method it was paid by. The owner can delete it if no
+//    money was actually given back.
 //
 // Called from every place that can transition an order to 'returned':
 // updateOrder.ts, updateOrderByNumber.ts, bulkUpdateOrders.ts.
@@ -45,26 +47,41 @@ export async function handleOrderReturned(input: HandleOrderReturnedInput): Prom
 
     if (pinnedTotal > 0) {
       if (!input.customerId) return;
-      // Refund on the method that took the most money in.
+      // The net amount still held is refunded across the methods it came in by,
+      // in the same proportion — so a sale paid partly by cash and partly by
+      // bKash (a split Quick Sale) comes out of both balances.
       const byMethod = new Map<string, number>();
       for (const p of payments ?? []) {
         if (Number(p.amount) > 0) {
           byMethod.set(p.payment_method, (byMethod.get(p.payment_method) ?? 0) + Number(p.amount));
         }
       }
-      const mainMethod = [...byMethod.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-
-      const result = await recordCustomerRefund({
-        storeId: input.storeId,
-        customerId: input.customerId,
-        orderId: input.orderId,
-        amount: pinnedTotal,
-        notes: "Auto-refund: order returned",
-        paymentMethod: mainMethod,
+      const takenIn = [...byMethod.values()].reduce((sum, amount) => sum + amount, 0);
+      const methods = [...byMethod.entries()];
+      let refunded = 0;
+      const refunds = methods.map(([method, taken], index) => {
+        // The last method takes whatever rounding left over.
+        const amount =
+          index === methods.length - 1
+            ? pinnedTotal - refunded
+            : Math.round((pinnedTotal * taken * 100) / takenIn) / 100;
+        refunded += amount;
+        return { method, amount };
       });
 
-      if (!result.success) {
-        console.error("Error recording auto-refund for returned order:", result.error);
+      for (const { method, amount } of refunds) {
+        if (!(amount > 0.005)) continue;
+        const result = await recordCustomerRefund({
+          storeId: input.storeId,
+          customerId: input.customerId,
+          orderId: input.orderId,
+          amount,
+          notes: "Auto-refund: order returned",
+          paymentMethod: method,
+        });
+        if (!result.success) {
+          console.error("Error recording auto-refund for returned order:", result.error);
+        }
       }
       return;
     }
@@ -110,16 +127,33 @@ async function recordReturnRefundEntry(storeId: string, orderId: string): Promis
   const receivedDate = order.paid_at ? bangladeshDate(new Date(order.paid_at)) : order.order_date;
   if (!receivedDate) return;
 
-  const { error } = await supabaseAdmin.from("customer_refunds").insert({
-    store_id: storeId,
-    branch_id: order.branch_id ?? null,
-    order_id: orderId,
-    refund_amount: amount,
-    payment_method: REFUND_METHODS.includes(method) ? method : "other",
-    refund_date: bangladeshDate(new Date()),
-    received_amount: amount,
-    received_date: receivedDate,
-    notes: "Auto-refund: order returned",
-  });
+  // A split sale: read its parts on their own, so the select above never
+  // names the column for other orders (see the 20261214 migration).
+  let paymentSplit: unknown = null;
+  if (method === "split") {
+    const { data: split } = await supabaseAdmin
+      .from("orders")
+      .select("payment_split")
+      .eq("id", orderId)
+      .eq("store_id", storeId)
+      .maybeSingle();
+    paymentSplit = split?.payment_split ?? null;
+  }
+
+  const refundDate = bangladeshDate(new Date());
+  const rows = shareByMethod(method, paymentSplit, amount)
+    .filter((share) => share.amount > 0)
+    .map((share) => ({
+      store_id: storeId,
+      branch_id: order.branch_id ?? null,
+      order_id: orderId,
+      refund_amount: share.amount,
+      payment_method: REFUND_METHODS.includes(share.method ?? "") ? share.method : "other",
+      refund_date: refundDate,
+      received_amount: share.amount,
+      received_date: receivedDate,
+      notes: "Auto-refund: order returned",
+    }));
+  const { error } = await supabaseAdmin.from("customer_refunds").insert(rows);
   if (error) console.error("Error recording refund entry for returned order:", error.message);
 }

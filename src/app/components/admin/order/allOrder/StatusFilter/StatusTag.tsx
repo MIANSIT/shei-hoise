@@ -41,6 +41,7 @@ const statusColors: Record<StatusType, string> = {
   card: "purple",
   bank_transfer: "gold",
   mobile_banking: "lime",
+  split: "cyan",
 };
 
 
@@ -73,6 +74,7 @@ const statusLabels: Record<StatusType, string> = {
   card: "Card",
   bank_transfer: "Bank Transfer",
   mobile_banking: "Mobile Banking",
+  split: "Split",
 };
 
 

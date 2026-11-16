@@ -1,5 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
+import { loadPaymentSplits } from "@/lib/queries/orders/loadPaymentSplits";
+import { shareByMethod } from "@/lib/utils/paymentSplit";
 import { getCustomersWithDue } from "@/lib/queries/customers/getCustomersWithDue";
 import { getUnsettledCodOrders } from "@/lib/queries/orders/codSettlements";
 import { getPendingBalanceParts } from "@/lib/queries/dashboard/getPendingBalance";
@@ -282,6 +284,8 @@ export async function getMoneyOverview(
 
     // How each courier settlement was paid (cash, bKash or bank). A settlement saved before this was asked counts as cash.
     const codMethod = await loadCodSettlementMethods(storeId, orders.map((o) => o.cod_settlement_id));
+    // A split sale (some cash, some bKash…) counts on each method it was paid by.
+    const splits = await loadPaymentSplits(storeId, orders);
 
     const rows = new Map<MoneyMethodKey, MoneyMethodRow>();
     const rowFor = (method: MoneyMethodKey): MoneyMethodRow => {
@@ -314,9 +318,13 @@ export async function getMoneyOverview(
         Number(order.subtotal ?? 0) - Number(order.discount_amount ?? 0) + Number(order.additional_charges ?? 0);
       if (amount <= 0) continue;
       // A COD order paid by a courier settlement lands on the balance the courier paid into.
-      let orderMethod = normalizeMethod(order.payment_method);
-      if (orderMethod === "cod" && order.cod_settlement_id) orderMethod = normalizeMethod(codMethod.get(order.cod_settlement_id) ?? "cash");
-      rowFor(orderMethod).fromOrders += amount;
+      if (normalizeMethod(order.payment_method) === "cod" && order.cod_settlement_id) {
+        rowFor(normalizeMethod(codMethod.get(order.cod_settlement_id) ?? "cash")).fromOrders += amount;
+      } else {
+        for (const share of shareByMethod(order.payment_method, splits.get(order.id), amount)) {
+          rowFor(normalizeMethod(share.method)).fromOrders += share.amount;
+        }
+      }
       addToBranch(order.branch_id, "received", amount);
       // Placed before the period but paid in it (e.g. last month's COD): it is money now, not this period's sales.
       if (order.order_date && order.order_date < fromDate) sources.ordersEarlier += amount;

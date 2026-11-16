@@ -22,6 +22,8 @@ export enum PaymentMethod {
   CARD = "card",
   BANK_TRANSFER = "bank_transfer",
   MOBILE_BANKING = "mobile_banking",
+  /** Paid partly by one method and partly by another — the parts are in orders.payment_split. */
+  SPLIT = "split",
 }
 
 export enum DeliveryOption {
