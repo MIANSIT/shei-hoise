@@ -179,6 +179,17 @@ export const sideMenu: MenuItem[] = [
     ],
   },
   {
+    // Marketplaces the store also sells on. foodpanda is not a courier — its
+    // orders arrive here and its menu is pushed from here — so it sits in its
+    // own group rather than under Courier. Room for Daraz and others later.
+    title: "Channels",
+    labelKey: "menuChannels",
+    icon: Store,
+    children: [
+      { title: "foodpanda", labelKey: "menuFoodpanda", href: "/dashboard/foodpanda", icon: Store },
+    ],
+  },
+  {
     // Where the business's money is and where it stands: the money tracker, the balance sheet and investor money.
     title: "Financial",
     labelKey: "menuFinancial",
