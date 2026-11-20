@@ -53,6 +53,8 @@ export interface ReceiptPdfData {
   tax?: number;
   total: number;
   paymentLabel: string;
+  /** A split payment: what came in by each method, one line each under "Payment". */
+  paymentParts?: { label: string; amount: number }[];
   cashReceived: number | null;
   changeDue: number | null;
   paidNow: number | null;
@@ -264,6 +266,9 @@ function drawReceiptCopy(
   y += 3.2;
   y = totalRow(doc, y, "TOTAL", amountText(data.currencyIcon, data.total), true, 9, bengaliLoaded);
   y = totalRow(doc, y, "Payment", data.paymentLabel, false, 7.5, bengaliLoaded);
+  for (const part of data.paymentParts ?? []) {
+    y = totalRow(doc, y, `  ${part.label}`, amountText(data.currencyIcon, part.amount), false, 7.5, bengaliLoaded);
+  }
 
   if (data.cashReceived != null) {
     y = totalRow(doc, y, "Cash received", amountText(data.currencyIcon, data.cashReceived), false, 7.5, bengaliLoaded);

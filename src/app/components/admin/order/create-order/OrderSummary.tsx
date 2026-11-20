@@ -161,6 +161,8 @@ export default function OrderSummary({
     { value: PaymentMethod.COD, label: t.admin.orderCod },
     { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
     { value: PaymentMethod.BANK_TRANSFER, label: t.admin.moBankTransfer },
+    // Editing a split Quick Sale: kept as is, or changed to one method.
+    ...(paymentMethod === PaymentMethod.SPLIT ? [{ value: PaymentMethod.SPLIT, label: t.admin.orderPaySplit }] : []),
   ];
 
   // Pathao/Steadfast only stay selectable if the plan includes courier

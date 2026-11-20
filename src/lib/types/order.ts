@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { OrderStatus, PaymentStatus, DeliveryOption } from "./enums";
+import type { PaymentSplitPart } from "../utils/paymentSplit";
 
 // ===== CORE ORDER TYPES =====
 export interface OrderProduct {
@@ -150,6 +151,8 @@ export interface StoreOrder {
   channel?: "online" | "pos";
   /** Cash actually tendered at checkout for a fully-paid POS cash sale — null for due sales, non-cash payments, and online orders. Lets the receipt's "Cash received"/"Change due" lines be reprinted later instead of only ever existing in the checkout page's transient state. */
   cash_received?: number | null;
+  /** How a split-payment sale (payment_method 'split') was paid: [{ method, amount }]. Null for every other order — see paymentSplit.ts. */
+  payment_split?: PaymentSplitPart[] | null;
 }
 
 // ===== FORM DATA TYPES =====
@@ -189,6 +192,8 @@ export interface CreateOrderData {
   channel?: "online" | "pos";
   /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received. */
   cashReceived?: number | null;
+  /** Quick Sale paid by more than one method (paymentMethod 'split'): what came in by each. */
+  paymentSplit?: PaymentSplitPart[] | null;
   /** "YYYY-MM-DD" — when the sale actually happened. Omit to let the DB default order_date to today. */
   orderDate?: string;
   /** Stores with branches: the branch that fulfils the order. Omitted/null = picked automatically. */

@@ -3,6 +3,7 @@ import type { StoreInvoiceData } from "@/lib/hook/useInvoiceData";
 import { generateReceiptPdfSet, ReceiptPdfSet } from "./generateReceiptPdf";
 import { getStorePublicUrl } from "./productQr";
 import { PAYMENT_LABELS } from "./paymentLabels";
+import { parsePaymentSplit } from "./paymentSplit";
 import { resolveOrderInvoiceDate } from "./orderInvoiceDate";
 import { branchReceiptLines, type InvoiceBranch } from "./invoiceStore";
 import { invoiceTotals, invoiceUnitPrice } from "./invoicePrice";
@@ -82,6 +83,13 @@ export async function buildReceiptPdfSetForOrder(
       (order.payment_method && PAYMENT_LABELS[order.payment_method]) ||
       order.payment_method ||
       "—",
+    paymentParts:
+      order.payment_method === "split"
+        ? parsePaymentSplit(order.payment_split)?.map((p) => ({
+            label: PAYMENT_LABELS[p.method] || p.method,
+            amount: p.amount,
+          }))
+        : undefined,
     cashReceived,
     changeDue,
     paidNow,

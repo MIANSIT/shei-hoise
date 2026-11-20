@@ -27,6 +27,9 @@ const PaymentMethodSelect: React.FC<{
     { value: PaymentMethod.COD, label: t.admin.orderCod },
     { value: PaymentMethod.MOBILE_BANKING, label: t.admin.orderPayMobileBanking },
     { value: PaymentMethod.BANK_TRANSFER, label: t.admin.moBankTransfer },
+    // A split sale is only made in Quick Sale, where its amounts are entered;
+    // here it is shown so it reads right, and can be changed to one method.
+    ...(value === PaymentMethod.SPLIT ? [{ value: PaymentMethod.SPLIT, label: t.admin.orderPaySplit }] : []),
   ];
   return (
     <Select

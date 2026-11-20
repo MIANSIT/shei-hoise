@@ -8,6 +8,7 @@ export const PAYMENT_LABELS: Record<string, string> = {
   [PaymentMethod.COD]: "Cash on Delivery",
   [PaymentMethod.ONLINE]: "Online Payment",
   [PaymentMethod.BANK_TRANSFER]: "Bank / Card",
+  [PaymentMethod.SPLIT]: "Split payment",
   // Pre-existing orders recorded before Create/Edit Order was unified onto
   // the shared PaymentMethod enum — kept only so old rows still show a
   // readable label instead of the raw string; no longer offered as an

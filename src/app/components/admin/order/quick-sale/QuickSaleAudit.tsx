@@ -18,6 +18,7 @@ import { getRegisterOpeningCash } from "@/lib/queries/orders/registerOpeningCash
 import { setRegisterOpeningCash } from "@/lib/queries/orders/setRegisterOpeningCash";
 import { useSheiNotification } from "@/lib/hook/useSheiNotification";
 import { PAYMENT_LABELS } from "@/lib/utils/paymentLabels";
+import { paymentMethodSummary } from "@/lib/utils/paymentSplit";
 import StatusTag from "@/app/components/admin/order/allOrder/StatusFilter/StatusTag";
 import FeatureLocked from "@/app/components/admin/common/FeatureLocked";
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
@@ -279,7 +280,9 @@ export default function QuickSaleAudit() {
       title: "Method",
       dataIndex: "payment_method",
       key: "payment_method",
-      render: (v: string | null) => (v ? methodLabel(v) : "—"),
+      // A split sale lists what came in by each method.
+      render: (v: string | null, row: QuickSaleDailyOrderRow) =>
+        v ? paymentMethodSummary(v, row.payment_split) : "—",
     },
     {
       title: "Total",

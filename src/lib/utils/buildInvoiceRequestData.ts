@@ -3,6 +3,7 @@ import { getValidCurrency } from "@/lib/utils/currency";
 import { InvoicePdfData } from "@/lib/utils/invoicePdfHelpers";
 import { resolveOrderInvoiceDate } from "@/lib/utils/orderInvoiceDate";
 import { invoiceTotals, invoiceUnitPrice } from "@/lib/utils/invoicePrice";
+import { paymentMethodSummary } from "@/lib/utils/paymentSplit";
 
 /**
  * Maps a StoreOrder into the flat shape the invoice PDF endpoints expect.
@@ -49,7 +50,11 @@ export function buildInvoiceRequestData(
     totalDue: order.total_amount,
     amountPaid: paidAmount,
     paymentStatus: order.payment_status,
-    paymentMethod: order.payment_method ?? undefined,
+    // A split sale prints what came in by each method.
+    paymentMethod:
+      order.payment_method === "split"
+        ? paymentMethodSummary(order.payment_method, order.payment_split)
+        : (order.payment_method ?? undefined),
     orderStatus: order.status,
     notes: order.notes ?? "",
     // The invoice prints the order's own date (back-datable by the admin),

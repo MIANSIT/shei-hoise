@@ -2,7 +2,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { OrderProduct, CustomerInfo } from "../../types/order";
-import { OrderStatus, PaymentStatus } from "@/lib/types/enums";
+import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
+import { parsePaymentSplit, type PaymentSplitPart } from "@/lib/utils/paymentSplit";
 import { getPhoneRiskLevel } from "@/lib/utils/riskScoring";
 import { explodeBundleOrderProducts } from "./bundleExplosion";
 import { bundleItemKey } from "./bundleItemKey";
@@ -46,6 +47,8 @@ export interface CreateOrderData {
   channel?: "online" | "pos";
   /** Cash tendered at checkout for a fully-paid POS cash sale — see StoreOrder.cash_received in lib/types/order.ts. */
   cashReceived?: number | null;
+  /** Quick Sale paid by more than one method (paymentMethod 'split'): what came in by each — see paymentSplit.ts. */
+  paymentSplit?: PaymentSplitPart[] | null;
   /** "YYYY-MM-DD" — when the sale actually happened, for backfilling manual orders. Defaults to today (DB default) when omitted, e.g. from the storefront checkout. */
   orderDate?: string;
   /**
@@ -243,6 +246,23 @@ export async function createOrder(
       membershipId = member.membership.id;
     }
 
+    // A split payment (Quick Sale only) needs at least two methods. Paid in full, its parts are the
+    // whole total; on a due sale they are what was taken at the counter, so at most the total.
+    let paymentSplit: PaymentSplitPart[] | null = null;
+    if (paymentMethod === PaymentMethod.SPLIT) {
+      if (channel !== "pos") throw new Error("A split payment is only allowed on a Quick Sale.");
+      paymentSplit = parsePaymentSplit(orderData.paymentSplit);
+      if (!paymentSplit || paymentSplit.length < 2) {
+        throw new Error("A split payment needs an amount for at least two payment methods.");
+      }
+      const splitTotal = paymentSplit.reduce((sum, p) => sum + p.amount, 0);
+      const overTotal = splitTotal > totalAmount + 0.01;
+      const shortOfTotal = paymentStatus === PaymentStatus.PAID && splitTotal < totalAmount - 0.01;
+      if (overTotal || shortOfTotal) {
+        throw new Error("The split payment amounts don't add up to the sale total. Check the amounts and try again.");
+      }
+    }
+
     // Only the part the cashier chose to give is held to their discount permission and limit.
     const manualDiscount = Math.max(0, discount - memberDiscount);
     if (manualDiscount > 0) {
@@ -322,6 +342,9 @@ export async function createOrder(
       courier: orderData.courier || null,
       channel,
       cash_received: cashReceived ?? null,
+      // Only written for a split sale, so every other order is untouched
+      // even before the 20261214 migration has been applied.
+      ...(paymentSplit ? { payment_split: paymentSplit } : {}),
       ...(orderDate ? { order_date: orderDate } : {}),
       // Only written for a member order, so every other order is untouched
       // even before the 20261108 migration has been applied.

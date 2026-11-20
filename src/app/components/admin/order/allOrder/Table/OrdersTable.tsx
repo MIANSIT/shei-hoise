@@ -71,6 +71,7 @@ import { markInvoicesPrinted } from "@/lib/queries/orders/markInvoicesPrinted";
 import { ReviewLinkButton } from "./ReviewLinkButton";
 
 import { formatDate, formatDateTime, formatDateTimeShort } from "@/lib/utils/formatDate";
+import { paymentMethodSummary } from "@/lib/utils/paymentSplit";
 interface Props {
   orders: StoreOrder[];
   paidAmountByOrderId?: Record<string, number>;
@@ -855,7 +856,11 @@ const OrdersTable: React.FC<Props> = ({
           </DetailField>
           <DetailField label={t.admin.orderPaymentMethodOption}>
             <span className="capitalize">
-              {order.payment_method === "cod" ? t.admin.orderCod : order.payment_method || t.admin.orderNotSet}
+              {order.payment_method === "cod"
+                ? t.admin.orderCod
+                : order.payment_method === "split"
+                  ? `${t.admin.orderPaySplit}: ${paymentMethodSummary(order.payment_method, order.payment_split)}`
+                  : order.payment_method || t.admin.orderNotSet}
             </span>
           </DetailField>
           <DetailField label={t.admin.orderDeliveryCourierOption}>
@@ -1416,7 +1421,11 @@ const OrdersTable: React.FC<Props> = ({
           totalDue={selectedOrderForInvoice.total_amount}
           amountPaid={paidAmountByOrderId[selectedOrderForInvoice.id]}
           paymentStatus={selectedOrderForInvoice.payment_status}
-          paymentMethod={selectedOrderForInvoice.payment_method ?? undefined}
+          paymentMethod={
+            selectedOrderForInvoice.payment_method === "split"
+              ? paymentMethodSummary(selectedOrderForInvoice.payment_method, selectedOrderForInvoice.payment_split)
+              : (selectedOrderForInvoice.payment_method ?? undefined)
+          }
           // Quick Sale's delivery option is always the fixed in-store "shop"
           // pickup — showing it on the invoice would just be noise, so it's
           // only passed for a regular (non-POS) order.

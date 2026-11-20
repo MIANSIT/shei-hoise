@@ -379,6 +379,8 @@ CREATE TABLE IF NOT EXISTS "public"."orders" (
     "courier" character varying(20),
     "whatsapp_notified_at" timestamp with time zone,
     "cash_received" numeric(10,2),
+    -- [{method, amount}] when payment_method = 'split' (20261214000000), else NULL.
+    "payment_split" jsonb CONSTRAINT "orders_payment_split_array_check" CHECK ("payment_split" IS NULL OR jsonb_typeof("payment_split") = 'array'),
     "order_date" date DEFAULT CURRENT_DATE NOT NULL,
     "cod_settlement_id" uuid,
     "paid_at" timestamp with time zone,

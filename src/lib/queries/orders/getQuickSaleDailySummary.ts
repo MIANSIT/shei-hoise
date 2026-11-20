@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import { OrderStatus, PaymentMethod, PaymentStatus } from "@/lib/types/enums";
 import { computeOrderBalances } from "@/lib/queries/customers/customerDueMath";
 import { getCodCashSettledForDate, getCodMarkedPaidCashForDate } from "@/lib/queries/orders/codSettlements";
+import { loadPaymentSplits } from "@/lib/queries/orders/loadPaymentSplits";
+import { shareByMethod } from "@/lib/utils/paymentSplit";
 
 /** One product line of a sale, with what it cost (TP) so the register can show profit per line. */
 export interface RegisterLine {
@@ -21,6 +23,8 @@ export interface QuickSaleDailyOrderRow {
   customer_name: string;
   customer_phone: string;
   payment_method: string | null;
+  /** A split-payment sale's parts (raw orders.payment_split); null for every other order. */
+  payment_split: unknown;
   payment_status: PaymentStatus;
   status: OrderStatus;
   total_amount: number;
@@ -161,6 +165,9 @@ export async function getQuickSaleDailySummary(
       .map((o) => o.id),
   );
 
+  // A split sale's money is shared out over the methods it was paid by.
+  const splits = await loadPaymentSplits(storeId, orders);
+
   const collectedByMethod: Record<string, number> = {};
   const addCollected = (method: string | null, amount: number) => {
     // Card is part of Bank: one balance.
@@ -186,7 +193,9 @@ export async function getQuickSaleDailySummary(
     discountTotal += Number(order.discount_amount) || 0;
     additionalTotal += Number(order.additional_charges) || 0;
     if (order.payment_status === PaymentStatus.PAID && !isCod(order)) {
-      addCollected(order.payment_method, total);
+      for (const share of shareByMethod(order.payment_method, splits.get(order.id), total)) {
+        addCollected(share.method, share.amount);
+      }
     }
   }
 
@@ -241,6 +250,7 @@ export async function getQuickSaleDailySummary(
     customer_name: order.shipping_address?.customer_name || "Walk-in Customer",
     customer_phone: order.shipping_address?.phone || "",
     payment_method: order.payment_method,
+    payment_split: splits.get(order.id) ?? null,
     payment_status: order.payment_status as PaymentStatus,
     status: order.status as OrderStatus,
     total_amount: Number(order.total_amount) || 0,
