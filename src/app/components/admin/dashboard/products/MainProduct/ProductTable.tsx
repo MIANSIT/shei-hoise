@@ -25,7 +25,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import DataTable from "@/app/components/admin/common/DataTable";
 import type { ColumnsType } from "antd/es/table";
 import { ProductWithVariants } from "@/lib/queries/products/getProductsWithVariants";
-import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode, Copy, MoreHorizontal, Percent } from "lucide-react";
+import { Edit, Trash2, Star, Truck, Zap, QrCode, Barcode, Copy, MoreHorizontal, Percent, Tags } from "lucide-react";
 import { getEffectivePrice, isSaleActive } from "@/lib/utils/getEffectivePrice";
 import { Modal, Checkbox, Button, Dropdown, Popover } from "antd";
 import { LockOutlined } from "@ant-design/icons";
@@ -51,6 +51,7 @@ import { isBarcode128Encodable } from "@/lib/utils/productBarcode";
 import { sanitizeFilename } from "@/lib/utils/printWindow";
 import QrLabelPreviewModal from "./QrLabelPreviewModal";
 import { BulkMrpModal } from "./BulkMrpModal";
+import { BulkCategoryModal } from "./BulkCategoryModal";
 import { usePermissions } from "@/lib/context/PermissionsContext";
 
 type QrLayout = "pages" | "strip" | "sheet";
@@ -286,6 +287,7 @@ const ProductTable: React.FC<ProductTableProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [mrpModalOpen, setMrpModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [bulkLabelsBlob, setBulkLabelsBlob] = useState<Blob | null>(null);
   const [bulkLabelsFileName, setBulkLabelsFileName] = useState("");
   const [bulkLabelsTitle, setBulkLabelsTitle] = useState("QR Labels");
@@ -844,6 +846,12 @@ const ProductTable: React.FC<ProductTableProps> = ({
                 Change MRP
               </Button>
             )}
+            {canEdit && (
+              <Button size="small" onClick={() => setCategoryModalOpen(true)} disabled={bulkGenerating}>
+                <Tags className="w-3.5 h-3.5 mr-1.5 inline-block align-text-bottom" />
+                Add category
+              </Button>
+            )}
             <Button size="small" onClick={() => setSelectedIds([])} disabled={bulkGenerating}>
               Clear
             </Button>
@@ -1004,6 +1012,16 @@ const ProductTable: React.FC<ProductTableProps> = ({
         productIds={selectedIds}
         currencySymbol={typeof cur === "string" ? cur : "৳"}
         onClose={() => setMrpModalOpen(false)}
+        onDone={() => {
+          setSelectedIds([]);
+          onPricesUpdated?.();
+        }}
+      />
+
+      <BulkCategoryModal
+        open={categoryModalOpen}
+        productIds={selectedIds}
+        onClose={() => setCategoryModalOpen(false)}
         onDone={() => {
           setSelectedIds([]);
           onPricesUpdated?.();
