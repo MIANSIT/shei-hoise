@@ -469,7 +469,9 @@ export default function SalesReport() {
           </div>
         ) : (
           <div className="space-y-5 bg-background">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div
+              className={`grid grid-cols-2 gap-4 ${vendorSales > 0.005 ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+            >
               <StatTile
                 icon={<BarChart2 size={18} />}
                 label={t.admin.psSalesAll}
@@ -498,7 +500,7 @@ export default function SalesReport() {
                   icon={<Truck size={18} />}
                   label={t.admin.psVendorSales}
                   value={money(vendorSales)}
-                  hint={t.admin.psVendorSalesNote}
+                  hint={t.admin.psVendorSalesShort}
                 />
               )}
             </div>
