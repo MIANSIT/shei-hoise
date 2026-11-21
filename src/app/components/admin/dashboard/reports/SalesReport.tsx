@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { DatePicker, Table, Spin, Dropdown, Button, Popover, App } from "antd";
 import dayjs, { Dayjs } from "dayjs";
-import { BarChart2, ShoppingBag, Store, Smartphone, Download, Loader2, Building2 } from "lucide-react";
+import { BarChart2, ShoppingBag, Store, Smartphone, Download, Loader2, Building2, Truck } from "lucide-react";
 import { LockOutlined } from "@ant-design/icons";
 import { useCurrentUser } from "@/lib/hook/useCurrentUser";
 import { useFeatureGate } from "@/lib/hook/useFeatureGate";
@@ -27,6 +27,7 @@ import {
 import { MenuLabel } from "@/app/components/admin/common/MenuLabel";
 import { useBranches } from "@/lib/context/BranchContext";
 import { useTranslation } from "@/lib/hook/useTranslation";
+import { getVendorSalesForPeriod } from "@/lib/queries/vendor/getVendorSalesForPeriod";
 
 type Granularity = "day" | "week" | "month" | "year" | "custom";
 
@@ -234,6 +235,7 @@ export default function SalesReport() {
     dayjs(),
   ]);
   const [report, setReport] = useState<SalesReportResult | null>(null);
+  const [vendorSales, setVendorSales] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const { fromDate, toDate, bucket } =
@@ -252,8 +254,13 @@ export default function SalesReport() {
     if (!user?.store_id || branchesLoading) return;
     setLoading(true);
     try {
-      const result = await getSalesReport(user.store_id, fromDate, toDate, bucket, reportBranchId, splitByBranch);
+      const [result, vendor] = await Promise.all([
+        getSalesReport(user.store_id, fromDate, toDate, bucket, reportBranchId, splitByBranch),
+        // Goods sent to vendors: shown on its own card, never added into Sales.
+        getVendorSalesForPeriod(user.store_id, fromDate, toDate, fromDate, toDate, reportBranchId),
+      ]);
       setReport(result);
+      setVendorSales(vendor.vendor_sales);
     } finally {
       setLoading(false);
     }
@@ -277,6 +284,7 @@ export default function SalesReport() {
           ? `Custom (${fromDate} to ${toDate})`
           : (GRANULARITY_OPTIONS.find((g) => g.key === granularity)?.label ?? granularity),
       currencySymbol: currencyIcon,
+      vendorSales,
     };
 
     setExportingFormat(format);
@@ -485,6 +493,14 @@ export default function SalesReport() {
                 label="Quick Sale (POS)"
                 value={money(report.posRevenue)}
               />
+              {vendorSales > 0.005 && (
+                <StatTile
+                  icon={<Truck size={18} />}
+                  label={t.admin.psVendorSales}
+                  value={money(vendorSales)}
+                  hint={t.admin.psVendorSalesNote}
+                />
+              )}
             </div>
 
             {splitByBranch && report.byBranch.length > 0 && (

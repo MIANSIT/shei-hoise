@@ -9,7 +9,11 @@ export interface SalesReportMeta {
   toDate: string;
   granularityLabel: string;
   currencySymbol: string;
+  /** Goods sent to vendors in the period. Shown apart from the sales figures, which never include it. */
+  vendorSales?: number;
 }
+
+const VENDOR_SALES_NOTE = "goods sent to vendors; not included in Sales";
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -77,6 +81,13 @@ export function exportSalesReportCSV(report: SalesReportResult, meta: SalesRepor
     ["Online Sales", `${meta.currencySymbol}${money(report.onlineRevenue)}`].map(escape).join(","),
     ["Quick Sale (POS)", `${meta.currencySymbol}${money(report.posRevenue)}`].map(escape).join(","),
     ["Average Order Value", `${meta.currencySymbol}${money(report.averageOrderValue)}`].map(escape).join(","),
+    ...((meta.vendorSales ?? 0) > 0.005
+      ? [
+          ["Vendor Sales (separate)", `${meta.currencySymbol}${money(meta.vendorSales ?? 0)}`, VENDOR_SALES_NOTE]
+            .map(escape)
+            .join(","),
+        ]
+      : []),
     "",
     DATA_HEADERS.map(escape).join(","),
     ...getDataRows(report).map((row) => row.map(escape).join(",")),
@@ -383,8 +394,25 @@ export async function exportSalesReportPDF(
   });
   pdf.setTextColor(0, 0, 0);
 
+  // Vendor sales: its own line under the cards, since it is not part of Sales.
+  let belowCardsY = cardsTop + cardHeight;
+  if ((meta.vendorSales ?? 0) > 0.005) {
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(109, 40, 217); // violet-700
+    const vendorText = `Vendor sales: ${meta.currencySymbol}${money(meta.vendorSales ?? 0)}`;
+    applyBengaliFontBrowser(pdf, vendorText, bengaliLoaded);
+    pdf.text(vendorText, margin, belowCardsY + 7);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(`(${VENDOR_SALES_NOTE})`, margin + pdf.getTextWidth(vendorText) + 8, belowCardsY + 7);
+    pdf.setTextColor(0, 0, 0);
+    belowCardsY += 8;
+  }
+
   // ── Data table ──
-  const tableStartY = cardsTop + cardHeight + 8;
+  const tableStartY = belowCardsY + 8;
   const periodHeader = bucket === "month" ? "Month" : "Date";
 
   autoTable(pdf, {
