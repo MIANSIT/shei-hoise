@@ -161,7 +161,7 @@ export const translations = {
     },
     shop: {
       allProducts: "All Products",
-      show10More: "Show 10 more products",
+      show10More: "Show more products",
       loadingMore: "Loading more…",
       allShownPrefix: "All",
       allShownSuffix: "products shown",
@@ -191,6 +191,7 @@ export const translations = {
       viewDetails: "View Details",
       selectVariant: "Select variant",
       couponExtra: "Extra",
+      couponWith: "with {code}",
     },
     filter: {
       searchPlaceholder: "Search products…",
@@ -4344,7 +4345,7 @@ export const translations = {
     },
     shop: {
       allProducts: "সব পণ্য",
-      show10More: "আরো ১০টি পণ্য দেখুন",
+      show10More: "আরো পণ্য দেখুন",
       loadingMore: "লোড হচ্ছে…",
       allShownPrefix: "",
       allShownSuffix: "টি পণ্য দেখানো হয়েছে",
@@ -4374,6 +4375,7 @@ export const translations = {
       viewDetails: "বিস্তারিত দেখুন",
       selectVariant: "ভ্যারিয়েন্ট বেছে নিন",
       couponExtra: "অতিরিক্ত",
+      couponWith: "{code} কুপনে",
     },
     filter: {
       searchPlaceholder: "পণ্য খুঁজুন…",

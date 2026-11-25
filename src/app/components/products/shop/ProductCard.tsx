@@ -80,12 +80,17 @@ export default function ProductCard({
       ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
       : 0;
 
-  // Biggest saving among auto-apply coupons at this card's price (min-order
-  // is ignored here — the product page spells that out).
-  const couponBadge = autoCoupons
-    .map((c) => ({ coupon: c, saving: computeCouponDiscount(c, displayPrice, product.category_ids ?? (product.category?.id ? [product.category.id] : [])) }))
+  // Best auto-apply coupon at this card's price, chosen like the product page does:
+  // one usable on this item alone comes before one that needs a bigger order.
+  const couponOffer = autoCoupons
+    .map((c) => ({
+      coupon: c,
+      saving: computeCouponDiscount(c, displayPrice, product.category_ids ?? (product.category?.id ? [product.category.id] : [])),
+      minOrder: c.min_order_amount !== null && displayPrice < c.min_order_amount ? c.min_order_amount : null,
+    }))
     .filter((x) => x.saving > 0)
-    .sort((a, b) => b.saving - a.saving)[0]?.coupon;
+    .sort((a, b) => Number(a.minOrder !== null) - Number(b.minOrder !== null) || b.saving - a.saving)[0];
+  const couponBadge = couponOffer?.coupon;
 
   const isInStock = (): boolean => {
     if (product.variants && product.variants.length > 0) {
@@ -257,12 +262,16 @@ export default function ProductCard({
           </h3>
         </Link>
 
-        {/* Row 1.5 — Rating */}
+        {/* Row 1.5 — Rating. Nothing until there is a review; the row keeps cards level. */}
         <div className="flex items-center gap-1 h-4">
-          <StarRating value={rating?.average ?? 0} size="sm" />
-          <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
-            ({rating?.total ?? 0})
-          </span>
+          {!!rating?.total && (
+            <>
+              <StarRating value={rating.average} size="sm" />
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium">
+                ({n(rating.total)})
+              </span>
+            </>
+          )}
         </div>
 
         {/* Row 2 — Price block */}
@@ -285,8 +294,21 @@ export default function ProductCard({
               </span>
             )}
           </div>
-          <div className="h-4.5 flex items-center">
-            {hasVariants ? (
+          <div className="h-4.5 flex items-center min-w-0">
+            {couponOffer && productInStock ? (
+              <span className="truncate text-[11px] sm:text-xs font-bold text-primary">
+                {displayCurrencyIconSafe}
+                {n(Math.round(displayPrice - couponOffer.saving).toFixed(2))}{" "}
+                {t.card.couponWith.replace("{code}", couponOffer.coupon.code)}
+                {couponOffer.minOrder !== null && (
+                  <span className="font-medium text-muted-foreground">
+                    {" "}
+                    {t.product.couponOnOrdersOver} {displayCurrencyIconSafe}
+                    {n(couponOffer.minOrder)}
+                  </span>
+                )}
+              </span>
+            ) : hasVariants ? (
               <span className="inline-flex items-center gap-1 text-[9px] font-semibold tracking-widest uppercase text-gray-400 dark:text-gray-500 whitespace-nowrap">
                 <span className="flex gap-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />

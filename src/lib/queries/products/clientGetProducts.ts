@@ -167,14 +167,18 @@ export async function clientGetProducts(
       relevanceOrder = relevanceOrder.slice(0, MAX_SEARCH_RESULTS);
       query = query.in("id", relevanceOrder);
     } else {
-      // Default view leads with the order the shop owner dragged the
+      // Sold-out products go last in every sort. Done in the database, so it
+      // holds across pages and not only within the products already loaded.
+      query = query.order("product_in_stock", { ascending: false });
+      // Default view then follows the order the shop owner dragged the
       // catalog into (products.sort_order), then falls back to A–Z for
       // anything with no position yet.
       if (sortOption === "default") {
         query = query.order("sort_order", { ascending: true, nullsFirst: false });
       }
       const sort = SORT_COLUMNS[sortOption] ?? SORT_COLUMNS.newest;
-      query = query.order(sort.column, { ascending: sort.ascending }).range(start, end);
+      // id breaks ties, so a product can't repeat or go missing between pages.
+      query = query.order(sort.column, { ascending: sort.ascending }).order("id").range(start, end);
     }
 
     const { data: products, error: productError, count } = await query;
@@ -285,7 +289,10 @@ export async function clientGetProducts(
             })
           : orderedProducts;
 
-      const pageProducts = finalOrder.slice(start, end + 1);
+      // Same rule for search results: buyable first, each group keeping its order.
+      const buyableFirst = [...finalOrder].sort((a, b) => Number(isProductInStock(b)) - Number(isProductInStock(a)));
+
+      const pageProducts = buyableFirst.slice(start, end + 1);
       await attachCategoryIds(pageProducts);
       return {
         products: pageProducts,
@@ -294,29 +301,11 @@ export async function clientGetProducts(
       };
     }
 
-    // Sort: in-stock first — only on the default ordering, and only where the
-    // owner hasn't dragged the catalog into a deliberate order. Once there's
-    // either an explicit shopper sort or a manual position to respect, pulling
-    // sold-out items down would visibly break the order that was asked for.
-    const hasManualOrder = (products ?? []).some(
-      (p: any) => p.sort_order !== null && p.sort_order !== undefined,
-    );
-    const sortedProducts =
-      sortOption === "default" && !hasManualOrder
-        ? mappedProducts.sort((a, b) => {
-            const aInStock = isProductInStock(a);
-            const bInStock = isProductInStock(b);
-            if (aInStock && !bInStock) return -1;
-            if (!aInStock && bInStock) return 1;
-            return 0;
-          })
-        : mappedProducts;
-
     const hasMore = count ? end + 1 < count : false;
 
-    await attachCategoryIds(sortedProducts);
+    await attachCategoryIds(mappedProducts);
     return {
-      products: sortedProducts,
+      products: mappedProducts,
       hasMore,
       totalCount: count || 0,
     };

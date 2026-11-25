@@ -123,7 +123,8 @@ export default function ShopClient({ storeSlug: store_slug, categorySlug }: Shop
   const [hasMore, setHasMore] = useState(true);
   const [totalProducts, setTotalProducts] = useState(0);
 
-  const ITEMS_PER_PAGE = 10;
+  // Divisible by 2, 3 and 4, so the last row of the grid is always full.
+  const ITEMS_PER_PAGE = 24;
   const isLoadingRef = useRef(false);
   const requestIdRef = useRef(0);
   const storeIdRef = useRef<string | null>(null);
