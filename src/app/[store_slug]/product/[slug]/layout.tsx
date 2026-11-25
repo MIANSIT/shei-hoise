@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { createNormalClient } from "@/lib/supabase/client";
 import { safeJsonLd } from "@/lib/utils/safeJsonLd";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getEffectivePrice, type EffectivePriceInput } from "@/lib/utils/getEffectivePrice";
 
 export const revalidate = 300; // cache for 5 minutes on Vercel CDN
 
@@ -25,7 +27,7 @@ const fetchProductData = cache(async (store_slug: string, slug: string) => {
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, name, sku, meta_title, meta_description, short_description, base_price, discounted_price, product_images(image_url, is_primary), product_inventory(quantity_available, quantity_reserved), categories(id, name, slug)",
+      "id, name, sku, meta_title, meta_description, short_description, base_price, discounted_price, sale_starts_at, sale_ends_at, product_images(image_url, is_primary), product_inventory(quantity_available, quantity_reserved), product_variants(is_active, base_price, discounted_price, sale_starts_at, sale_ends_at, product_inventory(quantity_available, quantity_reserved)), categories(id, name, slug)",
     )
     .eq("slug", slug)
     .eq("store_id", store.id)
@@ -36,6 +38,33 @@ const fetchProductData = cache(async (store_slug: string, slug: string) => {
 
   return product ? { store, product, currency: storeCurrency } : null;
 });
+
+interface InventoryRow {
+  quantity_available: number;
+  quantity_reserved: number;
+}
+
+interface VariantRow extends EffectivePriceInput {
+  is_active: boolean | null;
+  product_inventory: InventoryRow[] | InventoryRow | null;
+}
+
+/** Units that can still be sold. Accepts one row or a list, as PostgREST returns either. */
+function sellableUnits(inventory: InventoryRow[] | InventoryRow | null): number {
+  const rows = Array.isArray(inventory) ? inventory : inventory ? [inventory] : [];
+  return rows.reduce((sum, row) => sum + row.quantity_available - row.quantity_reserved, 0);
+}
+
+/**
+ * The product's own brand, if it has one. Asked for separately so a database
+ * without brands still renders the page. Never the store's name.
+ */
+async function getProductBrandName(productId: string): Promise<string | null> {
+  const { data: product } = await supabaseAdmin.from("products").select("brand_id").eq("id", productId).maybeSingle();
+  if (!product?.brand_id) return null;
+  const { data: brand } = await supabaseAdmin.from("brands").select("name").eq("id", product.brand_id).maybeSingle();
+  return brand?.name ?? null;
+}
 
 export async function generateMetadata({
   params,
@@ -63,7 +92,8 @@ export async function generateMetadata({
   const productUrl = `${baseUrl}/${store_slug}/product/${slug}`;
 
   return {
-    title: `${title} | ${store.store_name}`,
+    // The store layout's title template adds "| Store name"; adding it here too repeated it.
+    title,
     description,
     alternates: { canonical: productUrl },
     openGraph: {
@@ -96,14 +126,21 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
 
   const { store, product, currency } = result;
 
-  const effectivePrice = (product.discounted_price ?? product.base_price) as number;
-  const inventory =
-    (product.product_inventory as { quantity_available: number; quantity_reserved: number }[] | null) ?? [];
-  const totalAvailable = inventory.reduce(
-    (sum, row) => sum + row.quantity_available - row.quantity_reserved,
-    0,
+  // Same rules as the shop: a variant product is priced by its cheapest active
+  // variant and stocked by its variants; a discount counts only inside its sale window.
+  const variants = ((product.product_variants ?? []) as unknown as VariantRow[]).filter((v) => v.is_active !== false);
+  const priced: EffectivePriceInput[] = variants.filter((v) => Number(v.base_price) > 0);
+  const effectivePrice = Math.min(
+    ...(priced.length > 0 ? priced : [product as unknown as EffectivePriceInput]).map(
+      (item) => getEffectivePrice({ ...item, base_price: Number(item.base_price) }).price,
+    ),
   );
+  const totalAvailable =
+    variants.length > 0
+      ? variants.reduce((sum, v) => sum + sellableUnits(v.product_inventory), 0)
+      : sellableUnits(product.product_inventory as InventoryRow[] | null);
   const availability = totalAvailable > 0 ? "instock" : "oos";
+  const brandName = await getProductBrandName(product.id as string);
 
   const images =
     (product.product_images as { image_url: string; is_primary: boolean }[] | null) ?? [];
@@ -146,7 +183,7 @@ export default async function ProductLayout({ children, params }: ProductLayoutP
       product.meta_description || product.short_description || `Buy ${product.name} at ${store.store_name}`,
     image: sortedImages.map((img) => img.image_url),
     sku: (product.sku as string | null) || product.id,
-    brand: { "@type": "Brand", name: store.store_name },
+    ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
     offers: {
       "@type": "Offer",
       url: productUrl,

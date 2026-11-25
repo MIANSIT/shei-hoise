@@ -92,6 +92,9 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean);
+  const [aboutExpanded, setAboutExpanded] = useState(false);
+  // Short descriptions fit in the three-line preview, so they get no toggle.
+  const aboutIsLong = aboutParagraphs.length > 1 || (aboutParagraphs[0]?.length ?? 0) > 300;
   const hasBanner = !!storeData.banner_url;
 
   const showFreeDelivery =
@@ -500,16 +503,39 @@ export default function StoreHomeClient({ storeSlug: store_slug, data }: StoreHo
           search engines real copy to read on a page that is otherwise only
           product grids and images. Skipped when the store has no description. */}
       {aboutParagraphs.length > 0 && (
-        <section className="border-t border-stone-100 dark:border-gray-800/60 py-10 sm:py-12">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-lg sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight">
-              {t.home.aboutStore} {storeName}
-            </h2>
-            {aboutParagraphs.map((paragraph, i) => (
-              <p key={i} className="mt-3 text-sm sm:text-base text-stone-500 dark:text-gray-400 leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
+        <section className="pb-10 sm:pb-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-stone-200/70 dark:border-gray-800 bg-white dark:bg-gray-900/60 p-5 sm:p-8">
+              <h2 className="text-lg sm:text-2xl font-black text-stone-900 dark:text-white tracking-tight leading-tight">
+                {t.home.aboutStore} {storeName}
+              </h2>
+              <div className="mt-3 max-w-4xl">
+                {/* Collapsed text is only hidden with CSS, so search engines still read all of it. */}
+                <div id="about-store-text" className="space-y-3">
+                  {aboutParagraphs.map((paragraph, i) => (
+                    <p
+                      key={i}
+                      className={`text-sm sm:text-[15px] text-stone-500 dark:text-gray-400 leading-relaxed ${
+                        aboutExpanded || !aboutIsLong ? "" : i === 0 ? "line-clamp-3" : "hidden"
+                      }`}
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+                {aboutIsLong && (
+                  <button
+                    type="button"
+                    onClick={() => setAboutExpanded((open) => !open)}
+                    aria-expanded={aboutExpanded}
+                    aria-controls="about-store-text"
+                    className="mt-3 text-sm font-bold text-stone-900 dark:text-white underline underline-offset-4"
+                  >
+                    {aboutExpanded ? t.home.aboutReadLess : t.home.aboutReadMore}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </section>
       )}

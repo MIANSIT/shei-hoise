@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { fetchAllPaged } from "@/lib/queries/utils/fetchAllPaged";
 
 function getSitemapClient() {
   // Always server-only. Prefer SUPABASE_INTERNAL_URL when set — see the
@@ -88,22 +89,36 @@ interface CategoryRow {
   stores: ProductStore | ProductStore[] | null;
 }
 
+/** Every row of a query, page by page (one response is capped at 1,000). A failure leaves that section out. */
+async function loadAll<T>(
+  label: string,
+  buildPage: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+): Promise<T[]> {
+  try {
+    return await fetchAllPaged<T>(
+      (from, to) => buildPage(from, to) as PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+    );
+  } catch (error) {
+    console.error(`[sitemap] Failed to fetch ${label}:`, error instanceof Error ? error.message : error);
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = getSitemapClient();
 
   // Fetch all active & approved/trial stores
-  const { data: stores, error: storesError } = await supabase
-    .from("stores")
-    .select("store_slug, updated_at")
-    .eq("is_active", true)
-    .in("status", ["approved", "trial"])
-    .order("created_at", { ascending: false });
+  const stores = await loadAll<StoreRow>("stores", (from, to) =>
+    supabase
+      .from("stores")
+      .select("store_slug, updated_at")
+      .eq("is_active", true)
+      .in("status", ["approved", "trial"])
+      .order("id")
+      .range(from, to),
+  );
 
-  if (storesError) {
-    console.error("[sitemap] Failed to fetch stores:", storesError.message);
-  }
-
-  const storeRoutes: MetadataRoute.Sitemap = ((stores ?? []) as StoreRow[]).flatMap((store) => [
+  const storeRoutes: MetadataRoute.Sitemap = stores.flatMap((store) => [
     {
       url: `${baseUrl}/${store.store_slug}`,
       lastModified: store.updated_at ? new Date(store.updated_at) : new Date(),
@@ -125,16 +140,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   // Fetch all active products joined with their store slugs
-  const { data: products, error: productsError } = await supabase
-    .from("products")
-    .select("slug, updated_at, stores!inner(store_slug, is_active, status)")
-    .eq("status", "active");
+  const products = await loadAll<ProductRow>("products", (from, to) =>
+    supabase
+      .from("products")
+      .select("slug, updated_at, stores!inner(store_slug, is_active, status)")
+      .eq("status", "active")
+      .order("id")
+      .range(from, to),
+  );
 
-  if (productsError) {
-    console.error("[sitemap] Failed to fetch products:", productsError.message);
-  }
-
-  const productRoutes: MetadataRoute.Sitemap = ((products ?? []) as unknown as ProductRow[]).flatMap(
+  const productRoutes: MetadataRoute.Sitemap = products.flatMap(
     (product) => {
       const store = Array.isArray(product.stores) ? product.stores[0] : product.stores;
       if (!store?.is_active || (store.status !== "approved" && store.status !== "trial")) {
@@ -152,18 +167,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
 
   // Active categories, which each have their own /category/[slug] page.
-  const { data: categories, error: categoriesError } = await supabase
-    .from("categories")
-    .select("slug, created_at, stores!inner(store_slug, is_active, status)")
-    .eq("is_active", true)
-    // Categories kept for the shop's own use are not browsable pages worth indexing.
-    .neq("show_in_store", false);
+  const categories = await loadAll<CategoryRow>("categories", (from, to) =>
+    supabase
+      .from("categories")
+      .select("slug, created_at, stores!inner(store_slug, is_active, status)")
+      .eq("is_active", true)
+      // Categories kept for the shop's own use are not browsable pages worth indexing.
+      .neq("show_in_store", false)
+      .order("id")
+      .range(from, to),
+  );
 
-  if (categoriesError) {
-    console.error("[sitemap] Failed to fetch categories:", categoriesError.message);
-  }
-
-  const categoryRoutes: MetadataRoute.Sitemap = ((categories ?? []) as unknown as CategoryRow[]).flatMap(
+  const categoryRoutes: MetadataRoute.Sitemap = categories.flatMap(
     (category) => {
       const store = Array.isArray(category.stores) ? category.stores[0] : category.stores;
       if (!store?.is_active || (store.status !== "approved" && store.status !== "trial")) {

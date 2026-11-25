@@ -24,7 +24,6 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",
           "/auth/",
           "/onboarding/",
-          "/_next/",
           "/health-check/",
         ],
       },
